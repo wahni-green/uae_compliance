@@ -16,6 +16,7 @@ _PARENT_FIELDS = {
 		"uae_is_export",
 		"uae_tourist_refund",
 		"conversion_rate",
+		"uae_is_margin_scheme",
 	),
 	"Purchase Invoice": (
 		"uae_is_reverse_charge",
@@ -25,7 +26,10 @@ _PARENT_FIELDS = {
 	),
 }
 
-_CHILD_FIELDS = {"Purchase Invoice": ("uae_input_tax_not_recoverable", "uae_input_tax_attribution")}
+_CHILD_FIELDS = {
+	"Sales Invoice": ("uae_margin_purchase_price",),
+	"Purchase Invoice": ("uae_input_tax_not_recoverable", "uae_input_tax_attribution"),
+}
 
 
 def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:
@@ -124,6 +128,18 @@ def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:
 		row.input_vat_amount = input_vat_by_parent.get(item.parent, {}).get(item.item_code, 0) * share
 		for field in _PARENT_FIELDS[doctype]:
 			row[field] = invoice.get(field)
+
+		# Profit margin scheme: the VAT is part of the price, and the return reports the full sales
+		# value in box 1 and the full purchase price in box 9. A return keeps the sign of its row.
+		row.reported_amount = flt(item.base_net_amount)
+		row.margin_purchase_price = 0.0
+		if doctype == "Sales Invoice" and invoice.uae_is_margin_scheme:
+			row.reported_amount += row.output_vat_amount
+			sign = 1 if flt(item.base_net_amount) >= 0 else -1
+			row.margin_purchase_price = (
+				abs(flt(item.uae_margin_purchase_price)) * (flt(invoice.conversion_rate) or 1) * sign
+			)
+
 		rows.append(row)
 
 	return rows
@@ -193,7 +209,7 @@ def summarize_box(rows: list, vat_amount_field: str = "output_vat_amount") -> di
 	are already negative and net into the amount and VAT. The adjustment column is reserved for
 	adjustments that are not transactions (bad debt relief, apportionment) and starts at zero."""
 	return {
-		"amount": sum(flt(row.base_net_amount) for row in rows),
+		"amount": sum(flt(row.get("reported_amount", row.base_net_amount)) for row in rows),
 		"vat_amount": sum(flt(row.get(vat_amount_field)) for row in rows),
 		"adjustment": 0.0,
 	}

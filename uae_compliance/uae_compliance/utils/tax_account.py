@@ -13,6 +13,11 @@ def get_input_vat_account(company: str | None) -> str | None:
 	return _get_vat_row_value(company, "input_vat_account")
 
 
+def get_excise_tax_account(company: str | None) -> str | None:
+	"""The company's configured Excise Tax account (UAE Compliance Settings)."""
+	return _get_vat_row_value(company, "excise_tax_account")
+
+
 def _get_vat_row_value(company: str | None, fieldname: str) -> str | None:
 	# Explicitly configured, not guessed from account type: ERPNext's generic account types are
 	# shared with unrelated charges (freight, discount, ...).

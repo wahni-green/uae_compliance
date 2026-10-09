@@ -262,7 +262,7 @@ def _customer_listing(company: str, from_date, to_date):
 		if row.uae_is_export and invoice.shipping_address_name:
 			destination = frappe.db.get_value("Address", invoice.shipping_address_name, "country") or ""
 
-		total_value += flt(row.base_net_amount)
+		total_value += flt(row.reported_amount)
 		total_vat += vat
 		data.append(
 			[
@@ -274,12 +274,12 @@ def _customer_listing(company: str, from_date, to_date):
 				_text(row.invoice, 20),
 				line_numbers.get(row.name, 0),
 				_text(frappe.db.get_value("Sales Invoice Item", row.name, "item_name"), 250),
-				_money(row.base_net_amount),
+				_money(row.reported_amount),
 				_money(vat),
 				SALES_TAX_CODES[row.category],
 				_text(destination, 50),
 				invoice.currency if foreign else EMPTY_CURRENCY,
-				_money(flt(row.base_net_amount) / rate) if foreign else "0.00",
+				_money(flt(row.reported_amount) / rate) if foreign else "0.00",
 				_money(vat / rate) if foreign else "0.00",
 			]
 		)

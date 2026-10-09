@@ -1,11 +1,11 @@
 # Phase 5 – Advanced schemes
 
-- [ ] Profit margin scheme (invoice flag, return section, e-invoice flag)
+- [x] Profit margin scheme (invoice flag, return section; e-invoice flag in Phase 6) (PR 5b)
 - [x] Partial exemption: input apportionment and annual adjustment (PR 5a)
 - [ ] Capital asset scheme (10-year adjustment, assets >= AED 5M) - confirm rules
 - [ ] Bad-debt relief
-- [ ] Tourist refund (box 2) - confirm scheme specifics
-- [ ] Excise tax (50%/100% items, accounts, reporting)
+- [x] Tourist refund (box 2): validations (PR 5b)
+- [x] Excise tax: rates, item categories and a check on invoices; the excise return itself is not built (PR 5b)
 - [ ] Tax groups
 - [ ] Tests for each scheme
 
@@ -20,3 +20,8 @@
 - **Partial exemption:** `Input VAT Attribution` on purchase rows (Taxable Supplies, Exempt Supplies, Residual). Residual input VAT is recovered at the period's ratio, taxable (standard and zero rated) over taxable plus exempt supplies, rounded to a whole percentage; exempt-attributed rows claim nothing. The ratio and residual figures are stored on the return, and **Calculate Apportionment** on an Annual Apportionment adjustment trues the year up from its Filed returns. The further adjustment when the annual difference exceeds AED 250,000 and the sectoral methods are not built.
 - **UAE Capital Asset:** assets costing AED 5M or more excluding VAT; a yearly schedule (10 years for buildings, 5 for other assets) adjusting 1/10 or 1/5 of the input VAT by the change in the recoverable percentage, with a button that creates a draft UAE VAT Adjustment per year (a cancelled one can be replaced).
 - Review hardening: bad debt relief needs the write-off and notice dates on or before the adjustment date, takes its emirate from the invoice and re-checks the VAT limit under a lock on the invoice at submission; an adjustment cannot be dated in a period whose return is Filed; one Annual Apportionment per tax year; the annual calculation needs the year's Filed returns to run without a gap and to have recorded their figures; import adjustments recover their recoverable share (default 100%) in box 10.
+
+## PR 5b: profit margin scheme, tourist refunds, excise
+- **Profit margin scheme:** `Profit Margin Scheme` on a sales invoice and a purchase price per row. The row amount is the price before the VAT; the VAT due is the standard rate of the margin (net amount less purchase price, never below zero per row), and the VAT posted to the Output VAT account must equal it. The invoice prints with no tax amount and a margin scheme statement. The return reports the full sales value (price including the VAT) in box 1 and the purchase price in box 9 with no recoverable VAT, and ticks the profit margin scheme question. Returns of margin invoices are not validated.
+- **Tourist refunds:** a refund cannot exceed the VAT charged, the purchase must be at least AED 250, the refund at most AED 35,000, and only standard rated sales qualify; it is recorded in the invoice currency and converted for box 2.
+- **Excise:** `UAE Excise Rate` (seeded from Cabinet Decision 197/2025: tobacco, e-cigarette liquids and devices, energy drinks 100%; sweetened drinks AED 1.09 per litre at 8 g or more sugar per 100 ml and AED 0.79 at 5 g to under 8 g), an excise category and volume per unit on Item, and a warning on sales invoices when the excise charged on the Excise Tax account differs from what the goods require. The excise return and excise on purchases are not built.

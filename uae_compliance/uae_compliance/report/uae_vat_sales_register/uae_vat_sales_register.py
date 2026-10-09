@@ -110,7 +110,7 @@ def get_data(filters) -> list[dict]:
 				"vat_amount": 0.0,
 			},
 		)
-		entry["amount"] += row.base_net_amount or 0
+		entry["amount"] += row.reported_amount or 0
 		entry["vat_amount"] += row.output_vat_amount or 0
 
 	# Tax refunded to tourists reduces the VAT due in box 2: one negative row per invoice.

@@ -66,6 +66,20 @@ CUSTOM_FIELDS = {
 			"item_group",
 			options=VAT_CATEGORY_SELECT_OPTIONS,
 		),
+		_field(
+			"uae_excise_category",
+			"Excise Category",
+			"Link",
+			"uae_vat_category",
+			options="UAE Excise Rate",
+		),
+		_field(
+			"uae_excise_volume_litres",
+			"Volume per Unit (Litres)",
+			"Float",
+			"uae_excise_category",
+			depends_on="uae_excise_category",
+		),
 	],
 	_ITEM_ROW_DOCTYPES: [
 		_field(
@@ -130,6 +144,16 @@ CUSTOM_FIELDS = {
 			"uae_is_import_of_goods",
 		),
 	],
+	"Sales Invoice Item": [
+		_field(
+			"uae_margin_purchase_price",
+			"Margin Scheme Purchase Price",
+			"Currency",
+			"uae_vat_category",
+			options="currency",
+			depends_on="eval:parent.uae_is_margin_scheme",
+		),
+	],
 	"Purchase Invoice Item": [
 		_field(
 			"uae_input_tax_not_recoverable",
@@ -170,6 +194,12 @@ CUSTOM_FIELDS = {
 			"Check",
 			"uae_is_export",
 			read_only=1,
+		),
+		_field(
+			"uae_is_margin_scheme",
+			"Profit Margin Scheme",
+			"Check",
+			"uae_is_simplified_tax_invoice",
 		),
 		_field(
 			"uae_tourist_refund",

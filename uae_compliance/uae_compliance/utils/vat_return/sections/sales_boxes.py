@@ -23,6 +23,16 @@ def get_tourist_refund(rows: list) -> float:
 	return sum(get_tourist_refunds_by_invoice(rows).values())
 
 
+def get_margin_scheme(rows: list) -> dict:
+	"""Whether the profit margin scheme was used in the period and the purchase price of the goods
+	sold under it, which the return reports as a standard rated expense in box 9."""
+	margin_rows = [row for row in rows if row.get("uae_is_margin_scheme")]
+	return {
+		"applied": bool(margin_rows),
+		"purchase_price": sum(flt(row.margin_purchase_price) for row in margin_rows),
+	}
+
+
 def get_sales_boxes(company: str, from_date, to_date, rows: list | None = None) -> dict:
 	"""Boxes 2, 4 and 5. Box 4 (zero rated) and 5 (exempt) take an amount only and include exports.
 	Box 2 reports tax refunded to tourists, which reduces the VAT due and is reported as a negative

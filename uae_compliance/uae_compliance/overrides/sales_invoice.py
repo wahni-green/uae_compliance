@@ -3,6 +3,11 @@ from frappe import _
 from frappe.utils import date_diff, flt
 
 from uae_compliance.uae_compliance.constants import TAX_INVOICE_ISSUE_DAYS
+from uae_compliance.uae_compliance.overrides.sales_schemes import (
+	validate_margin_scheme,
+	validate_tourist_refund,
+	warn_if_excise_missing,
+)
 from uae_compliance.uae_compliance.overrides.transaction import set_vat_category_defaults
 from uae_compliance.uae_compliance.overrides.vat_checks import (
 	validate_no_mixed_vat_category_per_item_code,
@@ -23,6 +28,9 @@ def validate(doc, method=None):
 	set_export_flag(doc)
 	set_simplified_tax_invoice_flag(doc)
 	warn_late_tax_invoice(doc)
+	validate_margin_scheme(doc)
+	validate_tourist_refund(doc)
+	warn_if_excise_missing(doc)
 
 
 def before_submit(doc, method=None):
