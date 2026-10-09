@@ -29,6 +29,9 @@ class UAEVATAdjustment(Document):
 
 		self.validate_period_is_open()
 
+		if self.adjustment_type == ADJUSTMENT_ANNUAL_APPORTIONMENT:
+			self.validate_annual_apportionment()
+
 		if self.adjustment_type == ADJUSTMENT_BAD_DEBT_RELIEF:
 			self.validate_within_invoice_vat()
 
@@ -70,6 +73,10 @@ class UAEVATAdjustment(Document):
 		twice."""
 		if not (self.period_from and self.period_to):
 			return
+
+		# Two adjustments saved at the same moment could each find none and both be kept, so the
+		# company row is locked: the second waits for the first to commit and then sees it.
+		frappe.db.get_value("Company", self.company, "name", for_update=True)
 
 		overlapping = frappe.db.get_value(
 			"UAE VAT Adjustment",

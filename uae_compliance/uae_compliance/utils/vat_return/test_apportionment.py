@@ -224,6 +224,23 @@ class TestAnnualApportionment(VATReturnTestCase):
 			frappe.ValidationError, self._annual(period_to="2026-11-30").calculate_apportionment
 		)
 
+	def test_the_company_is_locked_while_the_year_is_checked(self):
+		from unittest.mock import patch as mock_patch
+
+		year = {"period_from": "2032-01-01", "period_to": "2032-12-31"}
+		real = frappe.db.get_value
+		calls = []
+
+		def spy(*args, **kwargs):
+			if kwargs.get("for_update"):
+				calls.append(args[:2])
+			return real(*args, **kwargs)
+
+		with mock_patch.object(frappe.db, "get_value", side_effect=spy):
+			self._annual(**year).insert()
+
+		self.assertIn(("Company", self.company), calls)
+
 	def test_calculation_is_refused_once_the_year_is_adjusted(self):
 		year = {"period_from": "2031-01-01", "period_to": "2031-12-31"}
 		self._annual(**year).insert()
