@@ -1,11 +1,11 @@
 import frappe
 from frappe import _
 
-from uae_compliance.uae_compliance.utils.vat_return import get_invoice_rows
 from uae_compliance.uae_compliance.utils.vat_return.apportionment import (
 	get_period_supplies,
 	get_recovery_ratio,
 )
+from uae_compliance.uae_compliance.utils.vat_return.group import get_group_rows
 from uae_compliance.uae_compliance.utils.vat_return.sections.purchase_boxes import (
 	ORDINARY,
 	POSTPONED_IMPORT,
@@ -80,7 +80,7 @@ def get_columns() -> list[dict]:
 def get_data(filters) -> list[dict]:
 	"""One row per invoice and box, using the same rows and classification as the UAE VAT Return.
 	Rows the return does not report (zero rated, exempt, non-recoverable) are not listed."""
-	rows = get_invoice_rows("Purchase Invoice", filters.company, filters.from_date, filters.to_date)
+	rows = get_group_rows("Purchase Invoice", filters.company, filters.from_date, filters.to_date)
 	if not rows:
 		return []
 
@@ -102,7 +102,7 @@ def get_data(filters) -> list[dict]:
 	)
 
 	# Residual input VAT is recovered at the period's ratio, taken from the same sales rows the return uses.
-	sales_rows = get_invoice_rows("Sales Invoice", filters.company, filters.from_date, filters.to_date)
+	sales_rows = get_group_rows("Sales Invoice", filters.company, filters.from_date, filters.to_date)
 	recovery_ratio = get_recovery_ratio(*get_period_supplies(sales_rows))
 
 	grouped: dict[tuple[str, str], dict] = {}

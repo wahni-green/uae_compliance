@@ -17,11 +17,11 @@ from uae_compliance.uae_compliance.constants.vat_return import (
 	EMIRATE_BOX_CODES,
 )
 from uae_compliance.uae_compliance.utils.tax_account import get_output_vat_account
-from uae_compliance.uae_compliance.utils.vat_return import get_invoice_rows
 from uae_compliance.uae_compliance.utils.vat_return.apportionment import (
 	get_period_supplies,
 	get_recovery_ratio,
 )
+from uae_compliance.uae_compliance.utils.vat_return.group import get_group_rows, get_return_companies
 from uae_compliance.uae_compliance.utils.vat_return.period import (
 	get_due_date,
 	get_filing_frequency,
@@ -158,8 +158,8 @@ class UAEVATReturn(Document):
 				title=_("VAT Accounts Not Configured"),
 			)
 
-		sales_rows = get_invoice_rows("Sales Invoice", self.company, self.from_date, self.to_date)
-		purchase_rows = get_invoice_rows("Purchase Invoice", self.company, self.from_date, self.to_date)
+		sales_rows = get_group_rows("Sales Invoice", self.company, self.from_date, self.to_date)
+		purchase_rows = get_group_rows("Purchase Invoice", self.company, self.from_date, self.to_date)
 
 		by_emirate = get_standard_rated_by_emirate(
 			self.company, self.from_date, self.to_date, rows=sales_rows
@@ -171,7 +171,9 @@ class UAEVATReturn(Document):
 		purchases = get_purchase_boxes(
 			self.company, self.from_date, self.to_date, rows=purchase_rows, recovery_ratio=recovery_ratio
 		)
-		adjustments = get_adjustments([self.company], self.from_date, self.to_date, recovery_ratio)
+		adjustments = get_adjustments(
+			get_return_companies(self.company), self.from_date, self.to_date, recovery_ratio
+		)
 
 		margin = get_margin_scheme(sales_rows)
 		self.profit_margin_scheme_applied = int(margin["applied"])

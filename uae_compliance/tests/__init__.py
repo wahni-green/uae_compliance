@@ -48,7 +48,11 @@ def before_tests() -> None:
 def get_uae_test_company() -> str:
 	"""A Company registered in the UAE, creating a minimal one if none exists on this site. Created
 	uncommitted inside the calling test's own transaction, so it is rolled back automatically."""
-	existing = frappe.db.get_value("Company", {"country": "United Arab Emirates"})
+	# Prefer the company the test bootstrap creates; other tests add UAE companies of their own.
+	if frappe.db.exists("Company", TEST_COMPANY):
+		return TEST_COMPANY
+
+	existing = frappe.db.get_value("Company", {"country": "United Arab Emirates"}, order_by="creation asc")
 	if existing:
 		return existing
 
@@ -88,11 +92,15 @@ def get_vat_accounts(company: str) -> tuple[str, str]:
 	return output, input_name
 
 
-def configure_vat_settings(company: str, issues_e_invoices: int = 0) -> tuple[str, str]:
-	"""Point UAE Compliance Settings at this company's VAT accounts (rolled back with the test)."""
+def configure_vat_settings(company: str, issues_e_invoices: int = 0, append: bool = False) -> tuple[str, str]:
+	"""Point UAE Compliance Settings at this company's VAT accounts (rolled back with the test).
+	`append` keeps the rows of other companies, for tests that involve several."""
 	output, input_ = get_vat_accounts(company)
 	settings = frappe.get_doc("UAE Compliance Settings")
-	settings.vat_accounts = []
+	if append:
+		settings.vat_accounts = [row for row in settings.vat_accounts if row.company != company]
+	else:
+		settings.vat_accounts = []
 	settings.append(
 		"vat_accounts",
 		{
@@ -259,11 +267,33 @@ def get_unique_test_date():
 	return add_days(fiscal_year_start, next(_test_date_counter))
 
 
+def make_uae_company(name: str, abbr: str) -> str:
+	"""A second UAE company, for tests involving more than one."""
+	if frappe.db.exists("Company", name):
+		return name
+
+	return (
+		frappe.get_doc(
+			{
+				"doctype": "Company",
+				"company_name": name,
+				"abbr": abbr,
+				"default_currency": "AED",
+				"country": "United Arab Emirates",
+				"create_chart_of_accounts_based_on": "Standard Template",
+				"chart_of_accounts": "Standard",
+			}
+		)
+		.insert()
+		.name
+	)
+
+
 def create_submitted_purchase_invoice(
-	rows=None, taxes=(), posting_date=None, supplier="_Test UAE Supplier", **kwargs
+	rows=None, taxes=(), posting_date=None, supplier="_Test UAE Supplier", company=None, **kwargs
 ):
 	"""A submitted Purchase Invoice. `taxes` is a list of (account, rate, add_deduct) tuples."""
-	company = get_uae_test_company()
+	company = company or get_uae_test_company()
 	make_item("_Test Print Item")
 	if not frappe.db.exists("Supplier", supplier):
 		frappe.get_doc({"doctype": "Supplier", "supplier_name": supplier}).insert()
@@ -298,3 +328,8 @@ def create_submitted_purchase_invoice(
 	doc.insert()
 	doc.submit()
 	return doc
+
+
+def delete_tax_groups() -> None:
+	for name in frappe.get_all("UAE Tax Group", pluck="name"):
+		frappe.delete_doc("UAE Tax Group", name, force=True)

@@ -12,6 +12,7 @@ from uae_compliance.uae_compliance.utils.tax_account import (
 
 _PARENT_FIELDS = {
 	"Sales Invoice": (
+		"customer",
 		"uae_emirate",
 		"uae_is_export",
 		"uae_tourist_refund",
@@ -19,6 +20,7 @@ _PARENT_FIELDS = {
 		"uae_is_margin_scheme",
 	),
 	"Purchase Invoice": (
+		"supplier",
 		"uae_is_reverse_charge",
 		"uae_is_gcc_supplier",
 		"uae_is_import_of_goods",

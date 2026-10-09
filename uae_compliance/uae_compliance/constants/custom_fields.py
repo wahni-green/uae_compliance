@@ -36,6 +36,14 @@ _ITEM_ROW_DOCTYPES = (
 CUSTOM_FIELDS = {
 	"Company": [
 		_field("uae_company_name_in_arabic", "Company Name in Arabic", "Data", "company_name"),
+		_field(
+			"uae_tax_group",
+			"Tax Group",
+			"Link",
+			"uae_company_name_in_arabic",
+			options="UAE Tax Group",
+			read_only=1,
+		),
 	],
 	("Company", "Customer", "Supplier"): [
 		_field("uae_trn", "TRN", "Data", "tax_id"),
