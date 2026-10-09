@@ -75,7 +75,7 @@ CUSTOM_FIELDS = {
 		),
 		_field(
 			"uae_excise_volume_litres",
-			"Volume per Unit (Litres)",
+			"Volume per Stock Unit (Litres)",
 			"Float",
 			"uae_excise_category",
 			depends_on="uae_excise_category",

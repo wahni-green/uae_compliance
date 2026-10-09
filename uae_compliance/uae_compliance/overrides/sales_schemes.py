@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import flt, getdate, nowdate
 
 from uae_compliance.uae_compliance.constants import (
 	STANDARD_VAT_RATE,
@@ -112,22 +112,28 @@ def validate_tourist_refund(doc) -> None:
 
 def get_expected_excise(doc) -> float:
 	"""The excise tax due on the rows with an excise category, in company currency: a percentage of
-	the net amount (taken as the excise price) or an amount per litre."""
+	the net amount (taken as the excise price) or an amount per litre of the stock quantity. Only a
+	rate that is active and in force on the invoice date applies."""
 	total = 0.0
-	rate = flt(doc.get("conversion_rate")) or 1
+	conversion = flt(doc.get("conversion_rate")) or 1
+	on = getdate(doc.get("posting_date") or nowdate())
+
 	for row in doc.items:
 		category = frappe.get_cached_value("Item", row.item_code, "uae_excise_category")
 		if not category:
 			continue
 
-		rate_type, excise_rate = frappe.get_cached_value("UAE Excise Rate", category, ["rate_type", "rate"])
+		rate_type, excise_rate, is_active, effective_from = frappe.get_cached_value(
+			"UAE Excise Rate", category, ["rate_type", "rate", "is_active", "effective_from"]
+		)
+		if not is_active or (effective_from and getdate(effective_from) > on):
+			continue
+
 		if rate_type == PER_LITRE:
-			litres = flt(row.qty) * flt(
-				frappe.get_cached_value("Item", row.item_code, "uae_excise_volume_litres")
-			)
-			total += litres * flt(excise_rate)
+			volume = flt(frappe.get_cached_value("Item", row.item_code, "uae_excise_volume_litres"))
+			total += (flt(row.get("stock_qty")) or flt(row.qty)) * volume * flt(excise_rate)
 		else:
-			total += flt(row.net_amount) * rate * flt(excise_rate) / 100
+			total += flt(row.net_amount) * conversion * flt(excise_rate) / 100
 
 	return total
 

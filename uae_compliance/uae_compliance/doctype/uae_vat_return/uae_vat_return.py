@@ -174,8 +174,8 @@ class UAEVATReturn(Document):
 		adjustments = get_adjustments([self.company], self.from_date, self.to_date, recovery_ratio)
 
 		margin = get_margin_scheme(sales_rows)
+		self.profit_margin_scheme_applied = int(margin["applied"])
 		if margin["applied"]:
-			self.profit_margin_scheme_applied = 1
 			purchases["standard_rated_expenses"]["amount"] += margin["purchase_price"]
 
 		box_rows = list(_build_box_rows(by_emirate, sales, purchases, adjustments))

@@ -107,10 +107,25 @@ def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:
 
 	# item_wise_tax_detail is keyed by item code, not row. Rows sharing an item code (which share a
 	# VAT treatment, checked above) split the combined amount by their share of the net amount.
+	#
+	# On a profit margin invoice the VAT is due on each row's margin, not on its sales value, so
+	# rows sharing an item code split it by margin; a row sold at a loss takes none.
+	margin_invoices = {
+		name for name, invoice in invoices_by_name.items() if invoice.get("uae_is_margin_scheme")
+	}
+
+	def split_weight(item) -> float:
+		net = flt(item.base_net_amount)
+		if doctype == "Sales Invoice" and item.parent in margin_invoices:
+			rate = flt(invoices_by_name[item.parent].conversion_rate) or 1
+			return max(0.0, abs(net) - abs(flt(item.uae_margin_purchase_price)) * rate)
+
+		return net
+
 	net_by_key: dict[tuple[str, str], float] = {}
 	for item in items:
 		key = (item.parent, item.item_code)
-		net_by_key[key] = net_by_key.get(key, 0) + flt(item.base_net_amount)
+		net_by_key[key] = net_by_key.get(key, 0) + split_weight(item)
 
 	rows = []
 	for item in items:
@@ -119,7 +134,7 @@ def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:
 
 		invoice = invoices_by_name[item.parent]
 		total_net = net_by_key[(item.parent, item.item_code)]
-		share = flt(item.base_net_amount) / total_net if total_net else 0
+		share = split_weight(item) / total_net if total_net else 0
 
 		row = frappe._dict(item)
 		row.invoice = item.parent

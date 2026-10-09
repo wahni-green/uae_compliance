@@ -97,11 +97,49 @@ class TestMarginScheme(VATReturnTestCase):
 		)
 		self.assertEqual((data[0]["amount"], data[0]["vat_amount"]), (1020, 20))
 
-	def test_return_without_margin_sales_leaves_the_flag_alone(self):
+	def test_return_without_margin_sales_leaves_the_flag_off(self):
 		self.sale(rate=1000)
 		doc = self.new_return()
 		doc.generate_return()
 		self.assertEqual(doc.profit_margin_scheme_applied, 0)
+
+	def test_flag_is_cleared_when_the_margin_sales_are_gone(self):
+		invoice = self._submitted()
+		doc = self.new_return()
+		doc.generate_return()
+		self.assertEqual(doc.profit_margin_scheme_applied, 1)
+
+		invoice.cancel()
+		doc.generate_return()
+		self.assertEqual(doc.profit_margin_scheme_applied, 0)
+
+	def test_margin_vat_is_split_between_rows_by_margin(self):
+		from uae_compliance.uae_compliance.utils.vat_return import get_invoice_rows
+
+		make_item("_Test Margin Item")
+		create_submitted_sales_invoice(
+			[
+				{"item_code": "_Test Margin Item", "rate": 1000, "uae_margin_purchase_price": 600},
+				{"item_code": "_Test Margin Item", "rate": 500, "uae_margin_purchase_price": 600},
+			],
+			customer="_Test UAE Customer",
+			posting_date=self.date,
+			taxes=[
+				{
+					"charge_type": "Actual",
+					"account_head": self.output,
+					"description": "VAT",
+					"tax_amount": 20,
+				}
+			],
+			uae_is_margin_scheme=1,
+		)
+
+		rows = get_invoice_rows("Sales Invoice", self.company, self.date, self.date)
+		vat = sorted(round(row.output_vat_amount, 2) for row in rows)
+
+		# All of the VAT belongs to the first row; the row sold at a loss owes none.
+		self.assertEqual(vat, [0.0, 20.0])
 
 	def test_invoice_shows_no_tax_amount(self):
 		invoice = self._submitted()
@@ -182,6 +220,38 @@ class TestExcise(VATReturnTestCase):
 		item = self._item("_Test Cola", "Sweetened Drinks (8 g or more sugar per 100 ml)", litres=1.5)
 		invoice = self._invoice(item, qty=10, rate=5)
 		self.assertAlmostEqual(get_expected_excise(invoice), 10 * 1.5 * 1.09)
+
+	def test_per_litre_excise_counts_the_stock_quantity(self):
+		item = self._item("_Test Water Carton", "Sweetened Drinks (8 g or more sugar per 100 ml)", litres=0.5)
+		invoice = self._invoice(item, qty=1, rate=100)
+		invoice.items[0].stock_qty = 24  # one carton of 24 bottles
+
+		self.assertAlmostEqual(get_expected_excise(invoice), 24 * 0.5 * 1.09)
+
+	def test_inactive_and_future_rates_do_not_apply(self):
+		item = self._item("_Test Cigarettes 2", "Tobacco and Tobacco Products")
+		invoice = self._invoice(item)
+
+		frappe.db.set_value("UAE Excise Rate", "Tobacco and Tobacco Products", "is_active", 0)
+		frappe.clear_document_cache("UAE Excise Rate", "Tobacco and Tobacco Products")
+		self.assertEqual(get_expected_excise(invoice), 0)
+
+		frappe.db.set_value(
+			"UAE Excise Rate",
+			"Tobacco and Tobacco Products",
+			{"is_active": 1, "effective_from": frappe.utils.add_days(self.date, 30)},
+		)
+		frappe.clear_document_cache("UAE Excise Rate", "Tobacco and Tobacco Products")
+		self.assertEqual(get_expected_excise(invoice), 0)
+
+		frappe.db.set_value(
+			"UAE Excise Rate",
+			"Tobacco and Tobacco Products",
+			"effective_from",
+			frappe.utils.add_days(self.date, -30),
+		)
+		frappe.clear_document_cache("UAE Excise Rate", "Tobacco and Tobacco Products")
+		self.assertEqual(get_expected_excise(invoice), 1000)
 
 	def test_goods_without_a_category_owe_none(self):
 		item = make_item("_Test Plain Goods")
