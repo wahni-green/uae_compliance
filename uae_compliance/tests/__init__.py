@@ -41,3 +41,24 @@ def before_tests() -> None:
 	frappe.db.commit()  # nosemgrep
 
 	frappe.flags.country = "United Arab Emirates"
+
+
+def get_uae_test_company() -> str:
+	"""A Company registered in the UAE, creating a minimal one if none exists on this site. Created
+	uncommitted inside the calling test's own transaction, so it is rolled back automatically."""
+	existing = frappe.db.get_value("Company", {"country": "United Arab Emirates"})
+	if existing:
+		return existing
+
+	company = frappe.get_doc(
+		{
+			"doctype": "Company",
+			"company_name": "_Test UAE Company",
+			"abbr": "TUC",
+			"default_currency": "AED",
+			"country": "United Arab Emirates",
+			"create_chart_of_accounts_based_on": "Standard Template",
+			"chart_of_accounts": "Standard",
+		}
+	).insert()
+	return company.name

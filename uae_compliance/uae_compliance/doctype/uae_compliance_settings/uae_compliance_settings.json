@@ -1,0 +1,116 @@
+{
+ "actions": [],
+ "creation": "2026-10-09 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "UAE Compliance",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "issingle": 1,
+ "name": "UAE Compliance Settings",
+ "quick_entry": 1,
+ "track_changes": 1,
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Accounts Manager",
+   "write": 1
+  }
+ ],
+ "field_order": [
+  "accounts_section",
+  "vat_accounts",
+  "thresholds_section",
+  "simplified_tax_invoice_threshold",
+  "column_break_uaecs",
+  "mandatory_registration_threshold",
+  "voluntary_registration_threshold",
+  "settings_currency",
+  "validation_section",
+  "trn_pattern",
+  "tin_pattern"
+ ],
+ "fields": [
+  {
+   "fieldname": "accounts_section",
+   "fieldtype": "Section Break",
+   "label": "VAT Accounts"
+  },
+  {
+   "fieldname": "vat_accounts",
+   "fieldtype": "Table",
+   "label": "VAT Accounts",
+   "options": "UAE Compliance VAT Account"
+  },
+  {
+   "fieldname": "thresholds_section",
+   "fieldtype": "Section Break",
+   "label": "VAT Thresholds (AED)"
+  },
+  {
+   "default": "10000",
+   "fieldname": "simplified_tax_invoice_threshold",
+   "fieldtype": "Currency",
+   "label": "Simplified Tax Invoice Threshold",
+   "options": "settings_currency"
+  },
+  {
+   "fieldname": "column_break_uaecs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "375000",
+   "fieldname": "mandatory_registration_threshold",
+   "fieldtype": "Currency",
+   "label": "Mandatory VAT Registration Threshold",
+   "options": "settings_currency"
+  },
+  {
+   "default": "187500",
+   "fieldname": "voluntary_registration_threshold",
+   "fieldtype": "Currency",
+   "label": "Voluntary VAT Registration Threshold",
+   "options": "settings_currency"
+  },
+  {
+   "default": "AED",
+   "fieldname": "settings_currency",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Currency",
+   "options": "Currency"
+  },
+  {
+   "fieldname": "validation_section",
+   "fieldtype": "Section Break",
+   "label": "Identifier Validation"
+  },
+  {
+   "default": "^100[0-9]{12}$",
+   "description": "Regular expression a TRN must match. The FTA publishes no official format or checksum; adjust if needed.",
+   "fieldname": "trn_pattern",
+   "fieldtype": "Data",
+   "label": "TRN Pattern"
+  },
+  {
+   "default": "^1[0-9]{9}$",
+   "description": "Regular expression a 10-digit TIN (used for Peppol e-invoicing) must match.",
+   "fieldname": "tin_pattern",
+   "fieldtype": "Data",
+   "label": "TIN Pattern"
+  }
+ ]
+}
