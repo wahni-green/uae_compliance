@@ -25,3 +25,21 @@ FILING_FREQUENCIES = [
 	"Quarterly - Stagger 3 (Apr-Jun)",
 	"Monthly",
 ]
+
+# Reverse charge cases (see docs/UAE_VERIFICATION.md section 3). Designated zone supplies have no
+# general reverse charge: goods consumed or short in a zone are treated as imported (ER Art 51(9)).
+REVERSE_CHARGE_TYPES = [
+	"Import of Services",
+	"Import of Goods",
+	"Hydrocarbons",
+	"Electronic Devices",
+	"Precious Metals and Stones",
+	"Metal Scrap",
+	"Other",
+]
+REVERSE_CHARGE_TYPE_SELECT_OPTIONS = "\n" + "\n".join(REVERSE_CHARGE_TYPES)
+METAL_SCRAP_TYPE = "Metal Scrap"
+IMPORT_OF_GOODS_TYPE = "Import of Goods"
+
+# Tax invoice must be issued within 14 days of the supply (Decree-Law Art 67, ER Art 59(13)).
+TAX_INVOICE_ISSUE_DAYS = 14

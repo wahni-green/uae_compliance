@@ -23,7 +23,8 @@
   "output_vat_account",
   "input_vat_account",
   "excise_tax_account",
-  "filing_frequency"
+  "filing_frequency",
+  "issues_e_invoices"
  ],
  "fields": [
   {
@@ -62,6 +63,13 @@
    "in_list_view": 1,
    "label": "Filing Frequency",
    "options": "Quarterly - Stagger 1 (Feb-Apr)\nQuarterly - Stagger 2 (Mar-May)\nQuarterly - Stagger 3 (Apr-Jun)\nMonthly"
+  },
+  {
+   "default": "0",
+   "description": "Mandatory or voluntary e-invoicing: simplified tax invoices are then not allowed (ER Art 59(16)).",
+   "fieldname": "issues_e_invoices",
+   "fieldtype": "Check",
+   "label": "Issues E-Invoices"
   }
  ]
 }

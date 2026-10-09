@@ -1,3 +1,5 @@
+import json
+
 import frappe
 
 
@@ -31,3 +33,53 @@ def is_output_vat_account(account_head: str | None, company: str | None) -> bool
 
 def is_input_vat_account(account_head: str | None, company: str | None) -> bool:
 	return bool(account_head) and account_head == get_input_vat_account(company)
+
+
+def get_item_wise_vat_rates(tax_rows, company: str | None) -> dict[str, float]:
+	"""Sum of item_wise_tax_detail VAT rates for rows posted to the company's Output VAT account,
+	keyed by item_code. Unrelated charges (freight, discount, ...) with their own item-wise rate are
+	never read as VAT. Returns nothing if no Output VAT account is configured."""
+	rates: dict[str, float] = {}
+
+	for tax in tax_rows:
+		if not is_output_vat_account(tax.get("account_head"), company):
+			continue
+
+		detail = tax.get("item_wise_tax_detail")
+		if not detail:
+			continue
+
+		parsed = json.loads(detail) if isinstance(detail, str) else detail
+		for item_code, detail_row in parsed.items():
+			rates[item_code] = rates.get(item_code, 0) + detail_row[0]
+
+	return rates
+
+
+def get_item_wise_vat_amounts(tax_rows, company: str | None, is_matching_account) -> dict[str, float]:
+	"""Sum of item_wise_tax_detail VAT amounts (company currency) for rows posted to whichever
+	account `is_matching_account` identifies, keyed by item_code. Shared by the VAT return."""
+	amounts: dict[str, float] = {}
+
+	for tax in tax_rows:
+		if not is_matching_account(tax.get("account_head"), company):
+			continue
+
+		detail = tax.get("item_wise_tax_detail")
+		if not detail:
+			continue
+
+		parsed = json.loads(detail) if isinstance(detail, str) else detail
+		for item_code, detail_row in parsed.items():
+			amounts[item_code] = amounts.get(item_code, 0) + detail_row[1]
+
+	return amounts
+
+
+def is_einvoicing_company(company: str | None) -> bool:
+	"""Whether the company is flagged in UAE Compliance Settings as issuing e-invoices."""
+	if not company:
+		return False
+
+	settings = frappe.get_cached_doc("UAE Compliance Settings")
+	return any(row.company == company and row.issues_e_invoices for row in settings.vat_accounts)
