@@ -148,11 +148,30 @@ class TestMicrovista(EInvoiceTestCase):
 				]
 			}
 		}
-		with patch(POST, side_effect=[reply(TOKEN), reply(duplicate), reply(listing)]):
+		status = {
+			"success": True,
+			"data": {"invoicestatuscode": 200, "invoicestatus": "Delivered", "ftastatus": "Delivered"},
+		}
+		with patch(POST, side_effect=[reply(TOKEN), reply(duplicate), reply(listing), reply(status)]):
 			result = self.provider.submit(document, "key")
 
 		self.assertEqual(result.provider_reference, "inv-9")
 		self.assertEqual(result.status, STATUS_CLEARED)
+
+	def test_a_recovered_invoice_not_yet_at_the_fta_is_not_cleared(self):
+		document = self.document()
+		duplicate = {"success": False, "statusCode": 3, "data": ["Invoice number already exists"]}
+		listing = {
+			"data": {"paginationData": [{"invoiceNumber": document.number, "invoiceMasterId": "inv-9"}]}
+		}
+		status = {
+			"success": True,
+			"data": {"invoicestatuscode": 200, "invoicestatus": "Delivered", "ftastatus": "Pending"},
+		}
+		with patch(POST, side_effect=[reply(TOKEN), reply(duplicate), reply(listing), reply(status)]):
+			result = self.provider.submit(document, "key")
+
+		self.assertEqual(result.status, STATUS_DELIVERED)
 
 	def test_a_duplicate_that_cannot_be_found_is_a_rejection(self):
 		duplicate = {"success": False, "statusCode": 3, "data": ["Invoice number already exists"]}
@@ -219,7 +238,7 @@ class TestMicrovista(EInvoiceTestCase):
 				]
 			}
 		}
-		detail = {"data": {"Invoice": {"invoiceCurrencyCode": "AED"}, "Items": [{}, {}]}}
+		detail = {"success": True, "data": {"Invoice": {"invoiceCurrencyCode": "AED"}, "Items": [{}, {}]}}
 		with patch(POST, side_effect=[reply(TOKEN), reply(listing), reply(detail)]):
 			documents = self.provider.fetch_inbound({"known"})
 
@@ -229,6 +248,26 @@ class TestMicrovista(EInvoiceTestCase):
 		self.assertEqual(model["lines"], 2)
 		self.assertEqual(model["payable"], 105)
 		self.assertEqual(model["kind"], "Invoice")
+
+	def test_a_failed_detail_fetch_is_not_logged_as_an_empty_invoice(self):
+		listing = {"data": {"paginationData": [{"invoiceMasterId": "new-2"}]}}
+		with patch(POST, side_effect=[reply(TOKEN), reply(listing), reply({"success": False})]):
+			self.assertRaises(ServiceProviderError, self.provider.fetch_inbound, set())
+
+	# ---------------------------------------------------------------- configuration
+
+	def test_a_missing_client_code_is_reported(self):
+		self.provider.config.extra = {}
+		with patch(POST) as post, self.assertRaisesRegex(ServiceProviderError, "client_code"):
+			self.provider.validate_credentials()
+
+		post.assert_not_called()
+
+	def test_a_changed_account_does_not_reuse_the_old_token(self):
+		old = self.provider._token_key()
+		self.provider.config.client_secret = "another-key"
+
+		self.assertNotEqual(self.provider._token_key(), old)
 
 	# ---------------------------------------------------------------- payload
 

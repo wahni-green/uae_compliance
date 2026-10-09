@@ -18,6 +18,7 @@ Secret (the secret key), and Extra Configuration with `client_code` and optional
 `v1`), `inbound_days` (default 30) and `timeout` in seconds (default 60). The company's TIN is the
 taxpayer."""
 
+import hashlib
 from datetime import date, datetime, timedelta
 
 import frappe
@@ -79,9 +80,22 @@ class MicrovistaASP(ASPClient):
 		return f"{self.config.endpoint_url.rstrip('/')}{path}"
 
 	def _token_key(self) -> str:
-		return f"uae_compliance_microvista_token:{self.config.company}:{self.config.environment}"
+		"""One token per account: changing the endpoint, credentials or taxpayer must not reuse the
+		token of the old ones."""
+		account = "|".join(
+			[self.config.endpoint_url, self.config.client_id, self.config.client_secret, self.taxpayer_tin]
+		)
+		digest = hashlib.sha256(account.encode()).hexdigest()[:16]
+		return f"uae_compliance_microvista_token:{self.config.company}:{self.config.environment}:{digest}"
+
+	def _require_client_code(self) -> None:
+		if not self.config.extra.get("client_code"):
+			raise ServiceProviderError(
+				_("Microvista needs a client_code in the Extra Configuration of UAE E-Invoice Settings.")
+			)
 
 	def _token(self, refresh: bool = False) -> str:
+		self._require_client_code()
 		if not refresh:
 			cached = frappe.cache().get_value(self._token_key(), expires=True)
 			if cached:
@@ -230,10 +244,15 @@ class MicrovistaASP(ASPClient):
 			rows = ((body.get("data") or {}).get("paginationData")) or []
 			for row in rows:
 				if row.get("invoiceNumber") == document.number:
+					# The list has no FTA status, so the invoice's own status decides: delivered at the
+					# provider is not yet cleared by the FTA.
+					reference = row["invoiceMasterId"]
+					current = self.get_status(reference)
 					return SubmitResult(
-						provider_reference=row["invoiceMasterId"],
-						status=map_status(row.get("invoiceStatus"), row.get("invoiceStatusText"), None)[0],
-						detail=_("Already held by Microvista"),
+						provider_reference=reference,
+						status=current.status,
+						detail=current.detail or _("Already held by Microvista"),
+						raw_response=current.raw_response,
 					)
 
 			if len(rows) < PAGE_SIZE:
@@ -312,13 +331,19 @@ class MicrovistaASP(ASPClient):
 	def _inbound_model(self, row: dict) -> dict:
 		"""A received invoice in the shape `inbound.parse_document` gives. The list carries the
 		header; the invoice itself supplies the currency and the lines."""
-		detail = (
-			self._call(
-				"get-purchase-invoice-details-by-id", params={"invoiceId": row["invoiceMasterId"]}, json={}
-			).get("data")
-			or {}
+		body = self._call(
+			"get-purchase-invoice-details-by-id", params={"invoiceId": row["invoiceMasterId"]}, json={}
 		)
-		invoice = detail.get("Invoice") or detail.get("invoice") or {}
+		detail = body.get("data")
+		invoice = detail.get("Invoice") or detail.get("invoice") if isinstance(detail, dict) else None
+		if body.get("success") is False or not invoice:
+			# Not logged, so that the next fetch tries again instead of keeping a partial record.
+			raise ServiceProviderError(
+				_("Microvista could not give invoice {0}: {1}").format(
+					row["invoiceMasterId"], body.get("message")
+				)
+			)
+
 		lines = detail.get("Items") or detail.get("items") or []
 		issued = row.get("invoiceDate") or ""
 
