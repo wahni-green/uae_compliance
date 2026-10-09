@@ -93,9 +93,10 @@ def _without_intra_group_bad_debt(rows: list, companies: list[str]) -> list:
 	suppliers = get_internal_parties("Supplier", companies)
 
 	def is_internal(row) -> bool:
-		if row.sales_invoice:
+		# Only these two types look at an invoice; any other type that still carries one is kept.
+		if row.adjustment_type == ADJUSTMENT_BAD_DEBT_RELIEF and row.sales_invoice:
 			return frappe.db.get_value("Sales Invoice", row.sales_invoice, "customer") in customers
-		if row.purchase_invoice:
+		if row.adjustment_type == ADJUSTMENT_BAD_DEBT_REPAYMENT and row.purchase_invoice:
 			return frappe.db.get_value("Purchase Invoice", row.purchase_invoice, "supplier") in suppliers
 
 		return False

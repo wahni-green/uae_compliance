@@ -17,12 +17,22 @@ from uae_compliance.uae_compliance.utils.vat_return.group import get_return_owne
 
 class UAEVATAdjustment(Document):
 	def validate(self):
+		self.clear_fields_of_other_types()
+
 		if self.adjustment_type == ADJUSTMENT_BAD_DEBT_RELIEF:
 			self.validate_bad_debt_relief()
 		elif self.adjustment_type == ADJUSTMENT_BAD_DEBT_REPAYMENT:
 			self.validate_bad_debt_repayment()
 		elif self.adjustment_type == ADJUSTMENT_ANNUAL_APPORTIONMENT:
 			self.validate_annual_apportionment()
+
+	def clear_fields_of_other_types(self):
+		"""Hiding a field in the form does not clear it, so switching a draft from one type to another
+		would leave the invoice of the old type behind."""
+		if self.adjustment_type != ADJUSTMENT_BAD_DEBT_RELIEF:
+			self.sales_invoice = None
+		if self.adjustment_type != ADJUSTMENT_BAD_DEBT_REPAYMENT:
+			self.purchase_invoice = None
 
 	def before_submit(self):
 		if not flt(self.vat_amount) and not flt(self.amount):

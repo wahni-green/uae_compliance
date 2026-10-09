@@ -217,6 +217,46 @@ class TestTaxGroupReturn(VATReturnTestCase):
 
 		self.assertEqual(get_adjustments([self.company, self.b], date, date)["by_emirate"]["1b"], 0)
 
+	def test_an_import_adjustment_that_still_has_an_invoice_is_kept(self):
+		from frappe.utils import add_months
+
+		from uae_compliance.uae_compliance.utils.vat_return.sections.adjustments import get_adjustments
+
+		invoice = self._sale(self.company, "_Test Member B Customer", 1000)
+		date = add_months(self.date, 9)
+		adjustment = frappe.get_doc(
+			{
+				"doctype": "UAE VAT Adjustment",
+				"company": self.company,
+				"adjustment_type": "Import Adjustment",
+				"posting_date": date,
+				"amount": 100,
+				"vat_amount": 5,
+			}
+		).insert()
+		# A leftover from when the draft was another type.
+		frappe.db.set_value("UAE VAT Adjustment", adjustment.name, "sales_invoice", invoice.name)
+		frappe.db.set_value("UAE VAT Adjustment", adjustment.name, "docstatus", 1)
+
+		result = get_adjustments([self.company, self.b], date, date)
+		self.assertEqual(result["imports"]["vat_amount"], 5)
+
+	def test_switching_the_type_of_a_draft_clears_the_old_invoice(self):
+		invoice = self._sale(self.company, "_Test UAE Customer", 1000)
+		adjustment = frappe.get_doc(
+			{
+				"doctype": "UAE VAT Adjustment",
+				"company": self.company,
+				"adjustment_type": "Import Adjustment",
+				"posting_date": self.date,
+				"amount": 100,
+				"vat_amount": 5,
+				"sales_invoice": invoice.name,
+			}
+		).insert()
+
+		self.assertFalse(adjustment.sales_invoice)
+
 	def test_every_member_needs_vat_accounts(self):
 		settings = frappe.get_doc("UAE Compliance Settings")
 		settings.vat_accounts = [row for row in settings.vat_accounts if row.company == self.company]
