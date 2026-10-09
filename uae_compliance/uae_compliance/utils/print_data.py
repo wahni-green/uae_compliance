@@ -51,6 +51,7 @@ def get_tax_invoice_data(doc) -> dict:
 
 	return {
 		"company_currency": company_currency,
+		"is_aed_company": company_currency == "AED",
 		"is_foreign_currency": doc.currency != company_currency,
 		"lines": lines,
 		"vat": get_output_vat_amount(doc),
@@ -58,10 +59,11 @@ def get_tax_invoice_data(doc) -> dict:
 	}
 
 
-def get_value_before_credit_note(doc, before_creation=None) -> float:
+def get_value_before_credit_note(doc, issued_before=None) -> float:
 	"""The invoice value (excluding VAT, in company currency) a credit note starts from: the original
-	invoice value less the credit notes already submitted against it. `before_creation` restricts
-	that to credit notes created earlier, for old credit notes that have no stored value."""
+	invoice value less the credit notes already submitted against it. `issued_before` restricts that
+	to credit notes issued earlier, as (posting_date, posting_time, creation); only the one-off
+	backfill of credit notes from before the value was stored uses it."""
 	original = doc.get("return_against")
 	if not original:
 		return 0.0
@@ -71,13 +73,21 @@ def get_value_before_credit_note(doc, before_creation=None) -> float:
 		"docstatus": 1,
 		"name": ["!=", doc.get("name")],
 	}
-	if before_creation:
-		filters["creation"] = ["<", before_creation]
-
-	earlier = frappe.db.get_all("Sales Invoice", filters=filters, fields=["sum(base_net_total) as total"])
-	earlier_total = flt(earlier[0].total) if earlier else 0.0
+	earlier = frappe.db.get_all(
+		"Sales Invoice",
+		filters=filters,
+		fields=["sum(base_net_total) as total", "posting_date", "posting_time", "creation", "name"],
+		group_by="name",
+	)
+	if issued_before:
+		earlier = [row for row in earlier if _issue_order(row) < issued_before]
+	earlier_total = sum(flt(row.total) for row in earlier)
 
 	return flt(frappe.db.get_value("Sales Invoice", original, "base_net_total")) + earlier_total
+
+
+def _issue_order(row) -> tuple:
+	return (str(row.posting_date), str(row.posting_time), str(row.creation))
 
 
 def get_credit_note_values(doc) -> dict:
@@ -86,14 +96,13 @@ def get_credit_note_values(doc) -> dict:
 	against one invoice each start from the value left after the earlier ones.
 
 	The starting value is stored on the credit note when it is submitted, so reprinting it never
-	changes with the order other credit notes were drafted in. A draft shows a live preview, and a
-	credit note submitted before the value was stored falls back to creation order."""
+	changes with the order other credit notes were drafted in. A draft shows a live preview of the
+	value left after the credit notes submitted so far."""
 	if not doc.get("return_against"):
 		return {}
 
-	stored = flt(doc.get("uae_credit_note_original_value"))
 	if doc.get("docstatus") == 1:
-		before = stored or get_value_before_credit_note(doc, doc.get("creation"))
+		before = flt(doc.get("uae_credit_note_original_value"))
 	else:
 		before = get_value_before_credit_note(doc)
 

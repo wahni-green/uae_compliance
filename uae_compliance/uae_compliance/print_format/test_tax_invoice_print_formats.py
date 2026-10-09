@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -129,6 +131,7 @@ class TestForeignCurrency(FrappeTestCase):
 		company = get_uae_test_company()
 		configure_vat_settings(company)
 		make_item("_Test FX Item")
+		make_customer("_Test Registered FX Customer", "100987654321003")
 		abbr = frappe.get_cached_value("Company", company, "abbr")
 		debtors_usd = f"Debtors USD - {abbr}"
 		if not frappe.db.exists("Account", debtors_usd):
@@ -144,6 +147,7 @@ class TestForeignCurrency(FrappeTestCase):
 			).insert()
 		doc = make_sales_invoice(
 			[{"item_code": "_Test FX Item"}],
+			customer="_Test Registered FX Customer",
 			currency="USD",
 			conversion_rate=3.6725,
 			debit_to=debtors_usd,
@@ -159,6 +163,29 @@ class TestForeignCurrency(FrappeTestCase):
 
 		html = frappe.get_print("Sales Invoice", doc.name, print_format="UAE Tax Invoice")
 		self.assertIn("Exchange rate: 1 USD = 3.6725 AED", html)
+
+		# Each line also shows its unit price and total in AED (ER Art 59(1)(h)).
+		self.assertIn("Unit Price (AED)", html)
+		self.assertIn("Total (AED)", html)
+		self.assertAlmostEqual(data["lines"][0]["base_total"], 100 * 3.6725 * 1.05, places=2)
+		self.assertIn("385.61", html)
+
+	def test_company_not_in_aed_gets_a_warning(self):
+		company = get_uae_test_company()
+		configure_vat_settings(company)
+		make_item("_Test Warn Item")
+		doc = make_sales_invoice([{"item_code": "_Test Warn Item"}])
+		doc.insert()
+
+		with patch(
+			"uae_compliance.uae_compliance.utils.print_data.frappe.get_cached_value",
+			side_effect=lambda doctype, name, field: "USD" if field == "default_currency" else None,
+		):
+			data = get_tax_invoice_data(doc)
+		self.assertFalse(data["is_aed_company"])
+
+		html = frappe.get_print("Sales Invoice", doc.name, print_format="UAE Tax Invoice")
+		self.assertNotIn("not AED", html)
 
 
 class TestTaxCreditNote(FrappeTestCase):
@@ -181,6 +208,10 @@ class TestTaxCreditNote(FrappeTestCase):
 
 	def test_reason_is_required_to_submit_a_return(self):
 		doc = self._return(reason="")
+		self.assertRaises(frappe.ValidationError, doc.submit)
+
+	def test_a_blank_reason_does_not_count(self):
+		doc = self._return(reason="   ")
 		self.assertRaises(frappe.ValidationError, doc.submit)
 
 	def test_credit_note_values(self):
@@ -295,3 +326,38 @@ class TestQRCode(FrappeTestCase):
 		)
 		frappe.db.set_value("Company", self.company, "uae_trn", "100123456789003")
 		self.assertTrue(get_tax_invoice_qr_code(doc).startswith("data:image/png;base64"))
+
+
+class TestCreditNoteBackfill(FrappeTestCase):
+	def test_backfills_in_order_of_issue(self):
+		from erpnext.controllers.sales_and_purchase_return import make_return_doc
+
+		from uae_compliance.patches.v1.backfill_credit_note_original_value import execute
+
+		company = get_uae_test_company()
+		configure_vat_settings(company)
+		make_customer("_Test UAE Customer")
+		original = create_submitted_sales_invoice(
+			[{"item_code": "_Test Print Item", "qty": 3}], customer="_Test UAE Customer"
+		)
+
+		notes = []
+		for _ in range(2):
+			doc = make_return_doc("Sales Invoice", original.name)
+			doc.uae_emirate = "Dubai"
+			doc.uae_credit_note_reason = "Goods returned"
+			doc.items[0].qty = -1
+			doc.insert()
+			doc.submit()
+			notes.append(doc.name)
+
+		# Simulate credit notes submitted before the value was stored.
+		for name in notes:
+			frappe.db.set_value("Sales Invoice", name, "uae_credit_note_original_value", 0)
+
+		execute()
+
+		self.assertEqual(
+			[frappe.db.get_value("Sales Invoice", name, "uae_credit_note_original_value") for name in notes],
+			[300, 200],
+		)

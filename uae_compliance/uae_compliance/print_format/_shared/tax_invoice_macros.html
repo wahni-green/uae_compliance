@@ -11,6 +11,13 @@
 #}
 {% macro m(value) %}{{ frappe.utils.fmt_money(value or 0) }}{% endmacro %}
 
+{# The AED figures are required. This app only has them when the company's own currency is AED. #}
+{% macro render_aed_warning(data) %}
+	{% if not data.is_aed_company %}
+		<p class="missing-mandatory-field">{{ _("The company currency is {0}, not AED. The AED amounts required on a tax invoice are not shown.").format(data.company_currency) }}</p>
+	{% endif %}
+{% endmacro %}
+
 {% macro render_supplier_block(doc) %}
 	{% set company_name_ar = frappe.db.get_value("Company", doc.company, "uae_company_name_in_arabic") %}
 	{% set company_trn = frappe.db.get_value("Company", doc.company, "uae_trn") %}
@@ -71,6 +78,10 @@
 				<th>{{ _("VAT %") }}</th>
 				<th>{{ _("VAT Amount") }} ({{ doc.currency }})</th>
 				<th>{{ _("Total") }} ({{ doc.currency }})</th>
+				{% if data.is_foreign_currency %}
+				<th>{{ _("Unit Price") }} ({{ data.company_currency }})</th>
+				<th>{{ _("Total") }} ({{ data.company_currency }})</th>
+				{% endif %}
 			</tr>
 		</thead>
 		<tbody>
@@ -89,6 +100,10 @@
 				<td>{% if line.vat_rate is not none %}{{ "%g" % line.vat_rate }}%{% endif %}</td>
 				<td>{{ m(line.vat_amount) }}</td>
 				<td>{{ m(line.total) }}</td>
+				{% if data.is_foreign_currency %}
+				<td>{{ m(item.base_price_list_rate or item.base_rate) }}</td>
+				<td>{{ m(line.base_total) }}</td>
+				{% endif %}
 			</tr>
 			{% endfor %}
 		</tbody>
@@ -104,6 +119,7 @@
 				<th>{{ _("Description") }} / <span lang="ar">الوصف</span></th>
 				<th>{{ _("Qty") }}</th>
 				<th>{{ _("Amount") }} ({{ doc.currency }})</th>
+				{% if data.is_foreign_currency %}<th>{{ _("Amount") }} ({{ data.company_currency }})</th>{% endif %}
 			</tr>
 		</thead>
 		<tbody>
@@ -113,6 +129,7 @@
 				<td>{{ line.item.item_name }}</td>
 				<td>{{ line.item.qty }} {{ line.item.uom or "" }}</td>
 				<td>{{ m(line.total) }}</td>
+				{% if data.is_foreign_currency %}<td>{{ m(line.base_total) }}</td>{% endif %}
 			</tr>
 			{% endfor %}
 		</tbody>
@@ -125,6 +142,7 @@
 	it is None, not 0, when that account is not configured, which prints as a warning.
 #}
 {% macro render_totals(doc, data) %}
+	{{ render_aed_warning(data) }}
 	<table class="totals-table">
 		<tr class="currency-heading">
 			<td></td>
@@ -162,6 +180,7 @@
 
 {# Figures a tax credit note must show, in AED (ER Art 60(1)). #}
 {% macro render_credit_note_values(doc, data) %}
+	{{ render_aed_warning(data) }}
 	{% set values = get_credit_note_values(doc) %}
 	<table class="totals-table credit-note-values">
 		<tr class="currency-heading"><td></td><td>{{ data.company_currency }}</td></tr>
@@ -198,7 +217,7 @@
 		<tr>
 			<td>{{ _("Reason") }} / <span lang="ar">السبب</span></td>
 			<td>
-				{% if doc.uae_credit_note_reason %}{{ doc.uae_credit_note_reason }}
+				{% if doc.uae_credit_note_reason and doc.uae_credit_note_reason|trim %}{{ doc.uae_credit_note_reason|trim }}
 				{% else %}<span class="missing-mandatory-field">{{ _("Reason missing. It is required on a tax credit note.") }}</span>{% endif %}
 			</td>
 		</tr>

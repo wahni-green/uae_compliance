@@ -43,7 +43,7 @@ def store_value_before_credit_note(doc) -> None:
 
 def validate_credit_note_reason(doc) -> None:
 	"""A tax credit note must state a brief reason (ER Art 60(1))."""
-	if doc.get("is_return") and not doc.get("uae_credit_note_reason"):
+	if doc.get("is_return") and not (doc.get("uae_credit_note_reason") or "").strip():
 		frappe.throw(
 			_("Reason for Credit Note is required: a tax credit note must state why it was issued."),
 			title=_("Reason Missing"),
