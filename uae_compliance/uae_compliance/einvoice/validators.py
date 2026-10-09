@@ -17,6 +17,8 @@ from uae_compliance.uae_compliance.constants.pint_ae import (
 	CREDIT_REASONS,
 	CUSTOMIZATION_ID,
 	EMIRATE_SUBDIVISIONS,
+	ENDPOINT_BUYER_NOT_ON_NETWORK,
+	ENDPOINT_EXPORT,
 	INVOICE_TYPE_CODE,
 	PINT_TIN_PATTERN,
 	PINT_TRN_PATTERN,
@@ -25,6 +27,8 @@ from uae_compliance.uae_compliance.constants.pint_ae import (
 from uae_compliance.uae_compliance.einvoice.pint_ae_builder import NAMESPACES, ROOTS
 
 TOLERANCE = 0.011
+# AED figures are the document figures times the exchange rate, each rounded to the cent.
+AED_TOLERANCE = 0.05
 
 
 def _x(xml: etree._Element, path: str):
@@ -92,48 +96,57 @@ def _check_header(xml, is_credit_note: bool) -> list[str]:
 	return errors
 
 
+PREDEFINED_BUYER_ENDPOINTS = (ENDPOINT_BUYER_NOT_ON_NETWORK, ENDPOINT_EXPORT, "9900000097")
+
+
 def _check_parties(xml) -> list[str]:
 	errors = []
 	for role, label in (("AccountingSupplierParty", _("seller")), ("AccountingCustomerParty", _("buyer"))):
 		base = f"cac:{role}/cac:Party"
-		if not _text(xml, f"{base}/cbc:EndpointID"):
+		is_buyer = role == "AccountingCustomerParty"
+		country = _text(xml, f"{base}/cac:PostalAddress/cac:Country/cbc:IdentificationCode")
+		is_domestic = country in ("", "AE")
+		endpoint = _text(xml, f"{base}/cbc:EndpointID")
+		predefined = is_buyer and endpoint in PREDEFINED_BUYER_ENDPOINTS
+
+		# The seller always has a TIN. A buyer has one too, or one of the predefined endpoints for a
+		# buyer that is not on the network or is abroad.
+		if not endpoint:
 			errors.append(_("The {0} has no Peppol endpoint (TIN).").format(label))
+		elif not predefined and not re.fullmatch(PINT_TIN_PATTERN, endpoint):
+			errors.append(_("The {0} TIN {1} must be 10 digits, starting with 1.").format(label, endpoint))
 
 		trn = _text(xml, f"{base}/cac:PartyTaxScheme/cbc:CompanyID")
-		if not trn:
-			errors.append(_("The {0} has no VAT registration number (TRN).").format(label))
-		elif not re.fullmatch(PINT_TRN_PATTERN, trn):
+		legal_id = _text(xml, f"{base}/cac:PartyLegalEntity/cbc:CompanyID")
+		if trn and not re.fullmatch(PINT_TRN_PATTERN, trn):
 			errors.append(
 				_("The {0} TRN {1} must be 15 digits, starting with 1 and ending with 03.").format(label, trn)
 			)
-
-		endpoint = _text(xml, f"{base}/cbc:EndpointID")
-		if endpoint and not endpoint.startswith("99") and not re.fullmatch(PINT_TIN_PATTERN, endpoint):
-			errors.append(_("The {0} TIN {1} must be 10 digits, starting with 1.").format(label, endpoint))
+		# A seller always has a TRN. A domestic buyer has a TRN or at least a legal registration; a
+		# buyer abroad has neither to give.
+		if not trn and (not is_buyer or (is_domestic and not legal_id)):
+			errors.append(_("The {0} has no VAT registration number (TRN).").format(label))
 
 		if not _text(xml, f"{base}/cac:PartyLegalEntity/cbc:RegistrationName"):
 			errors.append(_("The {0} has no legal name.").format(label))
 
-		if _text(xml, f"{base}/cbc:EndpointID") and not endpoint.startswith("99"):
-			if not _text(xml, f"{base}/cac:PartyLegalEntity/cbc:CompanyID"):
-				errors.append(_("The {0} has no legal registration identifier.").format(label))
+		if not legal_id and (not is_buyer or (is_domestic and not predefined)):
+			errors.append(_("The {0} has no legal registration identifier.").format(label))
 
-		for tag, what in (
-			("StreetName", _("address line")),
-			("CityName", _("city")),
-			("CountrySubentity", _("emirate")),
-		):
+		for tag, what in (("StreetName", _("address line")), ("CityName", _("city"))):
 			if not _text(xml, f"{base}/cac:PostalAddress/cbc:{tag}"):
 				errors.append(_("The {0} has no {1}.").format(label, what))
 
-		country = _text(xml, f"{base}/cac:PostalAddress/cac:Country/cbc:IdentificationCode")
 		subdivision = _text(xml, f"{base}/cac:PostalAddress/cbc:CountrySubentity")
-		if country == "AE" and subdivision and subdivision not in EMIRATE_SUBDIVISIONS.values():
-			errors.append(
-				_("The {0} emirate code {1} is not one of {2}.").format(
-					label, subdivision, ", ".join(EMIRATE_SUBDIVISIONS.values())
+		if is_domestic:
+			if not subdivision:
+				errors.append(_("The {0} has no emirate.").format(label))
+			elif subdivision not in EMIRATE_SUBDIVISIONS.values():
+				errors.append(
+					_("The {0} emirate code {1} is not one of {2}.").format(
+						label, subdivision, ", ".join(EMIRATE_SUBDIVISIONS.values())
+					)
 				)
-			)
 
 	return errors
 
@@ -145,6 +158,7 @@ def _check_lines(xml, line_tag: str, is_credit_note: bool) -> list[str]:
 		return [_("The document has no lines.")]
 
 	quantity_tag = "CreditedQuantity" if is_credit_note else "InvoicedQuantity"
+	rate_to_aed = flt(_text(xml, "cac:TaxExchangeRate/cbc:CalculationRate")) or 1
 	for line in lines:
 		number = _text(line, "cbc:ID")
 		quantity = flt(_text(line, f"cbc:{quantity_tag}"))
@@ -184,10 +198,21 @@ def _check_lines(xml, line_tag: str, is_credit_note: bool) -> list[str]:
 			errors.append(_("Line {0}: services need a service accounting code on the Item.").format(number))
 
 		if category != "E":
-			if not _x(line, "cac:ItemPriceExtension/cac:TaxTotal/cbc:TaxAmount") or not _text(
-				line, "cac:ItemPriceExtension/cbc:Amount"
-			):
+			extension_tax = _text(line, "cac:ItemPriceExtension/cac:TaxTotal/cbc:TaxAmount")
+			extension_amount = _text(line, "cac:ItemPriceExtension/cbc:Amount")
+			if not extension_tax or not extension_amount:
 				errors.append(_("Line {0}: the AED line amount and VAT amount are required.").format(number))
+			else:
+				vat = net * flt(rate) / 100
+				if (
+					abs(flt(extension_tax) - vat * rate_to_aed) > AED_TOLERANCE
+					or abs(flt(extension_amount) - (net + vat) * rate_to_aed) > AED_TOLERANCE
+				):
+					errors.append(
+						_("Line {0}: the AED line amount or VAT amount does not match the line.").format(
+							number
+						)
+					)
 		elif _x(line, "cac:ItemPriceExtension/cac:TaxTotal/cbc:TaxAmount"):
 			errors.append(_("Line {0}: an exempt line must not carry a VAT amount.").format(number))
 
@@ -196,24 +221,47 @@ def _check_lines(xml, line_tag: str, is_credit_note: bool) -> list[str]:
 
 def _check_totals(xml, line_tag: str) -> list[str]:
 	errors = []
-	lines_total = sum(flt(_text(line, "cbc:LineExtensionAmount")) for line in _x(xml, f"cac:{line_tag}"))
+	lines = _x(xml, f"cac:{line_tag}")
+	lines_total = sum(flt(_text(line, "cbc:LineExtensionAmount")) for line in lines)
 	monetary = "cac:LegalMonetaryTotal/cbc:"
 	if abs(flt(_text(xml, monetary + "LineExtensionAmount")) - lines_total) > TOLERANCE:
 		errors.append(_("The sum of the line amounts does not match the invoice total."))
+
+	exclusive = flt(_text(xml, monetary + "TaxExclusiveAmount"))
+	if abs(exclusive - lines_total) > TOLERANCE:
+		errors.append(_("The total excluding VAT is not the sum of the line amounts."))
+
+	# Each VAT breakdown is the sum of the lines under its category and rate.
+	by_category: dict[tuple[str, float], float] = {}
+	for line in lines:
+		key = (
+			_text(line, "cac:Item/cac:ClassifiedTaxCategory/cbc:ID"),
+			flt(_text(line, "cac:Item/cac:ClassifiedTaxCategory/cbc:Percent")),
+		)
+		by_category[key] = by_category.get(key, 0) + flt(_text(line, "cbc:LineExtensionAmount"))
 
 	subtotals = _x(xml, "cac:TaxTotal[cac:TaxSubtotal]/cac:TaxSubtotal")
 	tax_total = flt(_text(xml, "cac:TaxTotal[cac:TaxSubtotal]/cbc:TaxAmount"))
 	if abs(sum(flt(_text(s, "cbc:TaxAmount")) for s in subtotals) - tax_total) > TOLERANCE:
 		errors.append(_("The VAT breakdown does not add up to the total VAT."))
 
+	seen = set()
 	for subtotal in subtotals:
+		key = (
+			_text(subtotal, "cac:TaxCategory/cbc:ID"),
+			flt(_text(subtotal, "cac:TaxCategory/cbc:Percent")),
+		)
+		seen.add(key)
 		taxable = flt(_text(subtotal, "cbc:TaxableAmount"))
 		tax = flt(_text(subtotal, "cbc:TaxAmount"))
-		rate = flt(_text(subtotal, "cac:TaxCategory/cbc:Percent"))
-		if abs(tax - taxable * rate / 100) > TOLERANCE:
+		if abs(taxable - by_category.get(key, 0)) > TOLERANCE:
+			errors.append(_("The taxable amount of category {0} is not the sum of its lines.").format(key[0]))
+		if abs(tax - taxable * key[1] / 100) > TOLERANCE:
 			errors.append(_("A VAT breakdown amount does not equal its taxable amount times its rate."))
 
-	exclusive = flt(_text(xml, monetary + "TaxExclusiveAmount"))
+	if seen != set(by_category):
+		errors.append(_("The VAT breakdown does not cover the categories of the lines."))
+
 	inclusive = flt(_text(xml, monetary + "TaxInclusiveAmount"))
 	if abs(exclusive + tax_total - inclusive) > TOLERANCE:
 		errors.append(_("The total including VAT is not the total excluding VAT plus the VAT."))
@@ -244,13 +292,27 @@ def _check_currency(xml) -> list[str]:
 	rate_text = _text(xml, f"{exchange}/cbc:CalculationRate")
 	if "." in rate_text and len(rate_text.split(".")[1]) > 6:
 		errors.append(_("The exchange rate can have at most six decimals."))
-	if not _x(xml, "cac:TaxTotal/cbc:TaxAmount[@currencyID='AED']"):
+	rate = flt(rate_text)
+	aed_tax = _x(xml, "cac:TaxTotal/cbc:TaxAmount[@currencyID='AED']")
+	if not aed_tax:
 		errors.append(_("The total VAT in AED is required."))
-	if not _x(
+	else:
+		tax_total = flt(_text(xml, "cac:TaxTotal[cac:TaxSubtotal]/cbc:TaxAmount"))
+		if abs(flt(aed_tax[0].text) - tax_total * rate) > AED_TOLERANCE:
+			errors.append(_("The total VAT in AED does not match the VAT times the exchange rate."))
+
+	description = _text(
 		xml,
 		"cac:AdditionalDocumentReference[cbc:DocumentTypeCode='aedtotal-incl-vat']/cbc:DocumentDescription",
-	):
+	)
+	if not description:
 		errors.append(_("The total including VAT in AED is required."))
+	else:
+		inclusive = flt(_text(xml, "cac:LegalMonetaryTotal/cbc:TaxInclusiveAmount"))
+		if abs(flt(description.replace("AED", "").strip()) - inclusive * rate) > AED_TOLERANCE:
+			errors.append(
+				_("The total including VAT in AED does not match the total times the exchange rate.")
+			)
 
 	return errors
 

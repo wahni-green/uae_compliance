@@ -73,8 +73,18 @@ def _amount(value) -> str:
 	return f"{flt(value, 2):.2f}"
 
 
+def _decimal(value, places: int) -> str:
+	"""Fixed-point decimal text with at most `places` decimals and no trailing zeros, never scientific
+	notation, so that the XML carries exactly the value the totals were calculated from."""
+	text = f"{flt(value, places):.{places}f}"
+	if "." in text:
+		text = text.rstrip("0").rstrip(".")
+
+	return text or "0"
+
+
 def _price(value) -> str:
-	return f"{flt(value, 6):.6f}".rstrip("0").rstrip(".") or "0"
+	return _decimal(value, 6)
 
 
 class PintAEBuilder:
@@ -84,7 +94,8 @@ class PintAEBuilder:
 		self.root_name = "CreditNote" if self.is_credit_note else "Invoice"
 		self.currency = doc.currency
 		self.company_currency = frappe.get_cached_value("Company", doc.company, "default_currency")
-		self.rate = flt(doc.get("conversion_rate")) or 1
+		# The exchange rate is written with six decimals, so the AED figures use that same rate.
+		self.rate = flt(doc.get("conversion_rate"), 6) or 1
 		self.is_foreign = self.currency != "AED"
 		self.lines: list[dict] = []
 		self.breakdown: dict[tuple[str, float], dict] = {}
@@ -136,6 +147,15 @@ class PintAEBuilder:
 				)
 
 			if code == "S":
+				# A missing rate means the invoice does not say, so the standard rate applies; an explicit
+				# 0% on a standard rated row has no PINT AE category to be reported under.
+				if row.item_code in rates and not flt(rates[row.item_code]):
+					raise EInvoiceNotSupportedError(
+						_(
+							"Row #{0}: a standard rated row with a 0% VAT rate cannot be sent as an e-invoice. Mark it Zero Rated or Exempt."
+						).format(row.idx)
+					)
+
 				vat_rate = flt(rates.get(row.item_code)) or STANDARD_VAT_RATE
 			else:
 				vat_rate = 0.0
@@ -190,14 +210,25 @@ class PintAEBuilder:
 		self.rounding = 0.0
 		if self.doc.get("rounded_total") and not self.doc.get("disable_rounded_total"):
 			self.rounding = flt(flt(self.doc.rounded_total) - self.inclusive_total, 2)
-			if abs(self.rounding) >= 1:
-				self.rounding = 0.0
 
 		self.payable = flt(self.inclusive_total + self.rounding, 2)
+		self._refuse_untracked_amounts()
 		self.tax_total_aed = flt(self.tax_total * self.rate, 2) if self.is_foreign else self.tax_total
 		self.inclusive_total_aed = (
 			flt(self.inclusive_total * self.rate, 2) if self.is_foreign else self.inclusive_total
 		)
+
+	def _refuse_untracked_amounts(self):
+		"""The e-invoice is built from the item rows and the VAT on them. Anything else on the invoice
+		(freight and other charges, a discount outside the rows, VAT that differs from the rows)
+		would silently change the amount billed, so such an invoice is refused instead."""
+		grand_total = flt(self.doc.get("grand_total"), 2)
+		if abs(self.inclusive_total - grand_total) > 0.02:
+			raise EInvoiceNotSupportedError(
+				_(
+					"The invoice total {0} differs from its item rows and VAT ({1}). Charges, discounts or VAT outside the rows cannot be sent as an e-invoice yet."
+				).format(grand_total, self.inclusive_total)
+			)
 
 	def _summary(self) -> dict:
 		return {
@@ -414,7 +445,7 @@ class PintAEBuilder:
 			exchange = _add(root, "cac", "TaxExchangeRate")
 			_add(exchange, "cbc", "SourceCurrencyCode", self.currency)
 			_add(exchange, "cbc", "TargetCurrencyCode", "AED")
-			_add(exchange, "cbc", "CalculationRate", f"{flt(self.rate, 6):g}")
+			_add(exchange, "cbc", "CalculationRate", _decimal(self.rate, 6))
 
 		total = _add(root, "cac", "TaxTotal")
 		_add(total, "cbc", "TaxAmount", _amount(self.tax_total), currencyID=self.currency)
@@ -434,7 +465,7 @@ class PintAEBuilder:
 		_add(category, "cbc", "ID", code)
 		# An exempt category has no rate (rules ibr-121-ae and aligned-ibrp-e-05).
 		if code != "E":
-			_add(category, "cbc", "Percent", f"{flt(rate, 2):g}")
+			_add(category, "cbc", "Percent", _decimal(rate, 2))
 		if code == "E" and reason:
 			_add(category, "cbc", "TaxExemptionReasonCode", reason)
 		scheme = _add(category, "cac", "TaxScheme")
@@ -457,7 +488,7 @@ class PintAEBuilder:
 
 		element = _add(root, "cac", tag)
 		_add(element, "cbc", "ID", row.idx)
-		_add(element, "cbc", quantity_tag, f"{flt(line['qty'], 6):g}", unitCode=unit)
+		_add(element, "cbc", quantity_tag, _decimal(line["qty"], 6), unitCode=unit)
 		_add(element, "cbc", "LineExtensionAmount", _amount(line["net"]), currencyID=self.currency)
 
 		item = _add(element, "cac", "Item")

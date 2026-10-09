@@ -233,6 +233,76 @@ class TestBuilder(EInvoiceTestCase):
 		self.assertRaises(EInvoiceNotSupportedError, build_xml, doc)
 
 
+class TestWhatTheInvoiceMustCarry(EInvoiceTestCase):
+	def test_a_charge_outside_the_item_rows_is_refused(self):
+		freight = frappe.db.get_value(
+			"Account",
+			{"company": self.company, "account_type": "Tax", "is_group": 0, "name": ["!=", self.output]},
+			"name",
+		)
+		doc = self.invoice(
+			taxes=[
+				{"charge_type": "On Net Total", "account_head": self.output, "description": "VAT", "rate": 5},
+				{
+					"charge_type": "Actual",
+					"account_head": freight,
+					"description": "Freight",
+					"tax_amount": 20,
+				},
+			]
+		)
+
+		with self.assertRaises(EInvoiceNotSupportedError) as ctx:
+			build_xml(doc)
+		self.assertIn("differs from its item rows", str(ctx.exception))
+
+	def test_a_standard_rated_row_at_zero_percent_is_refused_not_charged_five(self):
+		doc = self.invoice([{"item_code": "_Test EInv Service", "rate": 100, "vat_rate": 0}])
+
+		with self.assertRaises(EInvoiceNotSupportedError) as ctx:
+			build_xml(doc)
+		self.assertIn("0% VAT rate", str(ctx.exception))
+
+	def test_a_row_the_invoice_does_not_tax_explicitly_gets_the_standard_rate(self):
+		_xml, _bytes, summary = self.build(self.invoice())
+		self.assertEqual(summary["tax_total"], 100)
+
+	def test_rounding_up_to_a_whole_dirham_is_carried(self):
+		doc = self.invoice([{"item_code": "_Test EInv Service", "rate": 99.5}])
+		_xml, _bytes, summary = self.build(doc)
+
+		self.assertEqual(summary["payable"], flt_(doc.rounded_total))
+		self.assertEqual(validate_xml(_bytes), [])
+
+
+def flt_(value):
+	return frappe.utils.flt(value, 2)
+
+
+class TestNumberFormatting(FrappeTestCase):
+	def test_decimals_are_fixed_point_and_keep_their_precision(self):
+		from uae_compliance.uae_compliance.einvoice.pint_ae_builder import _decimal
+
+		self.assertEqual(_decimal(123456.7, 6), "123456.7")
+		self.assertEqual(_decimal(10000000, 6), "10000000")
+		self.assertEqual(_decimal(3.672519, 6), "3.672519")
+		self.assertEqual(_decimal(0.0000004, 6), "0")
+		self.assertEqual(_decimal(5, 2), "5")
+		self.assertEqual(_decimal(2.5, 2), "2.5")
+		self.assertNotIn("e", _decimal(1e9, 6))
+
+	def test_the_exchange_rate_is_written_with_its_six_decimals_and_used_for_the_aed_figures(self):
+		class Doc(frappe._dict):
+			pass
+
+		from uae_compliance.uae_compliance.einvoice.pint_ae_builder import PintAEBuilder
+
+		builder = PintAEBuilder(
+			Doc(company=get_uae_test_company(), currency="USD", conversion_rate=3.6725189, items=[])
+		)
+		self.assertEqual(builder.rate, 3.672519)
+
+
 class TestCreditNote(EInvoiceTestCase):
 	def test_credit_note_structure(self):
 		from erpnext.controllers.sales_and_purchase_return import make_return_doc
@@ -313,6 +383,90 @@ class TestValidators(EInvoiceTestCase):
 		xml = etree.fromstring(build_xml(self.invoice())[0])
 		mutate(xml)
 		return validate_xml(etree.tostring(xml))
+
+	def test_a_foreign_buyer_needs_no_trn_or_emirate(self):
+		from uae_compliance.tests import make_address
+
+		abroad = make_address("_Test Foreign Buyer", "India", customer="_Test UAE Customer")
+		frappe.db.set_value("Customer", "_Test UAE Customer", {"uae_tin": "", "uae_trn": ""})
+		doc = self.invoice(
+			[{"item_code": "_Test EInv Zero", "rate": 500, "vat_rate": 0}],
+			customer_address=abroad.name,
+			shipping_address_name=abroad.name,
+		)
+
+		self.assertEqual(validate_xml(build_xml(doc)[0]), [])
+
+	def test_a_domestic_buyer_needs_an_emirate(self):
+		def mutate(xml):
+			subdivision = _find(
+				xml, "cac:AccountingCustomerParty/cac:Party/cac:PostalAddress/cbc:CountrySubentity"
+			)[0]
+			subdivision.getparent().remove(subdivision)
+
+		self.assertIn("no emirate", " ".join(self._problems(mutate)))
+
+	def test_only_the_predefined_endpoints_skip_the_tin_check(self):
+		def garbage(xml):
+			_find(xml, "cac:AccountingCustomerParty/cac:Party/cbc:EndpointID")[0].text = "99garbage"
+
+		self.assertIn("TIN 99garbage", " ".join(self._problems(garbage)))
+
+		def predefined(xml):
+			_find(xml, "cac:AccountingCustomerParty/cac:Party/cbc:EndpointID")[0].text = "9900000098"
+
+		self.assertNotIn("TIN", " ".join(self._problems(predefined)))
+
+		def seller(xml):
+			_find(xml, "cac:AccountingSupplierParty/cac:Party/cbc:EndpointID")[0].text = "9900000098"
+
+		self.assertIn("seller TIN", " ".join(self._problems(seller)))
+
+	def test_totals_are_tied_back_to_the_lines(self):
+		def mutate(xml):
+			_find(xml, "cac:TaxTotal/cac:TaxSubtotal/cbc:TaxableAmount")[0].text = "4000.00"
+			_find(xml, "cac:TaxTotal/cac:TaxSubtotal/cbc:TaxAmount")[0].text = "200.00"
+			_find(xml, "cac:TaxTotal/cbc:TaxAmount")[0].text = "200.00"
+			_find(xml, "cac:LegalMonetaryTotal/cbc:TaxInclusiveAmount")[0].text = "2200.00"
+			_find(xml, "cac:LegalMonetaryTotal/cbc:PayableAmount")[0].text = "2200.00"
+
+		self.assertIn("not the sum of its lines", " ".join(self._problems(mutate)))
+
+	def test_the_exclusive_total_must_match_the_lines(self):
+		def mutate(xml):
+			_find(xml, "cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount")[0].text = "1500.00"
+
+		self.assertIn("excluding VAT is not the sum", " ".join(self._problems(mutate)))
+
+	def test_a_line_must_carry_the_vat_of_its_category(self):
+		def mutate(xml):
+			_find(xml, "cac:InvoiceLine/cac:ItemPriceExtension/cac:TaxTotal/cbc:TaxAmount")[0].text = "1.00"
+
+		self.assertIn("AED line amount or VAT amount does not match", " ".join(self._problems(mutate)))
+
+	def test_aed_figures_follow_the_exchange_rate(self):
+		abbr = frappe.get_cached_value("Company", self.company, "abbr")
+		account = f"Debtors USD - {abbr}"
+		if not frappe.db.exists("Account", account):
+			frappe.get_doc(
+				{
+					"doctype": "Account",
+					"account_name": "Debtors USD",
+					"company": self.company,
+					"parent_account": f"Accounts Receivable - {abbr}",
+					"account_type": "Receivable",
+					"account_currency": "USD",
+				}
+			).insert()
+
+		doc = self.invoice(currency="USD", conversion_rate=3.6725, debit_to=account)
+		xml = etree.fromstring(build_xml(doc)[0])
+		_find(xml, "cac:TaxTotal/cbc:TaxAmount[@currencyID='AED']")[0].text = "1.00"
+		_find(xml, "cac:AdditionalDocumentReference/cbc:DocumentDescription")[0].text = "AED 5.00"
+
+		problems = " ".join(validate_xml(etree.tostring(xml)))
+		self.assertIn("total VAT in AED does not match", problems)
+		self.assertIn("including VAT in AED does not match", problems)
 
 	def test_not_well_formed(self):
 		self.assertTrue(validate_xml(b"<Invoice"))
