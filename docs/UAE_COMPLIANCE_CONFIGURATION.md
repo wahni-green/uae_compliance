@@ -13,3 +13,6 @@
 
 ## ERPNext's built-in UAE localization
 Its custom fields (`is_zero_rated`, `is_exempt`, `vat_emirate`, `company_trn`, `reverse_charge`, ...) are hidden with Property Setters, which apply site-wide. Data is kept. On install and migrate, existing data is migrated: Item flags to VAT Category, UAE VAT Settings accounts to UAE Compliance Settings (liability = Output, asset = Input; ambiguous cases are logged in Error Log), TRN, Arabic names, emirate, tourist refunds and reverse-charge flags. Submitted documents' item rows are never modified.
+
+## VAT 201 return
+Create a **UAE VAT Return** for the company and period, then **Generate Return**. It fills boxes 1a-1g, 2-11 and the net figures (boxes 12-14); tick **Request a Refund** for box 15. Standard rated sales need a VAT Emirate on the invoice. **Mark as Filed** locks the return. **Download FAF** produces the FTA Audit File for the period. The **UAE VAT Sales Register** and **UAE VAT Purchase Register** list the invoices behind each box.

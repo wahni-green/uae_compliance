@@ -1,3 +1,5 @@
+import itertools
+
 import frappe
 from frappe.desk.page.setup_wizard.setup_wizard import setup_complete
 from frappe.utils import getdate
@@ -176,8 +178,8 @@ def make_sales_invoice(rows: list[dict], customer: str = "_Test UAE Customer", r
 			"doctype": "Sales Invoice",
 			"company": company,
 			"customer": customer,
-			"posting_date": frappe.utils.today(),
-			"due_date": frappe.utils.today(),
+			"posting_date": (posting_date := kwargs.pop("posting_date", frappe.utils.today())),
+			"due_date": posting_date,
 			"set_posting_time": 1,
 			"items": items,
 			"taxes": [
@@ -231,11 +233,67 @@ def set_company_address(company: str, **kwargs) -> str:
 	return address.name
 
 
-def create_submitted_sales_invoice(rows=None, **kwargs):
+def create_submitted_sales_invoice(rows=None, emirate="Dubai", **kwargs):
 	"""A submitted Sales Invoice with a VAT emirate, for print and report tests."""
 	make_item("_Test Print Item")
 	doc = make_sales_invoice(rows or [{"item_code": "_Test Print Item"}], **kwargs)
-	doc.uae_emirate = "Dubai"
+	doc.uae_emirate = emirate
+	doc.insert()
+	doc.submit()
+	return doc
+
+
+_test_date_counter = itertools.count()
+
+
+def get_unique_test_date():
+	"""A fresh date, never repeated in a test run. FrappeTestCase only rolls back once per class, so
+	two test methods that create invoices on the same day would see each other's invoices in a
+	period query. Offsets from the current fiscal year's start, because a submitted invoice outside
+	every fiscal year is refused by ERPNext."""
+	from erpnext.accounts.utils import get_fiscal_year
+	from frappe.utils import add_days, getdate
+
+	_, fiscal_year_start, _end = get_fiscal_year(getdate())
+	return add_days(fiscal_year_start, next(_test_date_counter))
+
+
+def create_submitted_purchase_invoice(
+	rows=None, taxes=(), posting_date=None, supplier="_Test UAE Supplier", **kwargs
+):
+	"""A submitted Purchase Invoice. `taxes` is a list of (account, rate, add_deduct) tuples."""
+	company = get_uae_test_company()
+	make_item("_Test Print Item")
+	if not frappe.db.exists("Supplier", supplier):
+		frappe.get_doc({"doctype": "Supplier", "supplier_name": supplier}).insert()
+
+	posting_date = posting_date or frappe.utils.today()
+	doc = frappe.get_doc(
+		{
+			"doctype": "Purchase Invoice",
+			"company": company,
+			"supplier": supplier,
+			"posting_date": posting_date,
+			"due_date": posting_date,
+			"set_posting_time": 1,
+			"bill_no": f"BILL-{next(_test_date_counter)}",
+			"items": [
+				{"item_code": "_Test Print Item", "qty": 1, "rate": 100, **row} for row in (rows or [{}])
+			],
+			"taxes": [
+				{
+					"charge_type": "On Net Total",
+					"account_head": account,
+					"description": "VAT",
+					"rate": rate,
+					"add_deduct_tax": add_deduct,
+					"category": "Total",
+				}
+				for account, rate, add_deduct in taxes
+			],
+			**kwargs,
+		}
+	)
 	doc.insert()
 	doc.submit()
 	return doc

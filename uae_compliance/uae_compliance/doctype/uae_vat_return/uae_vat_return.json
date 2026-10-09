@@ -1,0 +1,208 @@
+{
+ "actions": [],
+ "creation": "2026-10-10 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-10 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "UAE Compliance",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "UAE-VAT-RETURN-.#####",
+ "name": "UAE VAT Return",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User"
+  }
+ ],
+ "track_changes": 1,
+ "field_order": [
+  "company",
+  "from_date",
+  "to_date",
+  "column_break_uaevr1",
+  "period_type",
+  "due_date",
+  "status",
+  "section_break_boxes",
+  "boxes",
+  "generated_for_company",
+  "generated_for_from_date",
+  "generated_for_to_date",
+  "section_break_totals",
+  "total_due_tax",
+  "total_recoverable_tax",
+  "column_break_uaevr2",
+  "payable_tax",
+  "request_refund",
+  "profit_margin_scheme_applied",
+  "currency"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "From Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "To Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_uaevr1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "period_type",
+   "fieldtype": "Select",
+   "label": "Period Type",
+   "options": "Monthly\nQuarterly\nCustom",
+   "read_only": 1
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Date",
+   "label": "Due Date",
+   "read_only": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nFiled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_boxes",
+   "fieldtype": "Section Break",
+   "label": "VAT 201 Boxes"
+  },
+  {
+   "fieldname": "boxes",
+   "fieldtype": "Table",
+   "label": "Boxes",
+   "options": "UAE VAT Return Box",
+   "read_only": 1
+  },
+  {
+   "fieldname": "generated_for_company",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Generated For Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "generated_for_from_date",
+   "fieldtype": "Date",
+   "hidden": 1,
+   "label": "Generated For From Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "generated_for_to_date",
+   "fieldtype": "Date",
+   "hidden": 1,
+   "label": "Generated For To Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_totals",
+   "fieldtype": "Section Break",
+   "label": "Net VAT Due"
+  },
+  {
+   "fieldname": "total_due_tax",
+   "fieldtype": "Currency",
+   "label": "Total Value of Due Tax for the Period (Box 12)",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_recoverable_tax",
+   "fieldtype": "Currency",
+   "label": "Total Value of Recoverable Tax for the Period (Box 13)",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_uaevr2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "payable_tax",
+   "fieldtype": "Currency",
+   "label": "Payable Tax for the Period (Box 14)",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "request_refund",
+   "fieldtype": "Check",
+   "label": "Request a Refund of the Excess Recoverable Tax (Box 15)"
+  },
+  {
+   "default": "0",
+   "fieldname": "profit_margin_scheme_applied",
+   "fieldtype": "Check",
+   "label": "Profit Margin Scheme Applied in This Period"
+  },
+  {
+   "default": "AED",
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Currency",
+   "options": "Currency"
+  }
+ ]
+}
