@@ -236,6 +236,74 @@ class TestSendingAndPolling(PipelineTestCase):
 		self.assertEqual(log.status, "Submitted")
 		self.assertEqual(log.errors, "")
 
+	def test_retry_after_a_timeout_keeps_the_idempotency_key(self):
+		enable_einvoicing(self.company, behavior="timeout")
+		doc, _enqueue = self.submit()
+		log = self.log_of(doc)
+		pipeline.submit_log(log.name)
+		log.reload()
+		key = log.idempotency_key
+
+		pipeline.prepare(log)
+		log.reload()
+		self.assertEqual(log.idempotency_key, key)
+
+	def test_a_definite_refusal_gets_a_new_key_on_retry(self):
+		doc, _enqueue = self.submit()
+		log = self.log_of(doc)
+		with patch(
+			"uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.submit",
+			side_effect=ProviderRejectedError("no"),
+		):
+			pipeline.submit_log(log.name)
+
+		log.reload()
+		key = log.idempotency_key
+		pipeline.prepare(log)
+		log.reload()
+		self.assertNotEqual(log.idempotency_key, key)
+
+	def test_a_new_log_is_due_at_once_so_the_scheduler_finds_it(self):
+		doc, _enqueue = self.submit()
+		log = self.log_of(doc)
+		self.assertTrue(log.next_attempt_on)
+		self.assertLessEqual(log.next_attempt_on, now_datetime())
+
+	def test_immediate_clearance_sets_the_clearance_date_and_retention(self):
+		doc, _enqueue = self.submit()
+		log = self.log_of(doc)
+		result = SubmitResult(provider_reference="R1", status="Cleared", detail="")
+		with patch(
+			"uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.submit", return_value=result
+		):
+			pipeline.submit_log(log.name)
+
+		log.reload()
+		self.assertTrue(log.cleared_on)
+		self.assertGreaterEqual(log.retain_until, add_years(getdate(log.cleared_on), 5))
+
+	def test_a_cancelled_invoice_is_not_sent(self):
+		doc, _enqueue = self.submit()
+		log = self.log_of(doc)
+		frappe.db.set_value("Sales Invoice", doc.name, "docstatus", 2)
+
+		pipeline.submit_log(log.name)
+
+		log.reload()
+		self.assertEqual(log.status, "Invalid")
+		self.assertFalse(log.provider_reference)
+		self.assertRaises(frappe.ValidationError, pipeline.retry_log, log.name)
+
+	def test_changed_provider_settings_do_not_strand_a_sent_log(self):
+		doc, _enqueue = self.submit()
+		log = self.settle(self.log_of(doc), polls=0)
+		frappe.db.set_value("UAE E-Invoice Log", log.name, "environment", "Production")
+
+		with patch("frappe.log_error"):
+			pipeline.poll_log(log.name)
+
+		self.assertEqual(frappe.db.get_value("UAE E-Invoice Log", log.name, "status"), "Submitted")
+
 	def test_a_sent_document_cannot_be_retried(self):
 		doc, _enqueue = self.submit()
 		log = self.settle(self.log_of(doc), polls=1)
@@ -267,6 +335,20 @@ class TestScheduler(PipelineTestCase):
 		pipeline.process_pending()
 		self.assertEqual(frappe.db.get_value("UAE E-Invoice Log", log.name, "status"), "Cleared")
 
+	def test_polling_starts_with_the_log_checked_longest_ago(self):
+		docs = [self.submit()[0] for _ in range(2)]
+		names = [self.log_of(d).name for d in docs]
+		for name in names:
+			frappe.db.set_value("UAE E-Invoice Log", name, "status", "Submitted")
+			frappe.db.set_value("UAE E-Invoice Log", name, "provider_reference", f"R-{name}")
+
+		frappe.db.set_value("UAE E-Invoice Log", names[0], "modified", add_to_date(now_datetime(), hours=1))
+		order = []
+		with patch.object(pipeline, "poll_log", side_effect=order.append):
+			pipeline.process_pending()
+
+		self.assertEqual([n for n in order if n in names], [names[1], names[0]])
+
 	def test_a_retry_that_is_not_due_yet_waits(self):
 		doc, _enqueue = self.submit()
 		log = self.log_of(doc)
@@ -297,6 +379,25 @@ class TestScheduler(PipelineTestCase):
 
 
 class TestCancellation(PipelineTestCase):
+	def test_cancelling_an_unsent_invoice_closes_its_log(self):
+		doc, _enqueue = self.submit()
+		doc.reload()
+		doc.cancel()
+
+		log = self.log_of(doc)
+		self.assertEqual(log.status, "Invalid")
+		with patch("uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.submit") as submit:
+			pipeline.submit_log(log.name)
+		submit.assert_not_called()
+
+	def test_an_invoice_whose_send_outcome_is_unknown_cannot_be_cancelled(self):
+		enable_einvoicing(self.company, behavior="timeout")
+		doc, _enqueue = self.submit()
+		pipeline.submit_log(self.log_of(doc).name)
+
+		doc.reload()
+		self.assertRaises(frappe.ValidationError, doc.cancel)
+
 	def test_a_sent_invoice_cannot_be_cancelled(self):
 		doc, _enqueue = self.submit()
 		self.settle(self.log_of(doc), polls=0)

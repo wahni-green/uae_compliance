@@ -104,15 +104,39 @@ def queue_einvoice(doc, method=None):
 
 
 def guard_cancellation(doc, method=None):
-	"""A sent e-invoice cannot be cancelled: a credit note corrects it."""
-	status = frappe.db.get_value(LOG, {"reference_doctype": DOCTYPE, "reference_name": doc.name}, "status")
-	if status in SENT_STATUSES:
+	"""A sent e-invoice cannot be cancelled: a credit note corrects it. One that was never sent is
+	closed, so that no queued job, scheduler run or retry sends it afterwards."""
+	name = frappe.db.get_value(LOG, {"reference_doctype": DOCTYPE, "reference_name": doc.name})
+	if not name:
+		return
+
+	# The lock is the one sending takes, so a send in progress finishes before this decides.
+	frappe.db.get_value(LOG, name, "name", for_update=True)
+	log = frappe.get_doc(LOG, name)
+	if log.status in SENT_STATUSES:
 		frappe.throw(
 			_("This invoice has been sent as an e-invoice ({0}). Issue a credit note instead.").format(
-				_(status)
+				_(log.status)
 			),
 			title=_("E-Invoice Already Sent"),
 		)
+
+	if log.last_attempt_on and log.status in (STATUS_GENERATED, STATUS_FAILED):
+		frappe.throw(
+			_(
+				"Sending this invoice was attempted and its outcome is not known: the provider may hold it. "
+				"Retry it until it is settled, then issue a credit note if needed."
+			),
+			title=_("E-Invoice Status Unknown"),
+		)
+
+	if log.status != STATUS_INVALID or not log.errors:
+		log.errors = _("The invoice was cancelled.")
+		_set_status(log, STATUS_INVALID, _("Cancelled before it was sent"))
+		log.next_attempt_on = None
+		log.flags.ignore_permissions = True
+		log.save()
+		_mirror_status(log)
 
 
 # ---------------------------------------------------------------- the log
@@ -168,9 +192,15 @@ def prepare(log, doc=None):
 	log.xml = xml.decode() if xml else ""
 	log.payload = frappe.as_json(model) if model else ""
 	log.errors = "\n".join(errors)
-	log.idempotency_key = f"{log.name}-{frappe.generate_hash(length=8)}"
+	# A new send gets a new key only when the last one definitely did not reach the provider. After a
+	# timeout it might have, so the same key is kept and the provider can recognise the repeat.
+	uncertain = bool(log.last_attempt_on) and log.status in (STATUS_GENERATED, STATUS_FAILED)
+	if not log.idempotency_key or not uncertain:
+		log.idempotency_key = f"{log.name}-{frappe.generate_hash(length=8)}"
+
 	log.attempts = 0
-	log.next_attempt_on = None
+	# A due date from the start, so the scheduler sends it if the queued job is lost.
+	log.next_attempt_on = None if errors else now_datetime()
 	_set_status(log, STATUS_INVALID if errors else STATUS_GENERATED, "")
 	log.flags.ignore_permissions = True
 	log.save()
@@ -211,12 +241,20 @@ def submit_log(log: str) -> None:
 	if log.status not in SUBMIT_PENDING_STATUSES:
 		return
 
+	if frappe.db.get_value(log.reference_doctype, log.reference_name, "docstatus") != 1:
+		log.errors = _("The invoice is not submitted.")
+		_set_status(log, STATUS_INVALID, _("The invoice is not submitted"))
+		log.next_attempt_on = None
+		log.flags.ignore_permissions = True
+		log.save()
+		_mirror_status(log)
+		return
+
 	log.attempts = cint(log.attempts) + 1
 	log.last_attempt_on = now_datetime()
 
 	try:
-		client = get_client(log.company)
-		result = client.submit(
+		result = _client_for(log).submit(
 			OutgoingDocument(
 				number=log.document_number,
 				uuid=log.uuid,
@@ -236,11 +274,35 @@ def submit_log(log: str) -> None:
 		log.response = result.raw_response
 		log.errors = ""
 		log.next_attempt_on = None
-		_set_status(log, result.status, result.detail)
+		_apply_result(log, result.status, result.detail)
 
 	log.flags.ignore_permissions = True
 	log.save()
 	_mirror_status(log)
+
+
+def _client_for(log):
+	"""The client for a log, refusing to use settings that are not the ones it was created under: the
+	reference of a document is only meaningful to the provider and environment that issued it."""
+	row = get_company_setting(log.company)
+	if row and (row.provider != log.provider or row.environment != log.environment):
+		raise ServiceProviderError(
+			_("The provider settings of {0} changed since {1} was created ({2}, {3}).").format(
+				log.company, log.name, log.provider, log.environment
+			)
+		)
+
+	return get_client(log.company)
+
+
+def _apply_result(log, status: str, detail: str | None) -> None:
+	"""Set a status from the provider, recording the clearance date and retention when it is Cleared."""
+	_set_status(log, status, detail)
+	if status == STATUS_CLEARED:
+		log.cleared_on = log.cleared_on or now_datetime()
+		log.retain_until = max(
+			getdate(log.retain_until or log.cleared_on), add_years(getdate(log.cleared_on), RETENTION_YEARS)
+		)
 
 
 def _handle_transient_failure(log, error: Exception) -> None:
@@ -267,19 +329,15 @@ def poll_log(log: str) -> None:
 		return
 
 	try:
-		result = get_client(log.company).get_status(log.provider_reference)
+		result = _client_for(log).get_status(log.provider_reference)
 	except Exception:
-		# A failed check is not a failed invoice: try again at the next poll.
+		# A failed check is not a failed invoice: try again at the next poll, after the others.
 		frappe.log_error(title=f"E-invoice status check failed: {log.name}")
+		frappe.db.set_value(LOG, name, "last_attempt_on", now_datetime())
 		return
 
 	log.response = result.raw_response or log.response
-	_set_status(log, result.status, result.detail)
-	if result.status == STATUS_CLEARED:
-		log.cleared_on = now_datetime()
-		log.retain_until = max(
-			getdate(log.retain_until or log.cleared_on), add_years(getdate(log.cleared_on), RETENTION_YEARS)
-		)
+	_apply_result(log, result.status, result.detail)
 
 	log.flags.ignore_permissions = True
 	log.save()
@@ -288,9 +346,13 @@ def poll_log(log: str) -> None:
 
 def retry_log(log: str) -> None:
 	"""Rebuild the XML from the invoice as it is now and send it again."""
+	frappe.db.get_value(LOG, log, "name", for_update=True)
 	doc_log = frappe.get_doc(LOG, log)
 	if doc_log.status in SENT_STATUSES:
 		frappe.throw(_("This e-invoice has already been sent."))
+
+	if frappe.db.get_value(doc_log.reference_doctype, doc_log.reference_name, "docstatus") != 1:
+		frappe.throw(_("The invoice is not submitted, so it cannot be sent."))
 
 	prepare(doc_log)
 	doc_log.reload()
@@ -314,6 +376,7 @@ def process_pending() -> None:
 			"next_attempt_on": ["<=", now],
 		},
 		pluck="name",
+		order_by="next_attempt_on asc",
 		limit=50,
 	)
 	for name in due:
@@ -323,6 +386,8 @@ def process_pending() -> None:
 		LOG,
 		filters={"direction": DIRECTION_OUTBOUND, "status": ["in", POLL_STATUSES]},
 		pluck="name",
+		# Every check or failed check updates the log, so the one checked longest ago comes first.
+		order_by="modified asc",
 		limit=50,
 	):
 		_run(poll_log, name)

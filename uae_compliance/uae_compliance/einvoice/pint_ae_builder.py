@@ -108,11 +108,12 @@ class PintAEBuilder:
 	# ------------------------------------------------------------------ assembly
 
 	def build(self) -> tuple[bytes, dict]:
-		xml, summary, _model = self.build_all()
+		xml, summary, _model = self.build_all(with_model=False)
 		return xml, summary
 
-	def build_all(self) -> tuple[bytes, dict, dict]:
-		"""The XML, its summary and the document model, from one set of calculations."""
+	def build_all(self, with_model: bool = True) -> tuple[bytes, dict, dict]:
+		"""The XML, its summary and the document model, from one set of calculations. Callers that
+		need only the XML skip the model."""
 		self._refuse_unsupported()
 		self._compute_lines()
 		self._compute_totals()
@@ -128,7 +129,7 @@ class PintAEBuilder:
 			self._line(root, line)
 
 		xml = etree.tostring(root, xml_declaration=True, encoding="UTF-8", pretty_print=True)
-		return xml, self._summary(), self._model()
+		return xml, self._summary(), self._model() if with_model else {}
 
 	def _refuse_unsupported(self):
 		doc = self.doc
@@ -464,6 +465,12 @@ class PintAEBuilder:
 		}
 
 	def _collect_parties(self) -> tuple[dict, dict]:
+		if not hasattr(self, "_parties_cache"):
+			self._parties_cache = self._read_parties()
+
+		return self._parties_cache
+
+	def _read_parties(self) -> tuple[dict, dict]:
 		"""The seller and the buyer as plain dictionaries, shared by the XML and the document model."""
 		doc = self.doc
 		company = frappe.db.get_value(
