@@ -40,6 +40,7 @@ REVERSE_CHARGE_TYPES = [
 REVERSE_CHARGE_TYPE_SELECT_OPTIONS = "\n" + "\n".join(REVERSE_CHARGE_TYPES)
 METAL_SCRAP_TYPE = "Metal Scrap"
 IMPORT_OF_GOODS_TYPE = "Import of Goods"
+IMPORT_OF_SERVICES_TYPE = "Import of Services"
 
 # Tax invoice must be issued within 14 days of the supply (Decree-Law Art 67, ER Art 59(13)).
 TAX_INVOICE_ISSUE_DAYS = 14

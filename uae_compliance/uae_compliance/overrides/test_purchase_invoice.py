@@ -61,14 +61,14 @@ class TestPurchaseInvoice(FrappeTestCase):
 	def test_reverse_charge_needs_output_and_input_rows(self):
 		configure_vat_settings(self.company)
 		only_output = self._invoice(
-			rc_rows=[(self.output, 5, "Add")],
+			rc_rows=[(self.output, 5, "Deduct")],
 			uae_is_reverse_charge=1,
 			uae_reverse_charge_type="Import of Services",
 		)
 		self.assertRaises(frappe.ValidationError, only_output.insert)
 
 		only_input = self._invoice(
-			rc_rows=[(self.input, 5, "Deduct")],
+			rc_rows=[(self.input, 5, "Add")],
 			uae_is_reverse_charge=1,
 			uae_reverse_charge_type="Import of Services",
 		)
@@ -77,15 +77,33 @@ class TestPurchaseInvoice(FrappeTestCase):
 	def test_reverse_charge_with_both_rows_is_accepted(self):
 		configure_vat_settings(self.company)
 		doc = self._invoice(
-			rc_rows=[(self.output, 5, "Add"), (self.input, 5, "Deduct")],
+			rc_rows=[(self.output, 5, "Deduct"), (self.input, 5, "Add")],
 			uae_is_reverse_charge=1,
 			uae_reverse_charge_type="Import of Services",
 		)
 		doc.insert()
 
+	def test_reverse_charge_rows_that_both_add_vat_are_rejected(self):
+		configure_vat_settings(self.company)
+		doc = self._invoice(
+			rc_rows=[(self.output, 5, "Add"), (self.input, 5, "Add")],
+			uae_is_reverse_charge=1,
+			uae_reverse_charge_type="Import of Services",
+		)
+		self.assertRaises(frappe.ValidationError, doc.insert)
+
+	def test_reverse_charge_rows_of_different_amounts_are_rejected(self):
+		configure_vat_settings(self.company)
+		doc = self._invoice(
+			rc_rows=[(self.output, 5, "Deduct"), (self.input, 3, "Add")],
+			uae_is_reverse_charge=1,
+			uae_reverse_charge_type="Import of Services",
+		)
+		self.assertRaises(frappe.ValidationError, doc.insert)
+
 	def test_metal_scrap_needs_declaration(self):
 		configure_vat_settings(self.company)
-		rows = [(self.output, 5, "Add"), (self.input, 5, "Deduct")]
+		rows = [(self.output, 5, "Deduct"), (self.input, 5, "Add")]
 		without = self._invoice(rc_rows=rows, uae_is_reverse_charge=1, uae_reverse_charge_type="Metal Scrap")
 		self.assertRaises(frappe.ValidationError, without.insert)
 
@@ -114,6 +132,29 @@ class TestPurchaseInvoice(FrappeTestCase):
 		doc = self._invoice(dispatch_address=address.name)
 		doc.insert()
 		self.assertTrue(doc.uae_is_import_of_goods)
+
+	def test_import_of_services_is_not_an_import_of_goods(self):
+		configure_vat_settings(self.company)
+		address = make_address("_Test Service Dispatch", "India", supplier="_Test UAE Supplier")
+		doc = self._invoice(
+			rc_rows=[(self.output, 5, "Deduct"), (self.input, 5, "Add")],
+			dispatch_address=address.name,
+			uae_is_reverse_charge=1,
+			uae_reverse_charge_type="Import of Services",
+			uae_is_postponed_import_vat=1,
+		)
+		self.assertRaises(frappe.ValidationError, doc.insert)
+
+		doc.uae_is_postponed_import_vat = 0
+		doc.insert()
+		self.assertFalse(doc.uae_is_import_of_goods)
+
+	def test_no_tax_purchase_row_charged_input_vat_is_rejected(self):
+		configure_vat_settings(self.company)
+		item = make_item("_Test Exempt Purchase", "Exempt")
+		doc = self._invoice(rc_rows=[(self.input, 5, "Add")])
+		doc.items[0].item_code = item.name
+		self.assertRaises(frappe.ValidationError, doc.insert)
 
 	def test_postponed_import_vat_requires_import_of_goods(self):
 		doc = self._invoice(uae_is_postponed_import_vat=1)

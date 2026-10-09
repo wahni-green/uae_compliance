@@ -2,7 +2,11 @@ import frappe
 from frappe import _
 
 from uae_compliance.uae_compliance.constants import NO_TAX_VAT_CATEGORIES
-from uae_compliance.uae_compliance.utils.tax_account import get_item_wise_vat_rates
+from uae_compliance.uae_compliance.utils.tax_account import (
+	get_item_wise_vat_rates,
+	is_input_vat_account,
+	is_output_vat_account,
+)
 from uae_compliance.uae_compliance.utils.vat_category import get_item_tax_template_category
 
 
@@ -11,7 +15,9 @@ def validate_vat_category_tax_consistency(doc) -> None:
 	with its Item Tax Template. Reads rates from item_wise_tax_detail (percentages, so currency
 	agnostic). Only that direction is checked: Standard Rated at a net 0% is a valid outcome of many
 	ordinary tax templates."""
-	charged_rates = get_item_wise_vat_rates(doc.get("taxes") or [], doc.get("company"))
+	# Sales charge VAT on the Output account; purchases bear it on the Input account.
+	is_vat_account = is_input_vat_account if doc.doctype == "Purchase Invoice" else is_output_vat_account
+	charged_rates = get_item_wise_vat_rates(doc.get("taxes") or [], doc.get("company"), is_vat_account)
 	categories_by_item = _categories_by_item_code(doc.get("items") or [])
 
 	for row in doc.get("items", []):

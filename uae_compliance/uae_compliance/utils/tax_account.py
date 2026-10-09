@@ -35,14 +35,17 @@ def is_input_vat_account(account_head: str | None, company: str | None) -> bool:
 	return bool(account_head) and account_head == get_input_vat_account(company)
 
 
-def get_item_wise_vat_rates(tax_rows, company: str | None) -> dict[str, float]:
-	"""Sum of item_wise_tax_detail VAT rates for rows posted to the company's Output VAT account,
-	keyed by item_code. Unrelated charges (freight, discount, ...) with their own item-wise rate are
-	never read as VAT. Returns nothing if no Output VAT account is configured."""
+def get_item_wise_vat_rates(tax_rows, company: str | None, is_matching_account=None) -> dict[str, float]:
+	"""Sum of item_wise_tax_detail VAT rates for rows posted to the VAT account that
+	`is_matching_account` identifies (default: the company's Output VAT account, right for sales;
+	pass `is_input_vat_account` for purchases), keyed by item_code. Unrelated charges (freight,
+	discount, ...) with their own item-wise rate are never read as VAT. Returns nothing if that
+	account is not configured."""
+	is_matching_account = is_matching_account or is_output_vat_account
 	rates: dict[str, float] = {}
 
 	for tax in tax_rows:
-		if not is_output_vat_account(tax.get("account_head"), company):
+		if not is_matching_account(tax.get("account_head"), company):
 			continue
 
 		detail = tax.get("item_wise_tax_detail")

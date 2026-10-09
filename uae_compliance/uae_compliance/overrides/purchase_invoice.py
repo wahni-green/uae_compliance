@@ -5,6 +5,7 @@ from frappe.utils import flt
 from uae_compliance.uae_compliance.constants import (
 	DEFAULT_VAT_CATEGORY,
 	IMPORT_OF_GOODS_TYPE,
+	IMPORT_OF_SERVICES_TYPE,
 	METAL_SCRAP_TYPE,
 )
 from uae_compliance.uae_compliance.constants.gcc_countries import GCC_COUNTRIES
@@ -95,6 +96,8 @@ def validate_reverse_charge(doc) -> None:
 			title=_("Reverse Charge Requires Input VAT Row"),
 		)
 
+	validate_reverse_charge_nets_to_zero(doc)
+
 	if doc.get("uae_reverse_charge_type") == METAL_SCRAP_TYPE and not doc.get("uae_rc_declaration"):
 		frappe.throw(
 			_(
@@ -102,6 +105,31 @@ def validate_reverse_charge(doc) -> None:
 				" the supply date. Tick Recipient Declaration on File once obtained."
 			),
 			title=_("Declaration Required"),
+		)
+
+
+def validate_reverse_charge_nets_to_zero(doc) -> None:
+	"""Self-accounted VAT must not change what the supplier is paid: the output VAT liability and
+	the offsetting input VAT credit have to cancel out. Two rows that both add VAT would raise the
+	supplier total by the VAT, which the supplier never charged."""
+	company = doc.get("company")
+	net = 0.0
+	for tax in doc.get("taxes") or []:
+		account = tax.get("account_head")
+		if not (is_output_vat_account(account, company) or is_input_vat_account(account, company)):
+			continue
+
+		amount = flt(tax.get("tax_amount"))
+		net += -amount if tax.get("add_deduct_tax") == "Deduct" else amount
+
+	if flt(net, 2):
+		frappe.throw(
+			_(
+				"The reverse charge VAT rows must cancel out so the supplier total is unchanged: add the"
+				" VAT to the Input VAT Account and deduct it from the Output VAT Account. They currently"
+				" change the total by {0}."
+			).format(frappe.bold(flt(net, 2))),
+			title=_("Reverse Charge Rows Do Not Net to Zero"),
 		)
 
 
@@ -135,6 +163,10 @@ def set_import_of_goods_flag(doc) -> None:
 
 
 def is_import_of_goods_candidate(doc) -> bool:
+	# A purchase explicitly typed as an import of services is never goods, whatever the address.
+	if doc.get("uae_reverse_charge_type") == IMPORT_OF_SERVICES_TYPE:
+		return False
+
 	dispatch_address = doc.get("dispatch_address")
 	if not dispatch_address:
 		return False
