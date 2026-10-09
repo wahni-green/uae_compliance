@@ -88,29 +88,71 @@ def migrate_item_vat_flags(dry_run: bool = False) -> dict:
 
 
 def backfill_draft_item_rows() -> int:
-	"""Copy the Item's VAT Category to blank item rows of draft (docstatus 0) documents only."""
-	total = 0
+	"""Fill blank VAT Categories on item rows of draft (docstatus 0) documents only. Precedence:
+	1. the category of the row's own Item Tax Template (the tax treatment the user chose),
+	2. ERPNext's legacy is_zero_rated / is_exempt flags on the row, when exactly one is set,
+	3. the Item's own category.
+	Rows with both legacy flags set are left blank and logged for manual review."""
+	template_categories = dict(
+		frappe.get_all(
+			"Item Tax Template",
+			filters=[["uae_vat_category", "not in", ["", None]]],
+			fields=["name", "uae_vat_category"],
+			as_list=True,
+		)
+	)
+	item_categories = dict(
+		frappe.get_all(
+			"Item",
+			filters=[["uae_vat_category", "not in", ["", None]]],
+			fields=["name", "uae_vat_category"],
+			as_list=True,
+		)
+	)
+
+	updated = 0
+	conflicts = []
 	for child, parent in ITEM_ROW_PARENTS.items():
-		total += _count_and_execute(
-			f"""
-			UPDATE `tab{child}` c
-			JOIN `tab{parent}` p ON p.name = c.parent
-			JOIN `tabItem` i ON i.name = c.item_code
-			SET c.uae_vat_category = i.uae_vat_category
-			WHERE p.docstatus = 0
-				AND c.parenttype = %(parent)s
-				AND IFNULL(c.uae_vat_category, '') = ''
-				AND IFNULL(i.uae_vat_category, '') != ''
-			""",
-			{"parent": parent},
+		has_flags = frappe.db.has_column(child, "is_zero_rated") and frappe.db.has_column(child, "is_exempt")
+
+		c = frappe.qb.DocType(child)
+		p = frappe.qb.DocType(parent)
+		query = (
+			frappe.qb.from_(c)
+			.join(p)
+			.on(p.name == c.parent)
+			.select(c.name, c.item_code, c.item_tax_template)
+			.where(p.docstatus == 0)
+			.where(c.parenttype == parent)
+			.where(IfNull(c.uae_vat_category, "") == "")
+		)
+		if has_flags:
+			query = query.select(c.is_zero_rated, c.is_exempt)
+
+		for row in query.run(as_dict=True):
+			category = template_categories.get(row.item_tax_template)
+
+			if not category and has_flags:
+				if row.is_zero_rated and row.is_exempt:
+					conflicts.append(f"{child} {row.name}")
+					continue
+
+				category = "Zero Rated" if row.is_zero_rated else "Exempt" if row.is_exempt else None
+
+			category = category or item_categories.get(row.item_code)
+			if not category:
+				continue
+
+			frappe.db.set_value(child, row.name, "uae_vat_category", category, update_modified=False)
+			updated += 1
+
+	if conflicts:
+		_log(
+			"draft item rows with both is_zero_rated and is_exempt",
+			"Set the VAT Category manually on: " + ", ".join(conflicts),
 		)
 
-	return total
-
-
-def _count_and_execute(query: str, values: dict) -> int:
-	frappe.db.sql(query, values)
-	return frappe.db.sql("SELECT ROW_COUNT()")[0][0] or 0
+	return updated
 
 
 def migrate_vat_settings() -> dict:

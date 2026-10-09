@@ -24,8 +24,12 @@ async function fetch_and_add_missing_vat_accounts(frm) {
 	frm._fetching_vat_accounts = true;
 
 	try {
+		const company = frm.doc.company;
 		const missing_accounts = await get_missing_vat_accounts(frm);
 		if (!missing_accounts || !missing_accounts.length) return;
+
+		// The company may have been changed while awaiting the server round-trip.
+		if (company !== frm.doc.company) return;
 
 		missing_accounts.forEach((account) => {
 			frm.add_child("taxes", { tax_type: account, tax_rate: 0 });

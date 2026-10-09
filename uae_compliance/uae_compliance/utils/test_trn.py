@@ -18,6 +18,14 @@ class TestTRN(FrappeTestCase):
 			with self.assertRaises(frappe.ValidationError, msg=bad):
 				validate_trn(bad)
 
+	def test_unanchored_pattern_still_matches_whole_value(self):
+		old = frappe.db.get_single_value("UAE Compliance Settings", "trn_pattern")
+		self.addCleanup(lambda: frappe.db.set_single_value("UAE Compliance Settings", "trn_pattern", old))
+		frappe.db.set_single_value("UAE Compliance Settings", "trn_pattern", r"100[0-9]{12}")
+		frappe.clear_document_cache("UAE Compliance Settings", "UAE Compliance Settings")
+
+		self.assertRaises(frappe.ValidationError, validate_trn, "100123456789003999")
+
 	def test_tin(self):
 		self.assertEqual(validate_tin("1234567890"), "1234567890")
 		with self.assertRaises(frappe.ValidationError):

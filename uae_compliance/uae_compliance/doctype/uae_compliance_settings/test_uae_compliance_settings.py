@@ -27,3 +27,28 @@ class TestUAEComplianceSettings(FrappeTestCase):
 		self.settings.vat_accounts = []
 		self.settings.trn_pattern = "([unclosed"
 		self.assertRaises(frappe.ValidationError, self.settings.validate)
+
+	def test_rejects_account_of_another_company(self):
+		company = get_uae_test_company()
+		other = frappe.get_doc(
+			{
+				"doctype": "Company",
+				"company_name": "_Test Other VAT Co",
+				"abbr": "TOV",
+				"default_currency": "AED",
+				"country": "United Arab Emirates",
+			}
+		).insert()
+		foreign = frappe.db.get_value("Account", {"company": other.name, "is_group": 0}, "name")
+		self.settings.vat_accounts = []
+		self.settings.append("vat_accounts", {"company": company, "output_vat_account": foreign})
+
+		self.assertRaises(frappe.ValidationError, self.settings.validate)
+
+	def test_rejects_group_account(self):
+		company = get_uae_test_company()
+		group = frappe.db.get_value("Account", {"company": company, "is_group": 1}, "name")
+		self.settings.vat_accounts = []
+		self.settings.append("vat_accounts", {"company": company, "output_vat_account": group})
+
+		self.assertRaises(frappe.ValidationError, self.settings.validate)

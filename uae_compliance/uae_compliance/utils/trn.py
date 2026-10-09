@@ -42,7 +42,7 @@ def _validate(value, label, fieldname, default, expected):
 		return value
 
 	value = _normalize(value)
-	if not _get_pattern(fieldname, default).match(value):
+	if not _get_pattern(fieldname, default).fullmatch(value):
 		frappe.throw(
 			_("{0} {1} is invalid. Expected a {2}.").format(label, frappe.bold(value), expected),
 			title=_("Invalid {0}").format(label),
