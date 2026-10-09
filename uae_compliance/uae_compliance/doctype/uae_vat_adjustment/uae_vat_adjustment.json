@@ -1,0 +1,243 @@
+{
+ "actions": [],
+ "creation": "2026-10-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "UAE Compliance",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "UAE-VAT-ADJ-.#####",
+ "name": "UAE VAT Adjustment",
+ "is_submittable": 1,
+ "track_changes": 1,
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User"
+  }
+ ],
+ "field_order": [
+  "company",
+  "adjustment_type",
+  "column_break_uaeadj1",
+  "posting_date",
+  "emirate",
+  "section_break_ref",
+  "sales_invoice",
+  "purchase_invoice",
+  "column_break_uaeadj2",
+  "write_off_date",
+  "customer_notified",
+  "notification_date",
+  "section_break_apportionment",
+  "period_from",
+  "column_break_uaeadj3",
+  "period_to",
+  "calculate_apportionment",
+  "section_break_amounts",
+  "amount",
+  "input_tax_attribution",
+  "column_break_uaeadj4",
+  "vat_amount",
+  "section_break_remarks",
+  "remarks",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "adjustment_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Adjustment Type",
+   "options": "Bad Debt Relief\nBad Debt Repayment\nAnnual Apportionment\nCapital Assets Scheme\nImport Adjustment",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_uaeadj1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Adjustment Date",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.adjustment_type=='Bad Debt Relief'",
+   "fieldname": "emirate",
+   "fieldtype": "Select",
+   "label": "Emirate",
+   "options": "\nAbu Dhabi\nDubai\nSharjah\nAjman\nUmm Al Quwain\nRas Al Khaimah\nFujairah"
+  },
+  {
+   "depends_on": "eval:['Bad Debt Relief','Bad Debt Repayment'].includes(doc.adjustment_type)",
+   "fieldname": "section_break_ref",
+   "fieldtype": "Section Break",
+   "label": "Bad Debt"
+  },
+  {
+   "depends_on": "eval:doc.adjustment_type=='Bad Debt Relief'",
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "label": "Sales Invoice",
+   "mandatory_depends_on": "eval:doc.adjustment_type=='Bad Debt Relief'",
+   "options": "Sales Invoice"
+  },
+  {
+   "depends_on": "eval:doc.adjustment_type=='Bad Debt Repayment'",
+   "fieldname": "purchase_invoice",
+   "fieldtype": "Link",
+   "label": "Purchase Invoice",
+   "mandatory_depends_on": "eval:doc.adjustment_type=='Bad Debt Repayment'",
+   "options": "Purchase Invoice"
+  },
+  {
+   "fieldname": "column_break_uaeadj2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.adjustment_type=='Bad Debt Relief'",
+   "fieldname": "write_off_date",
+   "fieldtype": "Date",
+   "label": "Written Off On",
+   "mandatory_depends_on": "eval:doc.adjustment_type=='Bad Debt Relief'"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.adjustment_type=='Bad Debt Relief'",
+   "fieldname": "customer_notified",
+   "fieldtype": "Check",
+   "label": "Customer Notified of the Write-Off"
+  },
+  {
+   "depends_on": "eval:['Bad Debt Relief','Bad Debt Repayment'].includes(doc.adjustment_type)",
+   "fieldname": "notification_date",
+   "fieldtype": "Date",
+   "label": "Notification Date",
+   "mandatory_depends_on": "eval:doc.adjustment_type=='Bad Debt Repayment'"
+  },
+  {
+   "depends_on": "eval:doc.adjustment_type=='Annual Apportionment'",
+   "fieldname": "section_break_apportionment",
+   "fieldtype": "Section Break",
+   "label": "Tax Year"
+  },
+  {
+   "fieldname": "period_from",
+   "fieldtype": "Date",
+   "label": "Tax Year Start",
+   "mandatory_depends_on": "eval:doc.adjustment_type=='Annual Apportionment'"
+  },
+  {
+   "fieldname": "column_break_uaeadj3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "period_to",
+   "fieldtype": "Date",
+   "label": "Tax Year End",
+   "mandatory_depends_on": "eval:doc.adjustment_type=='Annual Apportionment'"
+  },
+  {
+   "fieldname": "calculate_apportionment",
+   "fieldtype": "Button",
+   "label": "Calculate Apportionment"
+  },
+  {
+   "fieldname": "section_break_amounts",
+   "fieldtype": "Section Break",
+   "label": "Amounts"
+  },
+  {
+   "depends_on": "eval:doc.adjustment_type=='Import Adjustment'",
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount (AED)",
+   "options": "currency"
+  },
+  {
+   "depends_on": "eval:doc.adjustment_type=='Import Adjustment'",
+   "fieldname": "input_tax_attribution",
+   "fieldtype": "Select",
+   "label": "Input VAT Attribution",
+   "options": "\nExempt Supplies\nResidual"
+  },
+  {
+   "fieldname": "column_break_uaeadj4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "vat_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "VAT Adjustment (AED)",
+   "options": "currency",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_remarks",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "UAE VAT Adjustment",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ]
+}

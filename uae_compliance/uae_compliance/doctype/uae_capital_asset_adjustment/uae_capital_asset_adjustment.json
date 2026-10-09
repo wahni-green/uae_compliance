@@ -1,0 +1,73 @@
+{
+ "actions": [],
+ "creation": "2026-10-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "UAE Compliance",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "editable_grid": 1,
+ "istable": 1,
+ "name": "UAE Capital Asset Adjustment",
+ "permissions": [],
+ "field_order": [
+  "adjustment_year",
+  "tax_year_end",
+  "recoverable_percentage",
+  "adjustment_vat",
+  "adjustment_date",
+  "vat_adjustment"
+ ],
+ "fields": [
+  {
+   "fieldname": "adjustment_year",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Year",
+   "read_only": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "tax_year_end",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Year End",
+   "read_only": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "recoverable_percentage",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Actual Recoverable %",
+   "columns": 2
+  },
+  {
+   "fieldname": "adjustment_vat",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "VAT Adjustment",
+   "options": "currency",
+   "read_only": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "adjustment_date",
+   "fieldtype": "Date",
+   "label": "Report In Period Of"
+  },
+  {
+   "fieldname": "vat_adjustment",
+   "fieldtype": "Link",
+   "label": "UAE VAT Adjustment",
+   "options": "UAE VAT Adjustment",
+   "read_only": 1
+  }
+ ]
+}

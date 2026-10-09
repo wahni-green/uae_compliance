@@ -2,11 +2,16 @@ import frappe
 from frappe import _
 
 from uae_compliance.uae_compliance.utils.vat_return import get_invoice_rows
+from uae_compliance.uae_compliance.utils.vat_return.apportionment import (
+	get_period_supplies,
+	get_recovery_ratio,
+)
 from uae_compliance.uae_compliance.utils.vat_return.sections.purchase_boxes import (
 	ORDINARY,
 	POSTPONED_IMPORT,
 	REVERSE_CHARGE,
 	classify_purchase_row,
+	get_recoverable_vat,
 )
 
 # The box where each kind of purchase row is declared, and where its VAT is recovered.
@@ -96,6 +101,10 @@ def get_data(filters) -> list[dict]:
 		)
 	)
 
+	# Residual input VAT is recovered at the period's ratio, taken from the same sales rows the return uses.
+	sales_rows = get_invoice_rows("Sales Invoice", filters.company, filters.from_date, filters.to_date)
+	recovery_ratio = get_recovery_ratio(*get_period_supplies(sales_rows))
+
 	grouped: dict[tuple[str, str], dict] = {}
 	for row in rows:
 		bucket = classify_purchase_row(row)
@@ -119,7 +128,6 @@ def get_data(filters) -> list[dict]:
 		)
 		entry["amount"] += row.base_net_amount or 0
 		entry["vat_due"] += (row.output_vat_amount or 0) if bucket != ORDINARY else 0
-		if not row.uae_input_tax_not_recoverable:
-			entry["recoverable_vat"] += row.input_vat_amount or 0
+		entry["recoverable_vat"] += get_recoverable_vat(row, recovery_ratio)
 
 	return sorted(grouped.values(), key=lambda entry: (entry["box"], entry["posting_date"], entry["invoice"]))

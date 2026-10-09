@@ -81,6 +81,24 @@ class TestRegisters(VATReturnTestCase):
 		self.assertEqual(data[0]["box"], "9")
 		self.assertEqual((data[0]["amount"], data[0]["recoverable_vat"]), (500, 25))
 
+	def test_purchase_register_applies_the_recovery_ratio_to_residual_rows(self):
+		self.sale(rate=600)
+		self.sale(item="_Test Exempt Item", rate=400, vat_rate=0)
+		create_submitted_purchase_invoice(
+			[{"rate": 1000, "uae_input_tax_attribution": "Residual"}],
+			taxes=[(self.input, 5, "Add")],
+			posting_date=self.date,
+		)
+		doc = self.new_return()
+		doc.generate_return()
+
+		_columns, data = uae_vat_purchase_register.execute(self._filters())
+
+		self.assertEqual(data[0]["recoverable_vat"], 30)
+		self.assertEqual(
+			data[0]["recoverable_vat"], next(b for b in doc.boxes if b.box_code == "9").vat_amount
+		)
+
 	def test_filters_are_mandatory(self):
 		import frappe
 

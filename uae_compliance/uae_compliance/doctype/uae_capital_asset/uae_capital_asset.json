@@ -1,0 +1,172 @@
+{
+ "actions": [],
+ "creation": "2026-10-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "UAE Compliance",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "UAE-CAP-.#####",
+ "name": "UAE Capital Asset",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User"
+  }
+ ],
+ "track_changes": 1,
+ "field_order": [
+  "company",
+  "asset_name",
+  "asset_type",
+  "column_break_uaecap1",
+  "purchase_invoice",
+  "first_use_date",
+  "adjustment_years",
+  "section_break_values",
+  "cost",
+  "input_vat",
+  "column_break_uaecap2",
+  "initial_recoverable_percentage",
+  "annual_input_vat",
+  "section_break_schedule",
+  "adjustments",
+  "currency"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "asset_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Asset",
+   "reqd": 1
+  },
+  {
+   "default": "Other",
+   "fieldname": "asset_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Asset Type",
+   "options": "Building\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_uaecap1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "purchase_invoice",
+   "fieldtype": "Link",
+   "label": "Purchase Invoice",
+   "options": "Purchase Invoice"
+  },
+  {
+   "fieldname": "first_use_date",
+   "fieldtype": "Date",
+   "label": "First Use Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "adjustment_years",
+   "fieldtype": "Int",
+   "label": "Adjustment Period (Years)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_values",
+   "fieldtype": "Section Break",
+   "label": "Values"
+  },
+  {
+   "fieldname": "cost",
+   "fieldtype": "Currency",
+   "label": "Cost Excluding VAT",
+   "options": "currency",
+   "reqd": 1
+  },
+  {
+   "fieldname": "input_vat",
+   "fieldtype": "Currency",
+   "label": "Input VAT on the Asset",
+   "options": "currency",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_uaecap2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "initial_recoverable_percentage",
+   "fieldtype": "Percent",
+   "label": "Recoverable % When First Used",
+   "reqd": 1
+  },
+  {
+   "fieldname": "annual_input_vat",
+   "fieldtype": "Currency",
+   "label": "Input VAT per Year",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_schedule",
+   "fieldtype": "Section Break",
+   "label": "Yearly Adjustments"
+  },
+  {
+   "fieldname": "adjustments",
+   "fieldtype": "Table",
+   "label": "Adjustments",
+   "options": "UAE Capital Asset Adjustment"
+  },
+  {
+   "default": "AED",
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Currency",
+   "options": "Currency"
+  }
+ ]
+}

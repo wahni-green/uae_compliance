@@ -1,4 +1,5 @@
 from uae_compliance.uae_compliance.constants import (
+	INPUT_TAX_ATTRIBUTION_SELECT_OPTIONS,
 	MODULE,
 	REVERSE_CHARGE_TYPE_SELECT_OPTIONS,
 	VAT_CATEGORY_SELECT_OPTIONS,
@@ -135,6 +136,13 @@ CUSTOM_FIELDS = {
 			"Input VAT Not Recoverable",
 			"Check",
 			"uae_vat_category",
+		),
+		_field(
+			"uae_input_tax_attribution",
+			"Input VAT Attribution",
+			"Select",
+			"uae_input_tax_not_recoverable",
+			options=INPUT_TAX_ATTRIBUTION_SELECT_OPTIONS,
 		),
 	],
 	"Sales Invoice": [
