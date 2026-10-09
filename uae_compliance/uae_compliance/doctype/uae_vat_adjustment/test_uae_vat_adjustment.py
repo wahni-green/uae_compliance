@@ -1,7 +1,12 @@
 import frappe
 from frappe.utils import add_months
 
-from uae_compliance.tests import create_submitted_purchase_invoice, make_item, make_sales_invoice
+from uae_compliance.tests import (
+	create_submitted_purchase_invoice,
+	create_submitted_sales_invoice,
+	make_item,
+	make_sales_invoice,
+)
 from uae_compliance.uae_compliance.doctype.uae_vat_return.test_uae_vat_return import (
 	VATReturnTestCase,
 	_boxes,
@@ -63,6 +68,12 @@ class TestUAEVATAdjustment(VATReturnTestCase):
 	def test_emirate_must_match_the_invoice(self):
 		invoice = self.sale(rate=1000, emirate="Dubai")
 		self.assertRaises(frappe.ValidationError, self._relief(invoice, emirate="Sharjah").insert)
+
+	def test_relief_needs_an_emirate_from_somewhere(self):
+		invoice = self.sale(rate=1000, emirate="Dubai")
+		frappe.db.set_value("Sales Invoice", invoice.name, "uae_emirate", "")
+
+		self.assertRaises(frappe.ValidationError, self._relief(invoice, emirate="").insert)
 
 	def test_emirate_is_taken_from_the_invoice_when_blank(self):
 		invoice = self.sale(rate=1000, emirate="Sharjah")
@@ -229,15 +240,40 @@ class TestUAEVATAdjustment(VATReturnTestCase):
 		self.assertEqual(doc.total_due_tax, 50)
 		self.assertEqual(doc.total_recoverable_tax, 50)
 
-	def test_import_adjustment_can_be_partly_or_not_recoverable(self):
+	def test_exempt_attributed_import_adjustment_recovers_nothing(self):
 		date = add_months(self.date, 11)
-		self._import_adjustment(date, recoverable_percentage=40)
+		self._import_adjustment(date, input_tax_attribution="Exempt Supplies")
 
 		doc = self._return_for(date)
 		doc.generate_return()
 		box = _boxes(doc)["10"]
 
-		self.assertEqual((box.amount, box.vat_amount), (400, 20))
+		self.assertEqual((box.amount, box.vat_amount), (0, 0))
+		self.assertEqual(_boxes(doc)["7"].vat_amount, 50)
+
+	def test_residual_import_adjustment_recovers_at_the_ratio_and_joins_the_annual_figures(self):
+		date = add_months(self.date, 12)
+		# Sales in the period: 600 taxable, 400 exempt -> 60%.
+		self.sale_on(date, rate=600)
+		self.sale_on(date, item="_Test Exempt Item", rate=400, vat_rate=0)
+		self._import_adjustment(date, input_tax_attribution="Residual", vat_amount=100, amount=2000)
+
+		doc = self._return_for(date)
+		doc.generate_return()
+		box = _boxes(doc)["10"]
+
+		self.assertEqual(doc.recovery_ratio, 60)
+		self.assertEqual((box.amount, box.vat_amount), (1200, 60))
+		self.assertEqual((doc.residual_input_vat, doc.residual_recoverable_vat), (100, 60))
+
+	def sale_on(self, date, item="_Test Print Item", rate=1000, vat_rate=None):
+		row = {"item_code": item, "rate": rate}
+		if vat_rate is not None:
+			row["vat_rate"] = vat_rate
+
+		return create_submitted_sales_invoice(
+			[row], emirate="Dubai", posting_date=date, customer="_Test UAE Customer"
+		)
 
 	def test_cannot_submit_an_empty_adjustment(self):
 		doc = frappe.get_doc(

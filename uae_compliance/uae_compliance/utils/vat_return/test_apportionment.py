@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import frappe
 
 from uae_compliance.tests import create_submitted_purchase_invoice
@@ -169,24 +171,9 @@ class TestAnnualApportionment(VATReturnTestCase):
 		)
 
 	def test_a_year_can_only_be_apportioned_once(self):
-		first = self._filed_return(500, 500, 2000)
-
-		def annual(**kwargs):
-			return frappe.get_doc(
-				{
-					"doctype": "UAE VAT Adjustment",
-					"company": self.company,
-					"adjustment_type": "Annual Apportionment",
-					"posting_date": frappe.utils.add_days(first.to_date, 40),
-					"period_from": first.from_date,
-					"period_to": first.to_date,
-					"vat_amount": 5,
-					**kwargs,
-				}
-			)
-
-		annual().insert()
-		self.assertRaises(frappe.ValidationError, annual().insert)
+		year = {"period_from": "2030-01-01", "period_to": "2030-12-31"}
+		self._annual(**year).insert()
+		self.assertRaises(frappe.ValidationError, self._annual(**year).insert)
 
 	def test_requires_filed_returns(self):
 		self.new_return()
@@ -198,24 +185,50 @@ class TestAnnualApportionment(VATReturnTestCase):
 			self.date,
 		)
 
-	def test_adjustment_doctype_calculates_from_filed_returns(self):
-		first = self._filed_return(100, 900, 2000)
-		adjustment = frappe.get_doc(
+	def _annual(self, **kwargs):
+		return frappe.get_doc(
 			{
 				"doctype": "UAE VAT Adjustment",
 				"company": self.company,
 				"adjustment_type": "Annual Apportionment",
-				"posting_date": first.to_date,
-				"period_from": first.from_date,
-				"period_to": first.to_date,
+				"posting_date": "2027-02-01",
+				"period_from": "2026-01-01",
+				"period_to": "2026-12-31",
 				"vat_amount": 1,
+				**kwargs,
 			}
 		)
-		adjustment.calculate_apportionment()
 
-		# One period only: annual ratio 10%, 10 recoverable, 10 claimed.
-		self.assertEqual(adjustment.vat_amount, 0)
-		self.assertIn("10%", adjustment.remarks)
+	def test_adjustment_calculates_from_the_annual_figures(self):
+		figures = {
+			"returns": 4,
+			"annual_ratio": 60,
+			"residual_input_vat": 200,
+			"annual_recoverable": 120,
+			"claimed": 117,
+			"adjustment": 3,
+		}
+		adjustment = self._annual()
+		with patch(
+			"uae_compliance.uae_compliance.doctype.uae_vat_adjustment.uae_vat_adjustment.get_annual_apportionment",
+			return_value=figures,
+		) as calculate:
+			adjustment.calculate_apportionment()
+
+		calculate.assert_called_once()
+		self.assertEqual(adjustment.vat_amount, 3)
+		self.assertIn("60%", adjustment.remarks)
+
+	def test_calculation_needs_a_whole_tax_year(self):
+		self.assertRaises(
+			frappe.ValidationError, self._annual(period_to="2026-11-30").calculate_apportionment
+		)
+
+	def test_calculation_is_refused_once_the_year_is_adjusted(self):
+		year = {"period_from": "2031-01-01", "period_to": "2031-12-31"}
+		self._annual(**year).insert()
+
+		self.assertRaises(frappe.ValidationError, self._annual(**year).calculate_apportionment)
 
 
 def flt_(value):

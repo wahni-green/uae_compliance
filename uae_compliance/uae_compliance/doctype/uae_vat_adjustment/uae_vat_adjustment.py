@@ -1,7 +1,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import add_months, flt, getdate
+from frappe.utils import add_days, add_months, flt, getdate
 
 from uae_compliance.uae_compliance.constants import (
 	ADJUSTMENT_ANNUAL_APPORTIONMENT,
@@ -9,6 +9,7 @@ from uae_compliance.uae_compliance.constants import (
 	ADJUSTMENT_BAD_DEBT_REPAYMENT,
 	BAD_DEBT_MONTHS,
 )
+from uae_compliance.uae_compliance.constants.vat_return import EMIRATE_BOX_CODES
 from uae_compliance.uae_compliance.utils.print_data import get_output_vat_amount
 from uae_compliance.uae_compliance.utils.vat_return.apportionment import get_annual_apportionment
 
@@ -29,9 +30,6 @@ class UAEVATAdjustment(Document):
 		self.validate_period_is_open()
 
 		if self.adjustment_type == ADJUSTMENT_BAD_DEBT_RELIEF:
-			# Two relief claims for one invoice could be submitted at the same moment and each pass
-			# the limit alone, so the invoice is locked while the limit is checked again.
-			frappe.db.get_value("Sales Invoice", self.sales_invoice, "name", for_update=True)
 			self.validate_within_invoice_vat()
 
 	def validate_period_is_open(self):
@@ -52,6 +50,19 @@ class UAEVATAdjustment(Document):
 					"The return {0} for this period is already Filed. Date the adjustment in an open period."
 				).format(filed),
 				title=_("Period Already Filed"),
+			)
+
+	def validate_tax_year_length(self):
+		"""The annual calculation covers one whole tax year of twelve months, so a shorter range
+		cannot silently produce a partial-year figure. (A short first tax year is entered by hand.)"""
+		last_day = add_days(add_months(getdate(self.period_from), 12), -1)
+		if getdate(self.period_to) != last_day:
+			frappe.throw(
+				_("A tax year runs for twelve months: from {0} it ends on {1}.").format(
+					frappe.format(self.period_from, {"fieldtype": "Date"}),
+					frappe.format(last_day, {"fieldtype": "Date"}),
+				),
+				title=_("Not a Whole Tax Year"),
 			)
 
 	def validate_annual_apportionment(self):
@@ -117,6 +128,14 @@ class UAEVATAdjustment(Document):
 				title=_("Wrong Emirate"),
 			)
 
+		if self.emirate not in EMIRATE_BOX_CODES:
+			frappe.throw(
+				_(
+					"The relief is reported per emirate, and neither this adjustment nor {0} has a VAT Emirate. Select one."
+				).format(self.sales_invoice),
+				title=_("VAT Emirate Missing"),
+			)
+
 		if not self.customer_notified or not self.notification_date:
 			frappe.throw(
 				_("The customer must be notified of the write-off. Tick it and enter the notification date."),
@@ -176,7 +195,12 @@ class UAEVATAdjustment(Document):
 			)
 
 	def validate_within_invoice_vat(self):
-		"""The relief cannot exceed the VAT charged on the invoice, counting earlier reliefs."""
+		"""The relief cannot exceed the VAT charged on the invoice, counting earlier reliefs.
+
+		Two claims for one invoice could be submitted at the same moment and each pass the limit
+		alone, so the invoice row is locked first: the second submission waits for the first to
+		commit and then sees its relief."""
+		frappe.db.get_value("Sales Invoice", self.sales_invoice, "name", for_update=True)
 		invoice = frappe.get_doc("Sales Invoice", self.sales_invoice)
 		charged = get_output_vat_amount(invoice, base=True) or 0
 
@@ -208,6 +232,9 @@ class UAEVATAdjustment(Document):
 
 		if not (self.company and self.period_from and self.period_to):
 			frappe.throw(_("Company, Tax Year Start and Tax Year End are required."))
+
+		self.validate_tax_year_length()
+		self.validate_annual_apportionment()
 
 		frappe.has_permission("Company", "read", doc=self.company, throw=True)
 		result = get_annual_apportionment(self.company, self.period_from, self.period_to)

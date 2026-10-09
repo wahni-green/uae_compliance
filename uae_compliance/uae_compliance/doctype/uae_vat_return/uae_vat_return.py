@@ -168,7 +168,7 @@ class UAEVATReturn(Document):
 		purchases = get_purchase_boxes(
 			self.company, self.from_date, self.to_date, rows=purchase_rows, recovery_ratio=recovery_ratio
 		)
-		adjustments = get_adjustments([self.company], self.from_date, self.to_date)
+		adjustments = get_adjustments([self.company], self.from_date, self.to_date, recovery_ratio)
 
 		box_rows = list(_build_box_rows(by_emirate, sales, purchases, adjustments))
 
@@ -176,8 +176,10 @@ class UAEVATReturn(Document):
 		self.taxable_supplies_value = taxable
 		self.exempt_supplies_value = exempt
 		self.apportionment_recorded = 1
-		self.residual_input_vat = purchases["residual_input_vat"]
-		self.residual_recoverable_vat = purchases["residual_recoverable_vat"]
+		self.residual_input_vat = purchases["residual_input_vat"] + adjustments["residual_input_vat"]
+		self.residual_recoverable_vat = (
+			purchases["residual_recoverable_vat"] + adjustments["residual_recoverable_vat"]
+		)
 
 		self.boxes = []
 		for box_code, description, box in box_rows:
