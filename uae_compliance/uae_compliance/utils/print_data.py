@@ -1,5 +1,5 @@
 import frappe
-from frappe.utils import flt
+from frappe.utils import flt, get_datetime, get_time, getdate
 
 from uae_compliance.uae_compliance.utils.tax_account import (
 	get_item_wise_vat_rates,
@@ -62,7 +62,7 @@ def get_tax_invoice_data(doc) -> dict:
 def get_value_before_credit_note(doc, issued_before=None) -> float:
 	"""The invoice value (excluding VAT, in company currency) a credit note starts from: the original
 	invoice value less the credit notes already submitted against it. `issued_before` restricts that
-	to credit notes issued earlier, as (posting_date, posting_time, creation); only the one-off
+	to credit notes issued earlier, as returned by get_issue_order(); only the one-off
 	backfill of credit notes from before the value was stored uses it."""
 	original = doc.get("return_against")
 	if not original:
@@ -80,14 +80,16 @@ def get_value_before_credit_note(doc, issued_before=None) -> float:
 		group_by="name",
 	)
 	if issued_before:
-		earlier = [row for row in earlier if _issue_order(row) < issued_before]
+		earlier = [row for row in earlier if get_issue_order(row) < issued_before]
 	earlier_total = sum(flt(row.total) for row in earlier)
 
 	return flt(frappe.db.get_value("Sales Invoice", original, "base_net_total")) + earlier_total
 
 
-def _issue_order(row) -> tuple:
-	return (str(row.posting_date), str(row.posting_time), str(row.creation))
+def get_issue_order(row) -> tuple:
+	"""Sort key for the order credit notes were issued in. Posting times come back from the database
+	as timedeltas and from documents as strings, so they are normalized before being compared."""
+	return (getdate(row.posting_date), get_time(row.posting_time or "00:00:00"), get_datetime(row.creation))
 
 
 def get_credit_note_values(doc) -> dict:

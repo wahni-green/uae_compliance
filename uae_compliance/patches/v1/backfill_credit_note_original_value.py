@@ -1,7 +1,10 @@
 import frappe
 from frappe.utils import flt
 
-from uae_compliance.uae_compliance.utils.print_data import get_value_before_credit_note
+from uae_compliance.uae_compliance.utils.print_data import (
+	get_issue_order,
+	get_value_before_credit_note,
+)
 
 
 def execute() -> None:
@@ -30,7 +33,7 @@ def execute() -> None:
 
 		value = get_value_before_credit_note(
 			frappe._dict(name=note.name, return_against=note.return_against),
-			issued_before=(str(note.posting_date), str(note.posting_time), str(note.creation)),
+			issued_before=get_issue_order(note),
 		)
 		frappe.db.set_value(
 			"Sales Invoice", note.name, "uae_credit_note_original_value", value, update_modified=False

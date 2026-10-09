@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -177,15 +175,20 @@ class TestForeignCurrency(FrappeTestCase):
 		doc = make_sales_invoice([{"item_code": "_Test Warn Item"}])
 		doc.insert()
 
-		with patch(
-			"uae_compliance.uae_compliance.utils.print_data.frappe.get_cached_value",
-			side_effect=lambda doctype, name, field: "USD" if field == "default_currency" else None,
-		):
-			data = get_tax_invoice_data(doc)
-		self.assertFalse(data["is_aed_company"])
+		def set_company_currency(currency):
+			frappe.db.set_value("Company", company, "default_currency", currency)
+			frappe.clear_document_cache("Company", company)
 
+		self.assertNotIn(
+			"not AED", frappe.get_print("Sales Invoice", doc.name, print_format="UAE Tax Invoice")
+		)
+
+		set_company_currency("USD")
+		self.addCleanup(set_company_currency, "AED")
 		html = frappe.get_print("Sales Invoice", doc.name, print_format="UAE Tax Invoice")
-		self.assertNotIn("not AED", html)
+
+		self.assertFalse(get_tax_invoice_data(doc)["is_aed_company"])
+		self.assertIn("The company currency is USD, not AED", html)
 
 
 class TestTaxCreditNote(FrappeTestCase):
