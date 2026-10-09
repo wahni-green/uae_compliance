@@ -111,7 +111,10 @@ def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:
 	# On a profit margin invoice the VAT is due on each row's margin, not on its sales value, so
 	# rows sharing an item code split it by margin; a row sold at a loss takes none.
 	margin_invoices = {
-		name for name, invoice in invoices_by_name.items() if invoice.get("uae_is_margin_scheme")
+		name
+		for name, invoice in invoices_by_name.items()
+		# A credit note keeps the original purchase prices, so its VAT is split by value instead.
+		if invoice.get("uae_is_margin_scheme") and not invoice.is_return
 	}
 
 	def split_weight(item) -> float:

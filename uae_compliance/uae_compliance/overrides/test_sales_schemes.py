@@ -113,6 +113,38 @@ class TestMarginScheme(VATReturnTestCase):
 		doc.generate_return()
 		self.assertEqual(doc.profit_margin_scheme_applied, 0)
 
+	def test_a_partial_margin_credit_note_keeps_its_vat(self):
+		from erpnext.controllers.sales_and_purchase_return import make_return_doc
+
+		from uae_compliance.uae_compliance.utils.vat_return import get_invoice_rows
+
+		kwargs = self._margin_kwargs(1000, 600, 20)
+		kwargs["rows"][0].update({"rate": 500, "qty": 2})
+		original = create_submitted_sales_invoice(kwargs.pop("rows"), **kwargs)
+		credit = make_return_doc("Sales Invoice", original.name)
+		credit.posting_date = self.date
+		credit.set_posting_time = 1
+		credit.uae_emirate = "Dubai"
+		credit.uae_credit_note_reason = "Half returned"
+		credit.items[0].qty = -1  # half of the two units
+		credit.taxes = []
+		credit.append(
+			"taxes",
+			{
+				"charge_type": "Actual",
+				"account_head": self.output,
+				"description": "VAT",
+				"tax_amount": -10,
+			},
+		)
+		credit.insert()
+		credit.submit()
+
+		rows = get_invoice_rows("Sales Invoice", self.company, self.date, self.date)
+		returned = next(row for row in rows if row.is_return)
+
+		self.assertEqual(round(returned.output_vat_amount, 2), -10)
+
 	def test_margin_vat_is_split_between_rows_by_margin(self):
 		from uae_compliance.uae_compliance.utils.vat_return import get_invoice_rows
 
