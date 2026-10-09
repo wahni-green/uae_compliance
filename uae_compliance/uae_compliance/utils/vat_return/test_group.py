@@ -15,7 +15,10 @@ from uae_compliance.uae_compliance.doctype.uae_vat_return.test_uae_vat_return im
 	_boxes,
 )
 from uae_compliance.uae_compliance.report.uae_vat_sales_register import uae_vat_sales_register
-from uae_compliance.uae_compliance.utils.vat_return.group import get_return_companies
+from uae_compliance.uae_compliance.utils.vat_return.group import (
+	get_return_companies,
+	get_return_owner,
+)
 
 
 class TestTaxGroupReturn(VATReturnTestCase):
@@ -129,6 +132,24 @@ class TestTaxGroupReturn(VATReturnTestCase):
 
 		self.assertEqual(_boxes(doc)["7"].vat_amount, 5)
 
+	def test_a_members_adjustment_cannot_be_dated_in_a_period_the_group_has_filed(self):
+		self._sale(self.company, "_Test UAE Customer", 1000)
+		doc = self.new_return()
+		doc.generate_return()
+		doc.mark_as_filed()
+
+		adjustment = frappe.get_doc(
+			{
+				"doctype": "UAE VAT Adjustment",
+				"company": self.b,
+				"adjustment_type": "Import Adjustment",
+				"posting_date": self.date,
+				"amount": 100,
+				"vat_amount": 5,
+			}
+		).insert()
+		self.assertRaises(frappe.ValidationError, adjustment.submit)
+
 	def test_register_follows_the_return(self):
 		self._sale(self.company, "_Test UAE Customer", 1000)
 		self._sale(self.b, "_Test UAE Customer", 400)
@@ -144,6 +165,10 @@ class TestTaxGroupReturn(VATReturnTestCase):
 		self.group.delete()
 		self.assertEqual(get_return_companies(self.company), [self.company])
 		self.assertEqual(get_return_companies(self.b), [self.b])
+
+	def test_the_return_owner_of_a_member_is_the_representative(self):
+		self.assertEqual(get_return_owner(self.b), self.company)
+		self.assertEqual(get_return_owner(self.company), self.company)
 
 	def test_representative_covers_the_members(self):
 		self.assertEqual(sorted(get_return_companies(self.company)), sorted([self.company, self.b]))

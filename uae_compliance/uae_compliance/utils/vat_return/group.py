@@ -27,6 +27,16 @@ def get_return_companies(company: str) -> list[str]:
 	return [row.company for row in tax_group.members]
 
 
+def get_return_owner(company: str) -> str:
+	"""The company whose VAT return reports this company's transactions: the representative
+	member for a member of a tax group, the company itself otherwise."""
+	group = frappe.db.get_value("Company", company, "uae_tax_group")
+	if not group:
+		return company
+
+	return frappe.db.get_value("UAE Tax Group", group, "representative_member") or company
+
+
 def get_group_rows(doctype: str, company: str, from_date, to_date) -> list:
 	"""The invoice rows of a VAT return, covering every company of a tax group and leaving out
 	supplies between the group's own members, which are disregarded for VAT. A member shows up in the

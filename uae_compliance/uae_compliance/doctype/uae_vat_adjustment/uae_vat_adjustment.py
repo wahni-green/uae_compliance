@@ -12,6 +12,7 @@ from uae_compliance.uae_compliance.constants import (
 from uae_compliance.uae_compliance.constants.vat_return import EMIRATE_BOX_CODES
 from uae_compliance.uae_compliance.utils.print_data import get_output_vat_amount
 from uae_compliance.uae_compliance.utils.vat_return.apportionment import get_annual_apportionment
+from uae_compliance.uae_compliance.utils.vat_return.group import get_return_owner
 
 
 class UAEVATAdjustment(Document):
@@ -40,7 +41,8 @@ class UAEVATAdjustment(Document):
 		filed = frappe.db.get_value(
 			"UAE VAT Return",
 			{
-				"company": self.company,
+				# A member of a tax group is reported in its representative's return.
+				"company": get_return_owner(self.company),
 				"status": "Filed",
 				"from_date": ["<=", self.posting_date],
 				"to_date": [">=", self.posting_date],
