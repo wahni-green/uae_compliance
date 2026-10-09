@@ -85,9 +85,14 @@ def get_item_wise_vat_amounts(tax_rows, company: str | None, is_matching_account
 
 
 def is_einvoicing_company(company: str | None) -> bool:
-	"""Whether the company is flagged in UAE Compliance Settings as issuing e-invoices."""
+	"""Whether the company issues e-invoices: flagged in UAE Compliance Settings, or enabled in UAE
+	E-Invoice Settings."""
 	if not company:
 		return False
 
 	settings = frappe.get_cached_doc("UAE Compliance Settings")
-	return any(row.company == company and row.issues_e_invoices for row in settings.vat_accounts)
+	if any(row.company == company and row.issues_e_invoices for row in settings.vat_accounts):
+		return True
+
+	einvoice = frappe.get_cached_doc("UAE E-Invoice Settings")
+	return any(row.company == company and row.enabled for row in einvoice.companies)

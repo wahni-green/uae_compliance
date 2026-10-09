@@ -274,7 +274,12 @@ doc_events = {
 	},
 	"Sales Invoice": {
 		"validate": "uae_compliance.uae_compliance.overrides.sales_invoice.validate",
-		"before_submit": "uae_compliance.uae_compliance.overrides.sales_invoice.before_submit",
+		"before_submit": [
+			"uae_compliance.uae_compliance.overrides.sales_invoice.before_submit",
+			"uae_compliance.uae_compliance.einvoice.pipeline.validate_before_submit",
+		],
+		"on_submit": "uae_compliance.uae_compliance.einvoice.pipeline.queue_einvoice",
+		"before_cancel": "uae_compliance.uae_compliance.einvoice.pipeline.guard_cancellation",
 	},
 	"Purchase Invoice": {
 		"validate": "uae_compliance.uae_compliance.overrides.purchase_invoice.validate",
@@ -294,4 +299,10 @@ jinja = {
 		"uae_compliance.uae_compliance.utils.print_data.get_tax_invoice_data",
 		"uae_compliance.uae_compliance.utils.print_data.get_credit_note_values",
 	]
+}
+
+scheduler_events = {
+	"cron": {
+		"*/5 * * * *": ["uae_compliance.uae_compliance.einvoice.pipeline.process_pending"],
+	},
 }

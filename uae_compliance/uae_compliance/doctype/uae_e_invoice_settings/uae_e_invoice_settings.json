@@ -1,0 +1,61 @@
+{
+ "actions": [],
+ "creation": "2026-10-14 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-14 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "UAE Compliance",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "issingle": 1,
+ "name": "UAE E-Invoice Settings",
+ "track_changes": 1,
+ "quick_entry": 1,
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Accounts Manager"
+  }
+ ],
+ "field_order": [
+  "companies_section",
+  "companies",
+  "options_section",
+  "retry_limit"
+ ],
+ "fields": [
+  {
+   "fieldname": "companies_section",
+   "fieldtype": "Section Break",
+   "label": "Companies"
+  },
+  {
+   "fieldname": "companies",
+   "fieldtype": "Table",
+   "label": "Companies",
+   "options": "UAE E-Invoice Company Setting"
+  },
+  {
+   "fieldname": "options_section",
+   "fieldtype": "Section Break",
+   "label": "Sending"
+  },
+  {
+   "default": "5",
+   "fieldname": "retry_limit",
+   "fieldtype": "Int",
+   "label": "Attempts Before Failing"
+  }
+ ]
+}

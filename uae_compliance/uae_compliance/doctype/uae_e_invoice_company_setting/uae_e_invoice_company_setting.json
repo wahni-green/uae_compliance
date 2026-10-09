@@ -1,0 +1,93 @@
+{
+ "actions": [],
+ "creation": "2026-10-14 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-14 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "UAE Compliance",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "editable_grid": 1,
+ "istable": 1,
+ "name": "UAE E-Invoice Company Setting",
+ "permissions": [],
+ "field_order": [
+  "company",
+  "enabled",
+  "provider",
+  "environment",
+  "mandatory_from",
+  "column_break_uaeeic",
+  "endpoint_url",
+  "client_id",
+  "client_secret",
+  "extra_config"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "provider",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Provider",
+   "reqd": 1
+  },
+  {
+   "default": "Sandbox",
+   "fieldname": "environment",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Environment",
+   "options": "Sandbox\nProduction"
+  },
+  {
+   "fieldname": "mandatory_from",
+   "fieldtype": "Date",
+   "label": "E-Invoice From"
+  },
+  {
+   "fieldname": "column_break_uaeeic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "endpoint_url",
+   "fieldtype": "Data",
+   "label": "Endpoint URL"
+  },
+  {
+   "fieldname": "client_id",
+   "fieldtype": "Data",
+   "label": "Client ID"
+  },
+  {
+   "fieldname": "client_secret",
+   "fieldtype": "Password",
+   "label": "Client Secret"
+  },
+  {
+   "fieldname": "extra_config",
+   "fieldtype": "Code",
+   "label": "Extra Configuration",
+   "options": "JSON"
+  }
+ ]
+}

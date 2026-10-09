@@ -7,3 +7,7 @@ class EInvoiceError(frappe.ValidationError):
 
 class EInvoiceNotSupportedError(EInvoiceError):
 	"""The invoice uses something this app cannot yet express in PINT AE."""
+
+
+class ProviderRejectedError(EInvoiceError):
+	"""The provider refused the document for good. Retrying the same document will not help."""

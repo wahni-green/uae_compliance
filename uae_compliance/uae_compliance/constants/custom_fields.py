@@ -230,6 +230,23 @@ CUSTOM_FIELDS = {
 		_field("uae_supply_date", "Supply Date", "Date", "posting_date"),
 		_field("uae_einvoice_uuid", "E-Invoice UUID", "Data", "amended_from", read_only=1, no_copy=1),
 		_field(
+			"uae_einvoice_status",
+			"E-Invoice Status",
+			"Data",
+			"uae_einvoice_uuid",
+			read_only=1,
+			no_copy=1,
+		),
+		# Not a Link: a Link would stop the log being deleted once its retention period has passed.
+		_field(
+			"uae_einvoice_log",
+			"E-Invoice Log",
+			"Data",
+			"uae_einvoice_status",
+			read_only=1,
+			no_copy=1,
+		),
+		_field(
 			"uae_credit_note_reason",
 			"Reason for Credit Note",
 			"Small Text",

@@ -1,18 +1,18 @@
 # Phase 6 – E-invoicing (PINT AE)
 
 - [ ] Confirm official PINT AE spec, XSD, Schematron and FTA/MoF timelines
-- [ ] DocTypes: UAE E-Invoice Settings (provider, credentials, environment), UAE E-Invoice Log
-- [ ] Status lifecycle on Sales Invoice (Draft -> ... -> FTA Cleared)
+- [x] DocTypes: UAE E-Invoice Settings (provider, credentials, environment), UAE E-Invoice Log
+- [x] Status lifecycle on Sales Invoice (Draft -> ... -> FTA Cleared)
 - [ ] `einvoice/pint_ae_builder.py`: UBL 2.1, CustomizationID `urn:peppol:pint:billing-1@ae-1`, tax category mapping S/Z/E/G/O/AE
 - [ ] Credit notes (type 381), line-level VAT in AED
 - [ ] `einvoice/validators.py`: XSD + Schematron
-- [ ] `einvoice/asp_client.py` abstract base: submit (idempotency key), get_status, fetch_inbound, credit/cancel, validate_credentials; normalized status enum and error model
-- [ ] Provider registry + per-company provider selection in UAE E-Invoice Settings (credentials as Password fields, sandbox/production)
-- [ ] Mock/sandbox adapter (`asp_clients/mock.py`) used for tests; real adapters added later per provider, no schema changes
-- [ ] Retries and correlation IDs handled in the shared layer, not in adapters
-- [ ] Scheduler status polling (`scheduler_events`)
+- [x] `einvoice/asp_client.py` abstract base: submit (idempotency key), get_status, fetch_inbound, credit/cancel, validate_credentials; normalized status enum and error model
+- [x] Provider registry + per-company provider selection in UAE E-Invoice Settings (credentials as Password fields, sandbox/production)
+- [x] Mock/sandbox adapter (`asp_clients/mock.py`) used for tests; real adapters added later per provider, no schema changes
+- [x] Retries and correlation IDs handled in the shared layer, not in adapters
+- [x] Scheduler status polling (`scheduler_events`)
 - [ ] Inbound handling for Purchase Invoices
-- [ ] XML retention and permissions
+- [x] XML retention and permissions
 - [ ] Tests with sample documents
 
 ## From verification (see ../UAE_VERIFICATION.md)
@@ -34,3 +34,12 @@
 - [x] No QR code on the e-invoice
 - [x] `UAE VAT` TRN default pattern now follows the specification (15 digits, starting with 1 and ending with 03)
 - [ ] Self-billing, summary, continuous, agent billing, deemed supply, free trade zone beneficiary, reverse charge and out of scope documents
+
+## PR 6b: provider framework and sending pipeline
+- **UAE E-Invoice Settings** (one row per company: provider, environment, "E-Invoice From" date, endpoint, client ID, client secret as a Password, extra JSON configuration) and **UAE E-Invoice Log** (one per document: status, provider reference, idempotency key, attempts, next attempt, the XML, the provider's response, errors, retention date).
+- **Providers:** adapters subclass `ASPClient` (submit with an idempotency key, get status, fetch inbound, validate credentials), register with `@register_provider`, and are listed in `einvoice/registry.py`. The Mock adapter (behaviours `clear`, `reject`, `timeout`) is the only one so far. A real adapter is one file plus one line in the registry.
+- **Statuses:** Pending, Generated, Invalid, Submitted, Delivered, Cleared (terminal success: reported to the FTA), Rejected, Failed.
+- **Flow:** before submission an in-scope invoice is built and checked, and an invoice that would be invalid is not issued (one the builder does not support yet is issued and logged as Invalid). On submission the log is created and the send is queued; the scheduler (every five minutes) sends what is due, retries transient failures with backoff (1, 2, 4 ... minutes, up to the attempt limit) and polls sent documents until Cleared or Rejected. A provider's refusal is final; a manual **Retry** rebuilds the XML from the invoice as it is now.
+- **Scope:** companies with e-invoicing enabled, invoices dated on or after "E-Invoice From", and customers that are not individuals (B2C is out of scope).
+- **A sent e-invoice cannot be cancelled**; a credit note corrects it. The log cannot be deleted before its retention date (five years from the invoice date, extended to five years from clearance).
+- Still open: inbound handling (PR 6c), `UAE VAT` reconciliation of e-invoice status in reports.
