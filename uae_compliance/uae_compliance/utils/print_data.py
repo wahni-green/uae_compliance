@@ -58,29 +58,45 @@ def get_tax_invoice_data(doc) -> dict:
 	}
 
 
+def get_value_before_credit_note(doc, before_creation=None) -> float:
+	"""The invoice value (excluding VAT, in company currency) a credit note starts from: the original
+	invoice value less the credit notes already submitted against it. `before_creation` restricts
+	that to credit notes created earlier, for old credit notes that have no stored value."""
+	original = doc.get("return_against")
+	if not original:
+		return 0.0
+
+	filters = {
+		"return_against": original,
+		"docstatus": 1,
+		"name": ["!=", doc.get("name")],
+	}
+	if before_creation:
+		filters["creation"] = ["<", before_creation]
+
+	earlier = frappe.db.get_all("Sales Invoice", filters=filters, fields=["sum(base_net_total) as total"])
+	earlier_total = flt(earlier[0].total) if earlier else 0.0
+
+	return flt(frappe.db.get_value("Sales Invoice", original, "base_net_total")) + earlier_total
+
+
 def get_credit_note_values(doc) -> dict:
 	"""Figures a tax credit note must show (ER Art 60(1)), in company currency (AED): the original
 	value, the corrected value, the difference and the tax on the difference. Several credit notes
-	against one invoice each start from the value left after the earlier ones."""
-	original = doc.get("return_against")
-	if not original:
+	against one invoice each start from the value left after the earlier ones.
+
+	The starting value is stored on the credit note when it is submitted, so reprinting it never
+	changes with the order other credit notes were drafted in. A draft shows a live preview, and a
+	credit note submitted before the value was stored falls back to creation order."""
+	if not doc.get("return_against"):
 		return {}
 
-	original_net = flt(frappe.db.get_value("Sales Invoice", original, "base_net_total"))
+	stored = flt(doc.get("uae_credit_note_original_value"))
+	if doc.get("docstatus") == 1:
+		before = stored or get_value_before_credit_note(doc, doc.get("creation"))
+	else:
+		before = get_value_before_credit_note(doc)
 
-	earlier = frappe.db.get_all(
-		"Sales Invoice",
-		filters={
-			"return_against": original,
-			"docstatus": 1,
-			"name": ["!=", doc.name],
-			"creation": ["<", doc.get("creation") or frappe.utils.now()],
-		},
-		fields=["sum(base_net_total) as total"],
-	)
-	earlier_total = flt(earlier[0].total) if earlier else 0.0
-
-	before = original_net + earlier_total
 	difference = flt(doc.get("base_net_total"))
 
 	return {

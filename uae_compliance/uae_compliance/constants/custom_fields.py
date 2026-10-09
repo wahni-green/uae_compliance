@@ -146,6 +146,15 @@ CUSTOM_FIELDS = {
 			"return_against",
 			depends_on="is_return",
 		),
+		_field(
+			"uae_credit_note_original_value",
+			"Value Before This Credit Note",
+			"Currency",
+			"uae_credit_note_reason",
+			options="Company:company:default_currency",
+			read_only=1,
+			depends_on="is_return",
+		),
 		_field("uae_is_export", "Export", "Check", "customer_address", read_only=1),
 		_field(
 			"uae_is_simplified_tax_invoice",

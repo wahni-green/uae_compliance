@@ -129,13 +129,15 @@ class TestForeignCurrency(FrappeTestCase):
 		company = get_uae_test_company()
 		configure_vat_settings(company)
 		make_item("_Test FX Item")
-		if not frappe.db.exists("Account", "Debtors USD - TUVC"):
+		abbr = frappe.get_cached_value("Company", company, "abbr")
+		debtors_usd = f"Debtors USD - {abbr}"
+		if not frappe.db.exists("Account", debtors_usd):
 			frappe.get_doc(
 				{
 					"doctype": "Account",
 					"account_name": "Debtors USD",
 					"company": company,
-					"parent_account": "Accounts Receivable - TUVC",
+					"parent_account": f"Accounts Receivable - {abbr}",
 					"account_type": "Receivable",
 					"account_currency": "USD",
 				}
@@ -144,7 +146,7 @@ class TestForeignCurrency(FrappeTestCase):
 			[{"item_code": "_Test FX Item"}],
 			currency="USD",
 			conversion_rate=3.6725,
-			debit_to="Debtors USD - TUVC",
+			debit_to=debtors_usd,
 		)
 		doc.insert()
 
@@ -217,6 +219,32 @@ class TestTaxCreditNote(FrappeTestCase):
 		self.assertEqual(
 			(second["original_value"], second["difference"], second["corrected_value"]), (100, -100, 0)
 		)
+
+	def test_values_follow_the_order_of_submission_not_of_drafting(self):
+		from erpnext.controllers.sales_and_purchase_return import make_return_doc
+
+		original = create_submitted_sales_invoice(
+			[{"item_code": "_Test Print Item", "qty": 3}], customer="_Test UAE Customer"
+		)
+
+		def make_draft():
+			doc = make_return_doc("Sales Invoice", original.name)
+			doc.uae_emirate = "Dubai"
+			doc.uae_credit_note_reason = "Goods returned"
+			doc.items[0].qty = -1
+			doc.insert()
+			return doc
+
+		draft_a, draft_b = make_draft(), make_draft()
+		draft_b.submit()
+		draft_a.submit()
+
+		b = get_credit_note_values(frappe.get_doc("Sales Invoice", draft_b.name))
+		a = get_credit_note_values(frappe.get_doc("Sales Invoice", draft_a.name))
+
+		# B was submitted first, so it starts from the full 300 and A from the 200 left.
+		self.assertEqual((b["original_value"], b["corrected_value"]), (300, 200))
+		self.assertEqual((a["original_value"], a["corrected_value"]), (200, 100))
 
 	def test_return_prints_as_credit_note_in_both_formats(self):
 		doc = self._return()
