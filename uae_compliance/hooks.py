@@ -8,7 +8,7 @@ app_license = "agpl-3.0"
 # Apps
 # ------------------
 
-# required_apps = []
+required_apps = ["frappe/erpnext"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -253,3 +253,11 @@ app_license = "agpl-3.0"
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
+
+# Phase 0 hooks
+# ------------------
+before_install = "uae_compliance.patches.check_version_compatibility.execute"
+after_install = "uae_compliance.install.after_install"
+before_uninstall = "uae_compliance.uninstall.before_uninstall"
+before_migrate = "uae_compliance.patches.check_version_compatibility.execute"
+before_tests = "uae_compliance.tests.before_tests"

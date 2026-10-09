@@ -1,33 +1,23 @@
-### UAE Compliance
+# UAE Compliance
 
-UAE Compliance for ERPNext
+UAE VAT compliance for ERPNext (Frappe v15): VAT categories, emirate-wise VAT 201 return, tax invoices
+and credit notes, reverse charge, designated zones, advanced schemes and Peppol PINT AE e-invoicing
+through pluggable Accredited Service Providers. Structured like `oman_compliance`.
 
-### Installation
+Status: under development. See [docs/UAE_COMPLIANCE_PLAN.md](docs/UAE_COMPLIANCE_PLAN.md),
+[docs/UAE_VERIFICATION.md](docs/UAE_VERIFICATION.md) and the phase checklists in [docs/todo/](docs/todo/).
 
-You can install this app using the [bench](https://github.com/frappe/bench) CLI:
-
-```bash
-cd $PATH_TO_YOUR_BENCH
-bench get-app $URL_OF_THIS_REPO --branch develop
-bench install-app uae_compliance
-```
-
-### Contributing
-
-This app uses `pre-commit` for code formatting and linting. Please [install pre-commit](https://pre-commit.com/#installation) and enable it for this repository:
+## Install
 
 ```bash
-cd apps/uae_compliance
-pre-commit install
+bench get-app <repo-url>
+bench --site <site> install-app uae_compliance
 ```
 
-Pre-commit is configured to use the following tools for checking and formatting your code:
+## Contributing
 
-- ruff
-- eslint
-- prettier
-- pyupgrade
+This app uses `pre-commit` (ruff, eslint, prettier). Run `pre-commit install` in the app directory.
 
-### License
+## License
 
-agpl-3.0
+AGPL-3.0
