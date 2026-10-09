@@ -66,11 +66,14 @@ def receive(company: str) -> int:
 	if not get_company_setting(company):
 		return 0
 
+	known = set(
+		frappe.get_all(
+			LOG, filters={"direction": DIRECTION_INBOUND, "company": company}, pluck="provider_reference"
+		)
+	)
 	received = 0
-	for document in get_client(company).fetch_inbound():
-		if frappe.db.exists(
-			LOG, {"direction": DIRECTION_INBOUND, "provider_reference": document.provider_reference}
-		):
+	for document in get_client(company).fetch_inbound(known):
+		if document.provider_reference in known:
 			continue
 
 		_log_document(company, document)
@@ -89,13 +92,14 @@ def _log_document(company: str, document) -> None:
 			"provider": row.provider,
 			"environment": row.environment,
 			"provider_reference": document.provider_reference,
-			"xml": document.xml.decode(errors="replace"),
+			"xml": document.xml.decode(errors="replace") if document.xml else "",
+			"payload": frappe.as_json(document.model) if document.model else "",
 		}
 	)
 
 	problems = []
 	try:
-		details = parse_document(document.xml)
+		details = document.model if document.model else parse_document(document.xml or b"")
 	except ValueError as e:
 		details = {}
 		problems.append(str(e))

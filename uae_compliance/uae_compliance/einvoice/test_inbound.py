@@ -1,4 +1,5 @@
 import json
+from unittest.mock import patch
 
 import frappe
 from lxml import etree
@@ -46,6 +47,73 @@ class TestInbound(PipelineTestCase):
 	def test_parse_refuses_what_is_not_an_invoice(self):
 		self.assertRaises(ValueError, inbound.parse_document, b"<Order/>")
 		self.assertRaises(ValueError, inbound.parse_document, b"<Invoice")
+
+	def test_a_document_delivered_as_a_model_is_logged(self):
+		from uae_compliance.uae_compliance.einvoice.asp_client import InboundDocument
+
+		model = {
+			"kind": "Invoice",
+			"type_code": "380",
+			"number": "INV-9",
+			"uuid": "u-9",
+			"issue_date": "2026-10-01",
+			"currency": "AED",
+			"seller_tin": "1555555555",
+			"seller_trn": "",
+			"seller_name": "Model Seller",
+			"buyer_tin": frappe.db.get_value("Company", self.company, "uae_tin"),
+			"buyer_trn": "",
+			"tax_total": 5,
+			"payable": 105,
+			"lines": 1,
+		}
+		enable_einvoicing(self.company)
+		with patch(
+			"uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.fetch_inbound",
+			return_value=[InboundDocument("MODEL-1", model=model)],
+		):
+			self.assertEqual(inbound.receive(self.company), 1)
+
+		log = frappe.get_doc("UAE E-Invoice Log", {"provider_reference": "MODEL-1"})
+		self.assertEqual((log.status, log.document_number, log.total_amount), ("Delivered", "INV-9", 105))
+		self.assertEqual(log.xml, "")
+		self.assertEqual(json.loads(log.payload)["seller_name"], "Model Seller")
+
+	def test_references_already_logged_are_passed_to_the_provider(self):
+		from uae_compliance.uae_compliance.einvoice.asp_client import InboundDocument
+
+		enable_einvoicing(self.company)
+		seen = []
+
+		def fetch(self_, known_references=None):
+			seen.append(set(known_references))
+			return [
+				InboundDocument(
+					"KNOWN-1",
+					model={
+						"kind": "Invoice",
+						"number": "A",
+						"issue_date": "2026-10-01",
+						"seller_tin": "",
+						"seller_trn": "",
+						"seller_name": "",
+						"buyer_tin": "",
+						"buyer_trn": "",
+						"currency": "AED",
+						"payable": 1,
+						"uuid": "x",
+						"type_code": "380",
+						"tax_total": 0,
+						"lines": 1,
+					},
+				)
+			]
+
+		with patch("uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.fetch_inbound", fetch):
+			inbound.receive(self.company)
+			inbound.receive(self.company)
+
+		self.assertEqual(seen, [set(), {"KNOWN-1"}])
 
 	def test_a_received_document_is_logged(self):
 		self._enable(**{"REF-1": self._received_xml()})
