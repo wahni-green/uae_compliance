@@ -133,6 +133,11 @@ def _check_parties(xml) -> list[str]:
 		if not legal_id and (not is_buyer or (is_domestic and not predefined)):
 			errors.append(_("The {0} has no legal registration identifier.").format(label))
 
+		legal_entity = _x(xml, f"{base}/cac:PartyLegalEntity/cbc:CompanyID")
+		if legal_entity and legal_entity[0].get("schemeAgencyID") == "PAS":
+			if not re.fullmatch(r"[A-Z]{2}", legal_entity[0].get("schemeAgencyName") or ""):
+				errors.append(_("The {0} passport needs the country that issued it.").format(label))
+
 		for tag, what in (("StreetName", _("address line")), ("CityName", _("city"))):
 			if not _text(xml, f"{base}/cac:PostalAddress/cbc:{tag}"):
 				errors.append(_("The {0} has no {1}.").format(label, what))

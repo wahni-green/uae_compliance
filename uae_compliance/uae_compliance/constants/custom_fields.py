@@ -75,6 +75,14 @@ CUSTOM_FIELDS = {
 			"Data",
 			"uae_legal_registration_id",
 		),
+		_field(
+			"uae_passport_country",
+			"Passport Issuing Country",
+			"Link",
+			"uae_licence_authority",
+			options="Country",
+			depends_on="eval:doc.uae_legal_registration_type=='Passport'",
+		),
 	],
 	"Customer": [
 		_field("uae_customer_name_in_arabic", "Customer Name in Arabic", "Data", "customer_name"),

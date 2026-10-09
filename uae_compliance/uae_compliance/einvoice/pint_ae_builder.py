@@ -444,7 +444,15 @@ class PintAEBuilder:
 				attributes["schemeAgencyID"] = agency
 				if agency == "TL":
 					attributes["schemeAgencyName"] = details["authority"] or TRADE_LICENSE_AGENCY
+				elif agency == "PAS" and details.get("passport_country"):
+					# The agency name of a passport is the ISO code of the country that issued it.
+					attributes["schemeAgencyName"] = details["passport_country"]
 			_add(legal, "cbc", "CompanyID", details["legal_id"], **attributes)
+
+	@staticmethod
+	def _country_code(country: str | None) -> str | None:
+		code = frappe.db.get_value("Country", country, "code") if country else None
+		return code.upper() if code else None
 
 	def _address(self, address_name: str | None) -> dict:
 		if not address_name:
@@ -482,6 +490,7 @@ class PintAEBuilder:
 				"uae_legal_registration_id",
 				"uae_legal_registration_type",
 				"uae_licence_authority",
+				"uae_passport_country",
 			],
 			as_dict=True,
 		)
@@ -493,6 +502,7 @@ class PintAEBuilder:
 			"legal_id": company.uae_legal_registration_id,
 			"legal_type": company.uae_legal_registration_type,
 			"authority": company.uae_licence_authority,
+			"passport_country": self._country_code(company.uae_passport_country),
 			"address": self._address(doc.get("company_address")),
 		}
 
@@ -506,6 +516,7 @@ class PintAEBuilder:
 				"uae_legal_registration_id",
 				"uae_legal_registration_type",
 				"uae_licence_authority",
+				"uae_passport_country",
 			],
 			as_dict=True,
 		)
@@ -522,6 +533,7 @@ class PintAEBuilder:
 			"legal_id": customer.uae_legal_registration_id,
 			"legal_type": customer.uae_legal_registration_type,
 			"authority": customer.uae_licence_authority,
+			"passport_country": self._country_code(customer.uae_passport_country),
 			"address": address,
 		}
 		return seller, buyer

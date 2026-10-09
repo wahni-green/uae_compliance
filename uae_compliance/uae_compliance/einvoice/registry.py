@@ -69,4 +69,4 @@ def get_client(company: str) -> ASPClient:
 
 def _load_adapters() -> None:
 	# Importing a module registers the adapters in it. New adapters are listed here.
-	from uae_compliance.uae_compliance.einvoice.asp_clients import mock
+	from uae_compliance.uae_compliance.einvoice.asp_clients import microvista, mock
