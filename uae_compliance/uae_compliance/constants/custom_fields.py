@@ -139,6 +139,13 @@ CUSTOM_FIELDS = {
 	],
 	"Sales Invoice": [
 		_field("uae_supply_date", "Supply Date", "Date", "posting_date"),
+		_field(
+			"uae_credit_note_reason",
+			"Reason for Credit Note",
+			"Small Text",
+			"return_against",
+			depends_on="is_return",
+		),
 		_field("uae_is_export", "Export", "Check", "customer_address", read_only=1),
 		_field(
 			"uae_is_simplified_tax_invoice",

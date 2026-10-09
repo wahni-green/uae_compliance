@@ -1,0 +1,27 @@
+<style>
+	{% include "uae_compliance/uae_compliance/print_format/uae_tax_invoice/uae_tax_invoice.css" %}
+</style>
+{% import "uae_compliance/uae_compliance/print_format/_shared/tax_invoice_macros.html" as tax_invoice %}
+
+{#
+	Standalone tax credit note (ER Art 60(1)): the words "Tax Credit Note", supplier and recipient
+	details, issue date, original value, corrected value, difference and tax on the difference in
+	AED, a brief reason and the reference to the original supply.
+#}
+{% set data = get_tax_invoice_data(doc) %}
+<div class="uae-tax-invoice">
+	<div class="invoice-heading">
+		<h1>{{ _("Tax Credit Note") }}</h1>
+		<h2 lang="ar">إشعار دائن ضريبي</h2>
+		{{ tax_invoice.render_invoice_meta(doc) }}
+	</div>
+
+	<table class="parties"><tr>
+		<td>{{ tax_invoice.render_supplier_block(doc) }}</td>
+		<td>{{ tax_invoice.render_customer_block(doc) }}</td>
+	</tr></table>
+
+	{{ tax_invoice.render_item_rows(doc, data) }}
+	{{ tax_invoice.render_credit_note_values(doc, data) }}
+	{{ tax_invoice.render_totals(doc, data) }}
+</div>

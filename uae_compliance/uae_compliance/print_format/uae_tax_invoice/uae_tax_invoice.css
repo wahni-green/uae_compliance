@@ -1,0 +1,117 @@
+/* Shared styling for the UAE tax invoice, simplified tax invoice and tax credit note formats. */
+
+.uae-tax-invoice {
+	font-size: 12px;
+}
+
+.uae-tax-invoice [lang="ar"] {
+	direction: rtl;
+	unicode-bidi: embed;
+	font-family: "Traditional Arabic", "Arial", sans-serif;
+}
+
+.invoice-heading {
+	text-align: center;
+	margin-bottom: 15px;
+}
+
+.invoice-heading h1,
+.invoice-heading h2 {
+	margin: 0;
+}
+
+/* No flexbox: the PDF engine (wkhtmltopdf) predates it. */
+.invoice-meta {
+	margin-top: 8px;
+}
+
+.invoice-meta div {
+	display: inline-block;
+	margin: 0 12px;
+	white-space: nowrap;
+}
+
+.parties {
+	width: 100%;
+	border-collapse: collapse;
+	margin-bottom: 15px;
+}
+
+.parties td {
+	width: 50%;
+	vertical-align: top;
+	padding: 0 6px 0 0;
+}
+
+.party-block {
+	width: 100%;
+}
+
+.party-block p,
+.party-block h3,
+.party-block h4 {
+	margin: 2px 0;
+}
+
+.missing-mandatory-field {
+	color: #b00020;
+	font-weight: bold;
+	border: 1px solid #b00020;
+	padding: 2px 4px;
+}
+
+.items-table,
+.totals-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-bottom: 10px;
+}
+
+.items-table th,
+.items-table td {
+	border: 1px solid #ccc;
+	padding: 4px 6px;
+	text-align: left;
+}
+
+.items-table td:nth-child(n + 3) {
+	text-align: right;
+}
+
+.items-table td:nth-child(3) {
+	white-space: nowrap;
+}
+
+/* Amounts stay left-to-right, otherwise the Arabic currency symbol moves a minus sign behind the number. */
+.items-table td:nth-child(n + 3),
+.totals-table td:not(:first-child) {
+	direction: ltr;
+	unicode-bidi: isolate;
+}
+
+.totals-table td {
+	padding: 3px 6px;
+}
+
+.totals-table td:not(:first-child) {
+	text-align: right;
+}
+
+.grand-total-row td {
+	font-weight: bold;
+	border-top: 1px solid #000;
+}
+
+.currency-heading td {
+	font-weight: bold;
+}
+
+.qr-code {
+	text-align: right;
+	margin-top: 10px;
+}
+
+.qr-code img {
+	width: 90px;
+	height: 90px;
+}

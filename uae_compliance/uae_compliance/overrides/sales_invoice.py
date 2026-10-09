@@ -29,6 +29,16 @@ def before_submit(doc, method=None):
 		return
 
 	validate_emirate(doc)
+	validate_credit_note_reason(doc)
+
+
+def validate_credit_note_reason(doc) -> None:
+	"""A tax credit note must state a brief reason (ER Art 60(1))."""
+	if doc.get("is_return") and not doc.get("uae_credit_note_reason"):
+		frappe.throw(
+			_("Reason for Credit Note is required: a tax credit note must state why it was issued."),
+			title=_("Reason Missing"),
+		)
 
 
 def validate_emirate(doc) -> None:

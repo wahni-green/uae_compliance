@@ -210,3 +210,32 @@ def get_rate_template(company: str, output_account: str, rate: float) -> str:
 		).insert()
 
 	return name
+
+
+def set_company_address(company: str, **kwargs) -> str:
+	"""Give the company a default address and return its name."""
+	address = frappe.get_doc(
+		{
+			"doctype": "Address",
+			"address_title": f"{company} HQ",
+			"address_type": "Office",
+			"address_line1": "1 Sheikh Zayed Road",
+			"city": "Dubai",
+			"country": "United Arab Emirates",
+			"uae_emirate": "Dubai",
+			"is_your_company_address": 1,
+			"links": [{"link_doctype": "Company", "link_name": company}],
+			**kwargs,
+		}
+	).insert()
+	return address.name
+
+
+def create_submitted_sales_invoice(rows=None, **kwargs):
+	"""A submitted Sales Invoice with a VAT emirate, for print and report tests."""
+	make_item("_Test Print Item")
+	doc = make_sales_invoice(rows or [{"item_code": "_Test Print Item"}], **kwargs)
+	doc.uae_emirate = "Dubai"
+	doc.insert()
+	doc.submit()
+	return doc

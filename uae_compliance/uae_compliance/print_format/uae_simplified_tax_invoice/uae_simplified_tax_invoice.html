@@ -1,0 +1,28 @@
+<style>
+	{% include "uae_compliance/uae_compliance/print_format/uae_tax_invoice/uae_tax_invoice.css" %}
+</style>
+{% import "uae_compliance/uae_compliance/print_format/_shared/tax_invoice_macros.html" as tax_invoice %}
+
+{#
+	Standalone simplified layout, always rendered regardless of the flag, for a user who wants it
+	every time (for example a till that only issues simplified invoices). Required content (ER Art
+	59(2)): the words "Tax Invoice", supplier name, address and TRN, issue date, description, and
+	the total consideration and tax amount in AED.
+#}
+{% set data = get_tax_invoice_data(doc) %}
+<div class="uae-tax-invoice">
+	<div class="invoice-heading">
+		<h1>{{ _("Tax Invoice") }}</h1>
+		<h2 lang="ar">فاتورة ضريبية</h2>
+		<h3>{{ _("Simplified") }}</h3>
+		{{ tax_invoice.render_invoice_meta(doc) }}
+	</div>
+
+	<table class="parties"><tr>
+		<td>{{ tax_invoice.render_supplier_block(doc) }}</td>
+	</tr></table>
+
+	{{ tax_invoice.render_simplified_item_rows(doc, data) }}
+	{{ tax_invoice.render_totals(doc, data) }}
+	{{ tax_invoice.render_qr_code(doc) }}
+</div>

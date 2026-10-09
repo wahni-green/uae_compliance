@@ -286,3 +286,12 @@ doc_events = {
 		"validate": "uae_compliance.uae_compliance.overrides.item_tax_template.validate",
 	},
 }
+
+jinja = {
+	"methods": [
+		"uae_compliance.uae_compliance.utils.currency.get_exchange_rate_disclosure",
+		"uae_compliance.uae_compliance.utils.qr_code.get_tax_invoice_qr_code",
+		"uae_compliance.uae_compliance.utils.print_data.get_tax_invoice_data",
+		"uae_compliance.uae_compliance.utils.print_data.get_credit_note_values",
+	]
+}
