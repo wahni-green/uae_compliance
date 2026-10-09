@@ -8,3 +8,5 @@ EMIRATES = {
 	"Ras Al Khaimah": "1f",
 	"Fujairah": "1g",
 }
+
+EMIRATE_SELECT_OPTIONS = "\n" + "\n".join(EMIRATES)

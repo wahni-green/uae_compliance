@@ -87,7 +87,7 @@ Provider-agnostic. Multiple ASPs will be integrated, so Phase 6 builds an adapte
 
 ## Verification
 - `bench --site <site> install-app uae_compliance` then `bench migrate` twice (idempotent); confirm custom fields and seeds exist.
-- `bench --site <site> set-config allow_tests true && bench run-tests --app uae_compliance` (CI mirrors Oman's: mariadb 10.6).
+- `bench --site <site> set-config allow_tests true && bench run-tests --app uae_compliance` (no server-test CI workflow; tests run locally).
 - Manual: create UAE company (AED) → sales invoices across standard/zero/exempt/RCM/zone cases → generate `UAE VAT Return` and reconcile against ERPNext's built-in UAE VAT 201 on the same data; print the tax invoice; generate and validate a PINT AE XML against official XSD/Schematron.
 - Confirm a non-UAE company on the same bench is unaffected (country gate).
 

@@ -261,3 +261,18 @@ after_install = "uae_compliance.install.after_install"
 before_uninstall = "uae_compliance.uninstall.before_uninstall"
 before_migrate = "uae_compliance.patches.check_version_compatibility.execute"
 before_tests = "uae_compliance.tests.before_tests"
+
+doctype_js = {"Item Tax Template": "uae_compliance/client_scripts/item_tax_template.js"}
+
+doc_events = {
+	"Company": {
+		"validate": "uae_compliance.uae_compliance.overrides.company.validate",
+		"on_update": "uae_compliance.uae_compliance.overrides.company.hide_erpnext_regional_fields",
+	},
+	("Customer", "Supplier"): {
+		"validate": "uae_compliance.uae_compliance.overrides.party.validate_trn_and_tin",
+	},
+	"Item Tax Template": {
+		"validate": "uae_compliance.uae_compliance.overrides.item_tax_template.validate",
+	},
+}

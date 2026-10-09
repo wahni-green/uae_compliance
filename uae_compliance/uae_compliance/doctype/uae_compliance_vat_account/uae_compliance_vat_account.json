@@ -1,0 +1,67 @@
+{
+ "actions": [],
+ "creation": "2026-10-09 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "UAE Compliance",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "editable_grid": 1,
+ "istable": 1,
+ "name": "UAE Compliance VAT Account",
+ "permissions": [],
+ "quick_entry": 1,
+ "track_changes": 1,
+ "field_order": [
+  "company",
+  "output_vat_account",
+  "input_vat_account",
+  "excise_tax_account",
+  "filing_frequency"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "output_vat_account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Output VAT Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "input_vat_account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Input VAT Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "excise_tax_account",
+   "fieldtype": "Link",
+   "label": "Excise Tax Account",
+   "options": "Account"
+  },
+  {
+   "default": "Quarterly - Stagger 1 (Feb-Apr)",
+   "fieldname": "filing_frequency",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Filing Frequency",
+   "options": "Quarterly - Stagger 1 (Feb-Apr)\nQuarterly - Stagger 2 (Mar-May)\nQuarterly - Stagger 3 (Apr-Jun)\nMonthly"
+  }
+ ]
+}
