@@ -333,3 +333,45 @@ def create_submitted_purchase_invoice(
 def delete_tax_groups() -> None:
 	for name in frappe.get_all("UAE Tax Group", pluck="name"):
 		frappe.delete_doc("UAE Tax Group", name, force=True)
+
+
+def setup_einvoice_masters(company: str, customer: str = "_Test UAE Customer") -> dict:
+	"""Everything a PINT AE invoice needs from the company, the customer and their addresses."""
+	frappe.db.set_value(
+		"Company",
+		company,
+		{
+			"uae_tin": "1234567890",
+			"uae_trn": "100123456789003",
+			"uae_legal_registration_type": "Trade License",
+			"uae_legal_registration_id": "112345678900003",
+			"uae_licence_authority": "Dubai Economy",
+		},
+	)
+	make_customer(customer, "100987654321003")
+	frappe.db.set_value(
+		"Customer",
+		customer,
+		{
+			"customer_name": customer,
+			"uae_tin": "1987654321",
+			"uae_trn": "134567890123003",
+			"uae_legal_registration_type": "Trade License",
+			"uae_legal_registration_id": "112345679000001",
+			"uae_licence_authority": "Abu Dhabi DED",
+			"customer_type": "Company",
+		},
+	)
+	frappe.clear_document_cache("Company", company)
+	company_address = set_company_address(company)
+	customer_address = make_address(
+		f"{customer} HQ", "United Arab Emirates", customer=customer, uae_emirate="Abu Dhabi"
+	)
+	return {"company_address": company_address, "customer_address": customer_address.name}
+
+
+def make_einvoice_item(item_code: str, category: str | None = None, **fields):
+	"""A service item with the service accounting code a PINT AE line needs."""
+	item = make_item(item_code, category)
+	frappe.db.set_value("Item", item.name, {"uae_sac_code": "998311", **fields})
+	return item

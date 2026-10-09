@@ -112,7 +112,7 @@
    "label": "Identifier Validation"
   },
   {
-   "default": "^100[0-9]{12}$",
+   "default": "^1[0-9]{12}03$",
    "fieldname": "trn_pattern",
    "fieldtype": "Data",
    "label": "TRN Pattern"

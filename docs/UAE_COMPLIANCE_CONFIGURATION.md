@@ -3,7 +3,7 @@
 ## UAE Compliance Settings (Single)
 - **VAT Accounts** (one row per company): Output VAT account (required), Input VAT account, Excise Tax account, Filing Frequency (Quarterly Stagger 1/2/3 or Monthly).
 - **Thresholds (AED):** simplified tax invoice 10,000; mandatory registration 375,000; voluntary 187,500.
-- **Identifier validation:** `TRN Pattern` (default `^100[0-9]{12}$`) and `TIN Pattern` (default `^1[0-9]{9}$`). The FTA publishes no official TRN format or checksum, so these are editable. Spaces and hyphens are stripped before matching.
+- **Identifier validation:** `TRN Pattern` (default `^1[0-9]{12}03$`, the format the PINT AE Schematron checks: 15 digits, starting with 1 and ending with 03) and `TIN Pattern` (default `^1[0-9]{9}$`). The FTA publishes no checksum, and the patterns are editable. Spaces and hyphens are stripped before matching.
 
 ## Master data
 - `UAE TRN` / `UAE TIN` fields on Company, Customer and Supplier; Arabic names; Address emirate and designated zone.

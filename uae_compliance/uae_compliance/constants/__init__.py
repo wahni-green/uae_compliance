@@ -2,9 +2,11 @@ import re
 
 MODULE = "UAE Compliance"
 
-# TRN: 15 digits, commonly shown as 100-XXXX-XXXX-XXXX. No primary FTA source states the format or a
-# checksum, so this is only the default for the configurable pattern in UAE Compliance Settings.
-DEFAULT_TRN_PATTERN = r"^100[0-9]{12}$"
+# TRN: 15 digits, starting with 1 and ending with 03 (Schematron rule ibr-132-ae of the PINT AE
+# specification). No FTA source states a checksum. This is only the default for the configurable
+# pattern in UAE Compliance Settings.
+DEFAULT_TRN_PATTERN = r"^1[0-9]{12}03$"
+LEGACY_TRN_PATTERN = r"^100[0-9]{12}$"
 # TIN (Peppol / Corporate Tax): 10 digits starting with 1.
 DEFAULT_TIN_PATTERN = r"^1[0-9]{9}$"
 DEFAULT_TRN_RE = re.compile(DEFAULT_TRN_PATTERN)
