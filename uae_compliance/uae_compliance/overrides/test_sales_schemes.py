@@ -145,6 +145,53 @@ class TestMarginScheme(VATReturnTestCase):
 
 		self.assertEqual(round(returned.output_vat_amount, 2), -10)
 
+	def test_a_full_margin_credit_note_keeps_the_original_split(self):
+		from erpnext.controllers.sales_and_purchase_return import make_return_doc
+
+		from uae_compliance.uae_compliance.utils.vat_return import get_invoice_rows
+
+		make_item("_Test Margin Item")
+		original = create_submitted_sales_invoice(
+			[
+				{"item_code": "_Test Margin Item", "rate": 1000, "uae_margin_purchase_price": 600},
+				{"item_code": "_Test Margin Item", "rate": 500, "uae_margin_purchase_price": 600},
+			],
+			customer="_Test UAE Customer",
+			posting_date=self.date,
+			taxes=[
+				{
+					"charge_type": "Actual",
+					"account_head": self.output,
+					"description": "VAT",
+					"tax_amount": 20,
+				}
+			],
+			uae_is_margin_scheme=1,
+		)
+		credit = make_return_doc("Sales Invoice", original.name)
+		credit.posting_date = self.date
+		credit.set_posting_time = 1
+		credit.uae_emirate = "Dubai"
+		credit.uae_credit_note_reason = "Everything returned"
+		credit.taxes = []
+		credit.append(
+			"taxes",
+			{
+				"charge_type": "Actual",
+				"account_head": self.output,
+				"description": "VAT",
+				"tax_amount": -20,
+			},
+		)
+		credit.insert()
+		credit.submit()
+
+		rows = get_invoice_rows("Sales Invoice", self.company, self.date, self.date)
+		returned = sorted(round(row.output_vat_amount, 2) for row in rows if row.is_return)
+
+		# All of the returned VAT belongs to the row that carried it; the loss row has none.
+		self.assertEqual(returned, [-20.0, 0.0])
+
 	def test_margin_vat_is_split_between_rows_by_margin(self):
 		from uae_compliance.uae_compliance.utils.vat_return import get_invoice_rows
 
