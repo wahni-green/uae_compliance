@@ -61,6 +61,7 @@ Primary-source check done: see [UAE_VERIFICATION.md](UAE_VERIFICATION.md). **Whe
 - Site-wide hiding of ERPNext UAE fields via Property Setters is accepted.
 - E-invoicing is provider-agnostic with multiple ASP adapters (see below).
 
+- Designated zones never auto zero-rate a transaction row (ER Art 51(5): goods supplied within a zone are inside the UAE unless conditions are met); a zone address only raises a warning. This differs from oman_compliance, which defaults zone supplies to Zero Rated.
 - Box 1 of the VAT 201 keeps the 1a-1g lettering (1a Abu Dhabi, 1b Dubai, 1c Sharjah, 1d Ajman, 1e Umm Al Quwain, 1f Ras Al Khaimah, 1g Fujairah); labels live in a constants table, not hard-coded in logic.
 - Designated zones: seed the current list from secondary sources (excl. Dubai Textile City, Al Quoz), admin-editable, flagged for re-verification.
 - Penalties (late filing/payment): not computed in v1; show due dates and warnings only.

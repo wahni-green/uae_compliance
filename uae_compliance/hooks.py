@@ -269,6 +269,16 @@ doc_events = {
 		"validate": "uae_compliance.uae_compliance.overrides.company.validate",
 		"on_update": "uae_compliance.uae_compliance.overrides.company.hide_erpnext_regional_fields",
 	},
+	("Sales Order", "Quotation", "Delivery Note"): {
+		"validate": "uae_compliance.uae_compliance.overrides.transaction.set_vat_category_defaults",
+	},
+	"Sales Invoice": {
+		"validate": "uae_compliance.uae_compliance.overrides.sales_invoice.validate",
+		"before_submit": "uae_compliance.uae_compliance.overrides.sales_invoice.before_submit",
+	},
+	"Purchase Invoice": {
+		"validate": "uae_compliance.uae_compliance.overrides.purchase_invoice.validate",
+	},
 	("Customer", "Supplier"): {
 		"validate": "uae_compliance.uae_compliance.overrides.party.validate_trn_and_tin",
 	},

@@ -62,3 +62,151 @@ def get_uae_test_company() -> str:
 		}
 	).insert()
 	return company.name
+
+
+def get_vat_accounts(company: str) -> tuple[str, str]:
+	"""(output, input) VAT account for a company, creating the input account if missing."""
+	abbr = frappe.get_cached_value("Company", company, "abbr")
+	output = frappe.db.get_value("Account", f"VAT 5% - {abbr}") or frappe.db.get_value(
+		"Account", {"company": company, "account_type": "Tax", "is_group": 0, "root_type": "Liability"}
+	)
+	input_name = f"Input VAT - {abbr}"
+	if not frappe.db.exists("Account", input_name):
+		frappe.get_doc(
+			{
+				"doctype": "Account",
+				"account_name": "Input VAT",
+				"company": company,
+				"parent_account": f"Current Assets - {abbr}",
+				"account_type": "Tax",
+				"root_type": "Asset",
+			}
+		).insert()
+
+	return output, input_name
+
+
+def configure_vat_settings(company: str, issues_e_invoices: int = 0) -> tuple[str, str]:
+	"""Point UAE Compliance Settings at this company's VAT accounts (rolled back with the test)."""
+	output, input_ = get_vat_accounts(company)
+	settings = frappe.get_doc("UAE Compliance Settings")
+	settings.vat_accounts = []
+	settings.append(
+		"vat_accounts",
+		{
+			"company": company,
+			"output_vat_account": output,
+			"input_vat_account": input_,
+			"issues_e_invoices": issues_e_invoices,
+		},
+	)
+	settings.save()
+	frappe.clear_document_cache("UAE Compliance Settings", "UAE Compliance Settings")
+	return output, input_
+
+
+def make_item(item_code: str, category: str | None = None):
+	if frappe.db.exists("Item", item_code):
+		return frappe.get_doc("Item", item_code)
+
+	return frappe.get_doc(
+		{
+			"doctype": "Item",
+			"item_code": item_code,
+			"item_name": item_code,
+			"item_group": "All Item Groups",
+			"stock_uom": "Nos",
+			"is_stock_item": 0,
+			"uae_vat_category": category or "",
+		}
+	).insert()
+
+
+def make_customer(name: str, trn: str | None = None):
+	if frappe.db.exists("Customer", name):
+		doc = frappe.get_doc("Customer", name)
+		doc.uae_trn = trn
+		doc.save()
+		return doc
+
+	return frappe.get_doc({"doctype": "Customer", "customer_name": name, "uae_trn": trn}).insert()
+
+
+def make_address(
+	title: str, country: str, customer: str | None = None, supplier: str | None = None, **kwargs
+):
+	links = []
+	if customer:
+		links.append({"link_doctype": "Customer", "link_name": customer})
+	if supplier:
+		links.append({"link_doctype": "Supplier", "link_name": supplier})
+
+	return frappe.get_doc(
+		{
+			"links": links,
+			"doctype": "Address",
+			"address_title": title,
+			"address_type": "Billing",
+			"address_line1": "1 Test Street",
+			"city": "Test City",
+			"country": country,
+			**kwargs,
+		}
+	).insert()
+
+
+def make_sales_invoice(rows: list[dict], customer: str = "_Test UAE Customer", rate: float = 5, **kwargs):
+	"""A draft Sales Invoice with a VAT row at `rate`% on the output account. Each row dict takes
+	item_code, qty, rate, plus optional uae_vat_category, item_tax_template and `vat_rate` (a row-
+	level override of the invoice rate, e.g. 0)."""
+	company = kwargs.pop("company", get_uae_test_company())
+	output, _input = get_vat_accounts(company)
+	make_customer(customer) if not frappe.db.exists("Customer", customer) else None
+
+	items = []
+	for row in rows:
+		row = dict(row)
+		vat_rate = row.pop("vat_rate", None)
+		if vat_rate is not None and not row.get("item_tax_template"):
+			row["item_tax_template"] = get_rate_template(company, output, vat_rate)
+		items.append({"qty": 1, "rate": 100, **row})
+
+	doc = frappe.get_doc(
+		{
+			"doctype": "Sales Invoice",
+			"company": company,
+			"customer": customer,
+			"posting_date": frappe.utils.today(),
+			"due_date": frappe.utils.today(),
+			"set_posting_time": 1,
+			"items": items,
+			"taxes": [
+				{
+					"charge_type": "On Net Total",
+					"account_head": output,
+					"description": "VAT",
+					"rate": rate,
+				}
+			],
+			**kwargs,
+		}
+	)
+	return doc
+
+
+def get_rate_template(company: str, output_account: str, rate: float) -> str:
+	"""An Item Tax Template with no VAT Category that applies `rate`% to the output account."""
+	title = f"_Test UAE VAT {rate}%"
+	abbr = frappe.get_cached_value("Company", company, "abbr")
+	name = f"{title} - {abbr}"
+	if not frappe.db.exists("Item Tax Template", name):
+		frappe.get_doc(
+			{
+				"doctype": "Item Tax Template",
+				"title": title,
+				"company": company,
+				"taxes": [{"tax_type": output_account, "tax_rate": rate}],
+			}
+		).insert()
+
+	return name

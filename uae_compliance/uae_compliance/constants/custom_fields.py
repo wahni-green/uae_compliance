@@ -1,4 +1,8 @@
-from uae_compliance.uae_compliance.constants import MODULE, VAT_CATEGORY_SELECT_OPTIONS
+from uae_compliance.uae_compliance.constants import (
+	MODULE,
+	REVERSE_CHARGE_TYPE_SELECT_OPTIONS,
+	VAT_CATEGORY_SELECT_OPTIONS,
+)
 from uae_compliance.uae_compliance.constants.emirates import EMIRATE_SELECT_OPTIONS
 
 # Every field uses the `uae_` prefix so it never clashes with ERPNext's own UAE regional fields or
@@ -94,9 +98,27 @@ CUSTOM_FIELDS = {
 		),
 	],
 	"Purchase Invoice": [
-		_field("uae_vat_section", "UAE VAT", "Section Break", "tax_category"),
+		# Anchored on the last field before the "Taxes and Charges" section, so that section's own
+		# fields are not pulled into this one (a Section Break swallows every field after it).
+		_field("uae_vat_section", "UAE VAT", "Section Break", "base_tax_withholding_net_total"),
 		_field("uae_is_reverse_charge", "Reverse Charge Applicable", "Check", "uae_vat_section"),
-		_field("uae_is_gcc_supplier", "GCC Supplier", "Check", "uae_is_reverse_charge", read_only=1),
+		_field(
+			"uae_reverse_charge_type",
+			"Reverse Charge Type",
+			"Select",
+			"uae_is_reverse_charge",
+			options=REVERSE_CHARGE_TYPE_SELECT_OPTIONS,
+			depends_on="uae_is_reverse_charge",
+			mandatory_depends_on="uae_is_reverse_charge",
+		),
+		_field(
+			"uae_rc_declaration",
+			"Recipient Declaration on File",
+			"Check",
+			"uae_reverse_charge_type",
+			depends_on="eval:doc.uae_reverse_charge_type=='Metal Scrap'",
+		),
+		_field("uae_is_gcc_supplier", "GCC Supplier", "Check", "uae_rc_declaration", read_only=1),
 		_field("uae_permit_no", "Import Permit Number", "Data", "uae_is_gcc_supplier"),
 		_field("uae_column_break_pinv", "", "Column Break", "uae_permit_no"),
 		_field("uae_is_import_of_goods", "Import of Goods", "Check", "uae_column_break_pinv", read_only=1),
@@ -107,7 +129,16 @@ CUSTOM_FIELDS = {
 			"uae_is_import_of_goods",
 		),
 	],
+	"Purchase Invoice Item": [
+		_field(
+			"uae_input_tax_not_recoverable",
+			"Input VAT Not Recoverable",
+			"Check",
+			"uae_vat_category",
+		),
+	],
 	"Sales Invoice": [
+		_field("uae_supply_date", "Supply Date", "Date", "posting_date"),
 		_field("uae_is_export", "Export", "Check", "customer_address", read_only=1),
 		_field(
 			"uae_is_simplified_tax_invoice",

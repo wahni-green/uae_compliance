@@ -38,6 +38,29 @@ class TestSetup(FrappeTestCase):
 				)
 				self.assertEqual(count, 1, f"{doctype}.{fieldname}")
 
+	def test_custom_fields_have_no_descriptions(self):
+		for fields in CUSTOM_FIELDS.values():
+			for field in fields:
+				self.assertNotIn("description", field, field["fieldname"])
+
+	def test_added_section_breaks_do_not_swallow_existing_fields(self):
+		"""A Section Break takes every field after it into its own section, so the first non-UAE
+		field following one of our sections must itself start a new section or tab."""
+		create_custom_fields()
+		checked = 0
+		for doctypes, fields in CUSTOM_FIELDS.items():
+			for doctype in [doctypes] if isinstance(doctypes, str) else doctypes:
+				if not any(field["fieldtype"] == "Section Break" for field in fields):
+					continue
+
+				meta_fields = frappe.get_meta(doctype).fields
+				start = next(i for i, f in enumerate(meta_fields) if f.fieldname == fields[0]["fieldname"])
+				following = next(f for f in meta_fields[start:] if not f.fieldname.startswith("uae_"))
+				self.assertIn(following.fieldtype, ("Section Break", "Tab Break"), doctype)
+				checked += 1
+
+		self.assertTrue(checked)
+
 	def test_no_doctype_name_clashes_with_other_apps(self):
 		ours = frappe.get_all("DocType", filters={"module": "UAE Compliance"}, pluck="name")
 		self.assertTrue(ours)
