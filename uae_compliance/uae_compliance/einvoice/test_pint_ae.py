@@ -233,6 +233,59 @@ class TestBuilder(EInvoiceTestCase):
 		self.assertRaises(EInvoiceNotSupportedError, build_xml, doc)
 
 
+class TestDocumentModel(EInvoiceTestCase):
+	def test_the_model_carries_the_same_figures_as_the_xml(self):
+		from uae_compliance.uae_compliance.einvoice.pint_ae_builder import build_document
+
+		doc = self.invoice(
+			[
+				{"item_code": "_Test EInv Service", "rate": 100, "qty": 3},
+				{"item_code": "_Test EInv Exempt", "rate": 300, "vat_rate": 0},
+			]
+		)
+		xml_bytes, summary, model = build_document(doc)
+
+		self.assertEqual(model["uuid"], summary["uuid"])
+		self.assertEqual(model["totals"]["payable"], summary["payable"])
+		self.assertEqual(model["transaction_flags"], "00000000")
+		self.assertEqual(model["seller"]["endpoint"], "1234567890")
+		self.assertEqual(model["buyer"]["address"]["subdivision"], "AUH")
+
+		first, second = model["lines"]
+		self.assertEqual((first["category_code"], first["rate"], first["vat_amount"]), ("S", 5, 15))
+		self.assertEqual(
+			(first["hs_code"], first["sac_code"], first["item_type_code"]), (None, "998311", "S")
+		)
+		self.assertEqual((second["category_code"], second["exemption_reason_code"]), ("E", "DL8.46.1"))
+		self.assertIsNone(second["vat_amount_aed"])
+		self.assertEqual({entry["code"] for entry in model["breakdown"]}, {"S", "E"})
+
+		xml = etree.fromstring(xml_bytes)
+		self.assertEqual(
+			_text(xml, "cac:LegalMonetaryTotal/cbc:PayableAmount"), f"{model['totals']['payable']:.2f}"
+		)
+
+	def test_a_credit_note_model_refers_to_the_original(self):
+		from erpnext.controllers.sales_and_purchase_return import make_return_doc
+
+		from uae_compliance.uae_compliance.einvoice.pint_ae_builder import build_document
+
+		original = self.invoice(submit=True)
+		credit = make_return_doc("Sales Invoice", original.name)
+		credit.uae_emirate = "Dubai"
+		credit.uae_credit_note_reason = "Returned"
+		credit.uae_credit_note_reason_code = "DL8.61.1.D"
+		credit.items[0].qty = -1
+		credit.insert()
+
+		model = build_document(credit)[2]
+
+		self.assertEqual(model["type_code"], "381")
+		self.assertEqual(model["credit_note"]["reason_code"], "DL8.61.1.D")
+		self.assertEqual(model["credit_note"]["preceding_number"], original.name)
+		self.assertIsNone(model["payment_means_code"])
+
+
 class TestWhatTheInvoiceMustCarry(EInvoiceTestCase):
 	def test_a_charge_outside_the_item_rows_is_refused(self):
 		freight = frappe.db.get_value(

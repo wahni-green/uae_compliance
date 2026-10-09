@@ -57,6 +57,11 @@ def build_xml(doc) -> tuple[bytes, dict]:
 	return PintAEBuilder(doc).build()
 
 
+def build_document(doc) -> tuple[bytes, dict, dict]:
+	"""The XML, its summary and the document model (the same figures as plain data)."""
+	return PintAEBuilder(doc).build_all()
+
+
 def _q(prefix: str, tag: str) -> str:
 	return f"{{{NAMESPACES[prefix]}}}{tag}"
 
@@ -103,6 +108,12 @@ class PintAEBuilder:
 	# ------------------------------------------------------------------ assembly
 
 	def build(self) -> tuple[bytes, dict]:
+		xml, summary, _model = self.build_all(with_model=False)
+		return xml, summary
+
+	def build_all(self, with_model: bool = True) -> tuple[bytes, dict, dict]:
+		"""The XML, its summary and the document model, from one set of calculations. Callers that
+		need only the XML skip the model."""
 		self._refuse_unsupported()
 		self._compute_lines()
 		self._compute_totals()
@@ -118,7 +129,7 @@ class PintAEBuilder:
 			self._line(root, line)
 
 		xml = etree.tostring(root, xml_declaration=True, encoding="UTF-8", pretty_print=True)
-		return xml, self._summary()
+		return xml, self._summary(), self._model() if with_model else {}
 
 	def _refuse_unsupported(self):
 		doc = self.doc
@@ -230,6 +241,90 @@ class PintAEBuilder:
 				).format(grand_total, self.inclusive_total)
 			)
 
+	def _model(self) -> dict:
+		"""The invoice as plain data, with the same figures as the XML, for providers whose API takes
+		the invoice's fields instead of a PINT AE document."""
+		doc = self.doc
+		seller, buyer = self._collect_parties()
+		return {
+			"number": doc.name,
+			"uuid": self.uuid,
+			"type_code": CREDIT_NOTE_TYPE_CODE if self.is_credit_note else INVOICE_TYPE_CODE,
+			"transaction_flags": self._transaction_flags(),
+			"issue_date": getdate(doc.posting_date).isoformat(),
+			"issue_time": f"{get_time(doc.get('posting_time') or '00:00:00').strftime('%H:%M:%S')}{UTC_OFFSET}",
+			"due_date": getdate(doc.due_date).isoformat()
+			if doc.get("due_date") and not self.is_credit_note
+			else None,
+			"vat_point_date": self._vat_point_date(),
+			"currency": self.currency,
+			"tax_currency": "AED" if self.is_foreign else None,
+			"exchange_rate": self.rate if self.is_foreign else None,
+			"buyer_reference": doc.get("po_no"),
+			"credit_note": {
+				"reason_code": doc.get("uae_credit_note_reason_code"),
+				"preceding_number": doc.get("return_against"),
+				"preceding_date": self._preceding_date(),
+			}
+			if self.is_credit_note
+			else None,
+			"payment_means_code": None if self.is_credit_note else PAYMENT_MEANS_CODE,
+			"seller": seller,
+			"buyer": buyer,
+			"lines": [self._line_model(line) for line in self.lines],
+			"breakdown": [dict(entry) for entry in self.breakdown.values()],
+			"totals": {
+				"line_total": self.line_total,
+				"tax_exclusive": self.line_total,
+				"tax_total": self.tax_total,
+				"tax_total_aed": self.tax_total_aed,
+				"tax_inclusive": self.inclusive_total,
+				"tax_inclusive_aed": self.inclusive_total_aed,
+				"rounding": self.rounding,
+				"payable": self.payable,
+			},
+		}
+
+	def _line_model(self, line: dict) -> dict:
+		row = line["row"]
+		item_type = self._item_type(row)
+		return {
+			"id": row.idx,
+			"name": (row.item_name or row.item_code)[:200],
+			"description": (row.description or row.item_name or row.item_code)[:2000],
+			"item_type": item_type,
+			"item_type_code": ITEM_TYPE_CODES[item_type],
+			"hs_code": frappe.db.get_value("Item", row.item_code, "customs_tariff_number"),
+			"sac_code": frappe.db.get_value("Item", row.item_code, "uae_sac_code"),
+			"quantity": line["qty"],
+			"unit_code": UNIT_CODES.get(row.uom, DEFAULT_UNIT_CODE),
+			"gross_price": line["gross_price"],
+			"net_price": line["net_price"],
+			"discount": flt(line["gross_price"] - line["net_price"], 6),
+			"net_amount": line["net"],
+			"category_code": line["code"],
+			"rate": line["rate"],
+			"vat_amount": line["vat"],
+			"total": line["total"],
+			"exemption_reason_code": self._exemption_reason(row) if line["code"] == "E" else None,
+			"amount_aed": flt(line["total"] * self.rate, 2),
+			"vat_amount_aed": flt(line["vat"] * self.rate, 2) if line["code"] != "E" else None,
+		}
+
+	def _vat_point_date(self):
+		supply = self.doc.get("uae_supply_date")
+		if supply and not self.is_credit_note and getdate(supply) < getdate(self.doc.posting_date):
+			return getdate(supply).isoformat()
+
+		return None
+
+	def _preceding_date(self):
+		if not self.doc.get("return_against"):
+			return None
+
+		date = frappe.db.get_value("Sales Invoice", self.doc.return_against, "posting_date")
+		return getdate(date).isoformat() if date else None
+
 	def _summary(self) -> dict:
 		return {
 			"uuid": self.uuid,
@@ -284,9 +379,8 @@ class PintAEBuilder:
 		else:
 			_add(root, "cbc", "InvoiceTypeCode", INVOICE_TYPE_CODE)
 
-		supply = doc.get("uae_supply_date")
-		if supply and not self.is_credit_note and getdate(supply) < getdate(doc.posting_date):
-			_add(root, "cbc", "TaxPointDate", getdate(supply).isoformat())
+		if self._vat_point_date():
+			_add(root, "cbc", "TaxPointDate", self._vat_point_date())
 
 		_add(root, "cbc", "DocumentCurrencyCode", self.currency)
 		if self.is_foreign:
@@ -370,7 +464,14 @@ class PintAEBuilder:
 			"country": (country or "ae").upper(),
 		}
 
-	def _parties(self, root):
+	def _collect_parties(self) -> tuple[dict, dict]:
+		if not hasattr(self, "_parties_cache"):
+			self._parties_cache = self._read_parties()
+
+		return self._parties_cache
+
+	def _read_parties(self) -> tuple[dict, dict]:
+		"""The seller and the buyer as plain dictionaries, shared by the XML and the document model."""
 		doc = self.doc
 		company = frappe.db.get_value(
 			"Company",
@@ -384,20 +485,16 @@ class PintAEBuilder:
 			],
 			as_dict=True,
 		)
-		self._party(
-			root,
-			"AccountingSupplierParty",
-			{
-				"endpoint": company.uae_tin or "",
-				"name": doc.company,
-				"legal_name": doc.company,
-				"trn": company.uae_trn,
-				"legal_id": company.uae_legal_registration_id,
-				"legal_type": company.uae_legal_registration_type,
-				"authority": company.uae_licence_authority,
-				"address": self._address(doc.get("company_address")),
-			},
-		)
+		seller = {
+			"endpoint": company.uae_tin or "",
+			"name": doc.company,
+			"legal_name": doc.company,
+			"trn": company.uae_trn,
+			"legal_id": company.uae_legal_registration_id,
+			"legal_type": company.uae_legal_registration_type,
+			"authority": company.uae_licence_authority,
+			"address": self._address(doc.get("company_address")),
+		}
 
 		customer = frappe.db.get_value(
 			"Customer",
@@ -417,20 +514,22 @@ class PintAEBuilder:
 		endpoint = customer.uae_tin or (
 			ENDPOINT_EXPORT if address.get("country") not in (None, "AE") else ENDPOINT_BUYER_NOT_ON_NETWORK
 		)
-		self._party(
-			root,
-			"AccountingCustomerParty",
-			{
-				"endpoint": endpoint,
-				"name": customer.customer_name,
-				"legal_name": doc.customer_name or customer.customer_name,
-				"trn": customer.uae_trn,
-				"legal_id": customer.uae_legal_registration_id,
-				"legal_type": customer.uae_legal_registration_type,
-				"authority": customer.uae_licence_authority,
-				"address": address,
-			},
-		)
+		buyer = {
+			"endpoint": endpoint,
+			"name": customer.customer_name,
+			"legal_name": doc.customer_name or customer.customer_name,
+			"trn": customer.uae_trn,
+			"legal_id": customer.uae_legal_registration_id,
+			"legal_type": customer.uae_legal_registration_type,
+			"authority": customer.uae_licence_authority,
+			"address": address,
+		}
+		return seller, buyer
+
+	def _parties(self, root):
+		seller, buyer = self._collect_parties()
+		self._party(root, "AccountingSupplierParty", seller)
+		self._party(root, "AccountingCustomerParty", buyer)
 
 	def _payment_means(self, root):
 		# A credit note carries no payment means.

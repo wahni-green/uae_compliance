@@ -1,0 +1,232 @@
+{
+ "actions": [],
+ "creation": "2026-10-14 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-14 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "UAE Compliance",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "UAE-EINV-.#####",
+ "name": "UAE E-Invoice Log",
+ "track_changes": 0,
+ "permissions": [
+  {
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1,
+   "export": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "write": 1,
+   "export": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "export": 1
+  }
+ ],
+ "title_field": "document_number",
+ "search_fields": "document_number,status",
+ "field_order": [
+  "company",
+  "direction",
+  "status",
+  "column_break_uaelog1",
+  "reference_doctype",
+  "reference_name",
+  "document_number",
+  "section_break_provider",
+  "provider",
+  "environment",
+  "provider_reference",
+  "idempotency_key",
+  "uuid",
+  "column_break_uaelog2",
+  "attempts",
+  "last_attempt_on",
+  "next_attempt_on",
+  "cleared_on",
+  "retain_until",
+  "section_break_details",
+  "status_detail",
+  "errors",
+  "xml",
+  "payload",
+  "response"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "default": "Outbound",
+   "fieldname": "direction",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Direction",
+   "options": "Outbound\nInbound",
+   "read_only": 1
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nGenerated\nInvalid\nSubmitted\nDelivered\nCleared\nRejected\nFailed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_uaelog1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Document Type",
+   "options": "DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
+   "label": "Document",
+   "options": "reference_doctype",
+   "read_only": 1
+  },
+  {
+   "fieldname": "document_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Document Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_provider",
+   "fieldtype": "Section Break",
+   "label": "Provider"
+  },
+  {
+   "fieldname": "provider",
+   "fieldtype": "Data",
+   "label": "Provider",
+   "read_only": 1
+  },
+  {
+   "fieldname": "environment",
+   "fieldtype": "Data",
+   "label": "Environment",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provider_reference",
+   "fieldtype": "Data",
+   "label": "Provider Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "idempotency_key",
+   "fieldtype": "Data",
+   "label": "Idempotency Key",
+   "read_only": 1
+  },
+  {
+   "fieldname": "uuid",
+   "fieldtype": "Data",
+   "label": "UUID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_uaelog2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "attempts",
+   "fieldtype": "Int",
+   "label": "Attempts",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_attempt_on",
+   "fieldtype": "Datetime",
+   "label": "Last Attempt",
+   "read_only": 1
+  },
+  {
+   "fieldname": "next_attempt_on",
+   "fieldtype": "Datetime",
+   "label": "Next Attempt",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cleared_on",
+   "fieldtype": "Datetime",
+   "label": "Cleared On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "retain_until",
+   "fieldtype": "Date",
+   "label": "Retain Until",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_details",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "status_detail",
+   "fieldtype": "Small Text",
+   "label": "Status Detail",
+   "read_only": 1
+  },
+  {
+   "fieldname": "errors",
+   "fieldtype": "Small Text",
+   "label": "Errors",
+   "read_only": 1
+  },
+  {
+   "fieldname": "xml",
+   "fieldtype": "Code",
+   "label": "XML",
+   "options": "XML",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payload",
+   "fieldtype": "Code",
+   "label": "Document Model",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "response",
+   "fieldtype": "Code",
+   "label": "Provider Response",
+   "read_only": 1
+  }
+ ]
+}

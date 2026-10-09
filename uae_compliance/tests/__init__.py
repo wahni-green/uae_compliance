@@ -375,3 +375,25 @@ def make_einvoice_item(item_code: str, category: str | None = None, **fields):
 	item = make_item(item_code, category)
 	frappe.db.set_value("Item", item.name, {"uae_sac_code": "998311", **fields})
 	return item
+
+
+def enable_einvoicing(company: str, behavior: str = "clear", **row_values) -> None:
+	"""Enable e-invoicing for a company through the Mock provider (rolled back with the test)."""
+	import json
+
+	settings = frappe.get_doc("UAE E-Invoice Settings")
+	settings.companies = [row for row in settings.companies if row.company != company]
+	settings.append(
+		"companies",
+		{
+			"company": company,
+			"enabled": 1,
+			"provider": "Mock",
+			"environment": "Sandbox",
+			"extra_config": json.dumps({"behavior": behavior}),
+			**row_values,
+		},
+	)
+	settings.retry_limit = 3
+	settings.save()
+	frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")
