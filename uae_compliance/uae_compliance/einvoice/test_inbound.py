@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch
 
 import frappe
+from frappe.utils import add_years, getdate
 from lxml import etree
 
 from uae_compliance.tests import enable_einvoicing
@@ -168,6 +169,91 @@ class TestInbound(PipelineTestCase):
 		log = frappe.get_doc("UAE E-Invoice Log", {"provider_reference": "REF-6"})
 		self.assertEqual(log.status, "Invalid")
 		self.assertTrue(log.errors)
+
+	def _model(self, **changes):
+		model = {
+			"kind": "Invoice",
+			"type_code": "380",
+			"number": "INV-X",
+			"uuid": "u-x",
+			"issue_date": "2026-10-01",
+			"currency": "AED",
+			"seller_tin": "1555555555",
+			"seller_trn": "",
+			"seller_name": "Model Seller",
+			"buyer_tin": "",
+			"buyer_trn": "",
+			"tax_total": 0,
+			"payable": 1,
+			"lines": 1,
+		}
+		model.update(changes)
+		return model
+
+	def _receive_models(self, documents):
+		enable_einvoicing(self.company)
+		with patch(
+			"uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.fetch_inbound",
+			return_value=documents,
+		):
+			return inbound.receive(self.company)
+
+	def test_a_bad_date_is_logged_as_invalid_without_stopping_the_others(self):
+		from uae_compliance.uae_compliance.einvoice.asp_client import InboundDocument
+
+		received = self._receive_models(
+			[
+				InboundDocument("BADDATE-1", model=self._model(issue_date="2026-99-99")),
+				InboundDocument("GOOD-1", model=self._model()),
+			]
+		)
+
+		self.assertEqual(received, 2)
+		bad = frappe.get_doc("UAE E-Invoice Log", {"provider_reference": "BADDATE-1"})
+		self.assertEqual(bad.status, "Invalid")
+		self.assertTrue(bad.retain_until)
+		self.assertEqual(
+			frappe.db.get_value("UAE E-Invoice Log", {"provider_reference": "GOOD-1"}, "status"), "Delivered"
+		)
+
+	def test_a_model_missing_keys_is_logged_as_invalid(self):
+		from uae_compliance.uae_compliance.einvoice.asp_client import InboundDocument
+
+		model = self._model()
+		del model["seller_name"]
+		self._receive_models([InboundDocument("PARTIAL-1", model=model)])
+
+		log = frappe.get_doc("UAE E-Invoice Log", {"provider_reference": "PARTIAL-1"})
+		self.assertEqual(log.status, "Invalid")
+		self.assertIn("seller_name", log.errors)
+
+	def test_an_unreadable_document_still_has_a_retention_date(self):
+		self._enable(**{"REF-8": "<not xml"})
+		inbound.receive(self.company)
+
+		log = frappe.get_doc("UAE E-Invoice Log", {"provider_reference": "REF-8"})
+		self.assertGreaterEqual(getdate(log.retain_until), add_years(getdate(), 5))
+		self.assertRaises(frappe.ValidationError, log.delete)
+
+	def test_a_reference_repeated_in_one_response_is_logged_once(self):
+		from uae_compliance.uae_compliance.einvoice.asp_client import InboundDocument
+
+		received = self._receive_models(
+			[InboundDocument("DUP-1", model=self._model()), InboundDocument("DUP-1", model=self._model())]
+		)
+
+		self.assertEqual(received, 1)
+		self.assertEqual(frappe.db.count("UAE E-Invoice Log", {"provider_reference": "DUP-1"}), 1)
+
+	def test_references_of_another_environment_do_not_hide_new_documents(self):
+		from uae_compliance.uae_compliance.einvoice.asp_client import InboundDocument
+
+		self._receive_models([InboundDocument("ENV-1", model=self._model())])
+		frappe.db.set_value("UAE E-Invoice Log", {"provider_reference": "ENV-1"}, "environment", "Production")
+
+		received = self._receive_models([InboundDocument("ENV-1", model=self._model())])
+
+		self.assertEqual(received, 1)
 
 	def test_received_documents_are_retained(self):
 		self._enable(**{"REF-7": self._received_xml()})

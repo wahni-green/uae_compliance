@@ -60,15 +60,39 @@ def parse_document(xml: bytes) -> dict:
 	}
 
 
+REQUIRED_KEYS = (
+	"kind",
+	"number",
+	"uuid",
+	"issue_date",
+	"currency",
+	"seller_name",
+	"seller_tin",
+	"seller_trn",
+	"buyer_tin",
+	"buyer_trn",
+	"payable",
+)
+
+
 def receive(company: str) -> int:
 	"""Fetch the documents the provider holds for a company and log the new ones. Returns how many
-	were new. A document already logged under the same provider reference is skipped."""
-	if not get_company_setting(company):
+	were new. A document already logged under the same provider reference is skipped; references are
+	only compared within the provider and environment in use, as another one may reuse them."""
+	row = get_company_setting(company)
+	if not row:
 		return 0
 
 	known = set(
 		frappe.get_all(
-			LOG, filters={"direction": DIRECTION_INBOUND, "company": company}, pluck="provider_reference"
+			LOG,
+			filters={
+				"direction": DIRECTION_INBOUND,
+				"company": company,
+				"provider": row.provider,
+				"environment": row.environment,
+			},
+			pluck="provider_reference",
 		)
 	)
 	received = 0
@@ -77,9 +101,23 @@ def receive(company: str) -> int:
 			continue
 
 		_log_document(company, document)
+		known.add(document.provider_reference)
 		received += 1
 
 	return received
+
+
+def _read_details(document) -> dict:
+	"""The header of a received document, from its model or its XML. Raises ValueError when it cannot
+	be read, so that one bad document is logged as Invalid instead of stopping the run."""
+	if not document.model:
+		return parse_document(document.xml or b"")
+
+	missing = [key for key in REQUIRED_KEYS if key not in document.model]
+	if missing:
+		raise ValueError(_("The document is missing: {0}.").format(", ".join(missing)))
+
+	return document.model
 
 
 def _log_document(company: str, document) -> None:
@@ -94,14 +132,17 @@ def _log_document(company: str, document) -> None:
 			"provider_reference": document.provider_reference,
 			"xml": document.xml.decode(errors="replace") if document.xml else "",
 			"payload": frappe.as_json(document.model) if document.model else "",
+			# The retention clock starts at receipt, and at the invoice date once that is known.
+			"retain_until": add_years(getdate(), RETENTION_YEARS),
 		}
 	)
 
 	problems = []
 	try:
-		details = document.model if document.model else parse_document(document.xml or b"")
+		details = _read_details(document)
+		issued = _issue_date(details["issue_date"])
 	except ValueError as e:
-		details = {}
+		details, issued = {}, None
 		problems.append(str(e))
 
 	if details:
@@ -109,21 +150,34 @@ def _log_document(company: str, document) -> None:
 		log.document_number = details["number"]
 		log.uuid = details["uuid"]
 		log.document_type = _("Credit Note") if details["kind"] == "CreditNote" else _("Invoice")
-		log.document_date = details["issue_date"] or None
+		log.document_date = issued
 		log.party_name = details["seller_name"]
 		log.party_tin = details["seller_tin"]
 		log.currency = details["currency"]
 		log.total_amount = details["payable"]
 		log.supplier = _find_supplier(details)
 		problems += _check_addressee(company, details)
-		if details["issue_date"]:
-			log.retain_until = add_years(getdate(details["issue_date"]), RETENTION_YEARS)
+		if issued:
+			log.retain_until = max(log.retain_until, add_years(issued, RETENTION_YEARS))
+		else:
+			problems.append(_("The document has no valid issue date."))
 
 	log.errors = "\n".join(problems)
 	log.status = STATUS_INVALID if problems else STATUS_DELIVERED
 	log.status_detail = _("Received from the provider")
 	log.flags.ignore_permissions = True
 	log.insert()
+
+
+def _issue_date(value):
+	"""The issue date, or None when there is none. Raises ValueError when it is not a date."""
+	if not value:
+		return None
+
+	try:
+		return getdate(value)
+	except Exception as e:
+		raise ValueError(_("The issue date {0} is not a valid date.").format(value)) from e
 
 
 def _find_supplier(details: dict) -> str | None:
