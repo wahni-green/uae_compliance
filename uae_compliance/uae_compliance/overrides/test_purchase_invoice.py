@@ -22,13 +22,13 @@ class TestPurchaseInvoice(FrappeTestCase):
 		taxes = [
 			{
 				"charge_type": "On Net Total",
-				"account_head": account,
+				"account_head": row[0],
 				"description": "VAT",
-				"rate": rate,
-				"add_deduct_tax": add_deduct,
-				"category": "Total",
+				"rate": row[1],
+				"add_deduct_tax": row[2],
+				"category": row[3] if len(row) > 3 else "Total",
 			}
-			for account, rate, add_deduct in rc_rows
+			for row in rc_rows
 		]
 		return frappe.get_doc(
 			{
@@ -87,6 +87,15 @@ class TestPurchaseInvoice(FrappeTestCase):
 		configure_vat_settings(self.company)
 		doc = self._invoice(
 			rc_rows=[(self.output, 5, "Add"), (self.input, 5, "Add")],
+			uae_is_reverse_charge=1,
+			uae_reverse_charge_type="Import of Services",
+		)
+		self.assertRaises(frappe.ValidationError, doc.insert)
+
+	def test_valuation_only_row_does_not_offset_the_supplier_total(self):
+		configure_vat_settings(self.company)
+		doc = self._invoice(
+			rc_rows=[(self.output, 5, "Deduct"), (self.input, 5, "Add", "Valuation")],
 			uae_is_reverse_charge=1,
 			uae_reverse_charge_type="Import of Services",
 		)

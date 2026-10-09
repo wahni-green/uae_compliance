@@ -119,6 +119,11 @@ def validate_reverse_charge_nets_to_zero(doc) -> None:
 		if not (is_output_vat_account(account, company) or is_input_vat_account(account, company)):
 			continue
 
+		# Only rows counted in the document total move what the supplier is paid. A "Valuation" row
+		# only changes item cost, so it cannot offset the other row.
+		if tax.get("category") == "Valuation":
+			continue
+
 		amount = flt(tax.get("tax_amount"))
 		net += -amount if tax.get("add_deduct_tax") == "Deduct" else amount
 
