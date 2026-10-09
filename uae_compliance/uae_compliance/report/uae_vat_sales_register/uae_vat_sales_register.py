@@ -5,7 +5,7 @@ from uae_compliance.uae_compliance.constants.vat_return import EMIRATE_BOX_CODES
 from uae_compliance.uae_compliance.utils.vat_return import get_invoice_rows
 from uae_compliance.uae_compliance.utils.vat_return.sections.sales_boxes import (
 	SALES_BOX_BY_CATEGORY,
-	get_tourist_refund,
+	get_tourist_refunds_by_invoice,
 )
 
 
@@ -114,21 +114,19 @@ def get_data(filters) -> list[dict]:
 		entry["vat_amount"] += row.output_vat_amount or 0
 
 	# Tax refunded to tourists reduces the VAT due in box 2: one negative row per invoice.
-	for invoice_name in {row.invoice for row in rows}:
-		refund = get_tourist_refund([row for row in rows if row.invoice == invoice_name])
-		if refund:
-			invoice = invoices[invoice_name]
-			grouped[(invoice_name, "2")] = {
-				"box": "2",
-				"invoice": invoice_name,
-				"posting_date": invoice.posting_date,
-				"customer": invoice.customer,
-				"trn": trns.get(invoice.customer) or "",
-				"category": "",
-				"emirate": "",
-				"is_return": 0,
-				"amount": 0.0,
-				"vat_amount": -refund,
-			}
+	for invoice_name, refund in get_tourist_refunds_by_invoice(rows).items():
+		invoice = invoices[invoice_name]
+		grouped[(invoice_name, "2")] = {
+			"box": "2",
+			"invoice": invoice_name,
+			"posting_date": invoice.posting_date,
+			"customer": invoice.customer,
+			"trn": trns.get(invoice.customer) or "",
+			"category": "",
+			"emirate": "",
+			"is_return": 0,
+			"amount": 0.0,
+			"vat_amount": -refund,
+		}
 
 	return sorted(grouped.values(), key=lambda entry: (entry["box"], entry["posting_date"], entry["invoice"]))

@@ -6,14 +6,21 @@ from uae_compliance.uae_compliance.utils.vat_return import get_invoice_rows, sum
 SALES_BOX_BY_CATEGORY = {"Zero Rated": BOX_ZERO_RATED, "Exempt": BOX_EXEMPT}
 
 
-def get_tourist_refund(rows: list) -> float:
-	"""The tax refunded to tourists on the rows' invoices, in company currency. The refund is
-	recorded in the invoice's currency, so it is converted at the invoice's rate."""
+def get_tourist_refunds_by_invoice(rows: list) -> dict[str, float]:
+	"""The tax refunded to tourists per invoice, in company currency. The refund is recorded in the
+	invoice's currency, so it is converted at the invoice's rate. Each invoice counts once however
+	many rows it has."""
 	invoices = {row.invoice: row for row in rows}
-	return sum(
-		abs(flt(invoice.uae_tourist_refund)) * (flt(invoice.conversion_rate) or 1)
-		for invoice in invoices.values()
-	)
+	return {
+		name: abs(flt(invoice.uae_tourist_refund)) * (flt(invoice.conversion_rate) or 1)
+		for name, invoice in invoices.items()
+		if flt(invoice.uae_tourist_refund)
+	}
+
+
+def get_tourist_refund(rows: list) -> float:
+	"""The total tax refunded to tourists on the rows' invoices, in company currency."""
+	return sum(get_tourist_refunds_by_invoice(rows).values())
 
 
 def get_sales_boxes(company: str, from_date, to_date, rows: list | None = None) -> dict:
