@@ -244,6 +244,7 @@ def create_submitted_sales_invoice(rows=None, emirate="Dubai", **kwargs):
 
 
 _test_date_counter = itertools.count()
+_bill_counter = itertools.count()
 
 
 def get_unique_test_date():
@@ -276,7 +277,7 @@ def create_submitted_purchase_invoice(
 			"posting_date": posting_date,
 			"due_date": posting_date,
 			"set_posting_time": 1,
-			"bill_no": f"BILL-{next(_test_date_counter)}",
+			"bill_no": f"BILL-{next(_bill_counter)}",
 			"items": [
 				{"item_code": "_Test Print Item", "qty": 1, "rate": 100, **row} for row in (rows or [{}])
 			],

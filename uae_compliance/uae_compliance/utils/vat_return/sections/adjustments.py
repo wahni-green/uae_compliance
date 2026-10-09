@@ -29,12 +29,12 @@ def get_adjustments(companies: list[str], from_date, to_date) -> dict:
 			"docstatus": 1,
 			"posting_date": ["between", [from_date, to_date]],
 		},
-		fields=["adjustment_type", "emirate", "amount", "vat_amount"],
+		fields=["adjustment_type", "emirate", "amount", "vat_amount", "recoverable_percentage"],
 	)
 
 	by_emirate = dict.fromkeys(EMIRATE_BOX_CODES.values(), 0.0)
 	expenses = 0.0
-	import_amount = import_vat = 0.0
+	import_amount = import_vat = recoverable_amount = recoverable_vat = 0.0
 	for row in rows:
 		if row.adjustment_type == ADJUSTMENT_BAD_DEBT_RELIEF and row.emirate in EMIRATE_BOX_CODES:
 			by_emirate[EMIRATE_BOX_CODES[row.emirate]] += flt(row.vat_amount)
@@ -43,9 +43,13 @@ def get_adjustments(companies: list[str], from_date, to_date) -> dict:
 		elif row.adjustment_type == ADJUSTMENT_IMPORT:
 			import_amount += flt(row.amount)
 			import_vat += flt(row.vat_amount)
+			share = flt(row.recoverable_percentage) / 100
+			recoverable_amount += flt(row.amount) * share
+			recoverable_vat += flt(row.vat_amount) * share
 
 	return {
 		"by_emirate": by_emirate,
 		"expenses": expenses,
 		"imports": {"amount": import_amount, "vat_amount": import_vat, "adjustment": 0.0},
+		"imports_recoverable": {"amount": recoverable_amount, "vat_amount": recoverable_vat},
 	}

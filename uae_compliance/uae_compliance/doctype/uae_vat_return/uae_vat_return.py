@@ -175,6 +175,7 @@ class UAEVATReturn(Document):
 		self.recovery_ratio = recovery_ratio
 		self.taxable_supplies_value = taxable
 		self.exempt_supplies_value = exempt
+		self.apportionment_recorded = 1
 		self.residual_input_vat = purchases["residual_input_vat"]
 		self.residual_recoverable_vat = purchases["residual_recoverable_vat"]
 
@@ -251,9 +252,16 @@ def _build_box_rows(by_emirate, sales, purchases, adjustments):
 
 	yield BOX_SALES_TOTALS, _("Totals"), get_sales_totals(sales_boxes)
 
+	# VAT corrected in box 7 is recovered in box 10 to the extent it is recoverable.
+	recovered = adjustments["imports_recoverable"]
+	reverse_charge_expenses = {
+		**purchases["reverse_charge_expenses"],
+		"amount": purchases["reverse_charge_expenses"]["amount"] + recovered["amount"],
+		"vat_amount": purchases["reverse_charge_expenses"]["vat_amount"] + recovered["vat_amount"],
+	}
 	expense_boxes = [
 		{**purchases["standard_rated_expenses"], "adjustment": adjustments["expenses"]},
-		purchases["reverse_charge_expenses"],
+		reverse_charge_expenses,
 	]
 	yield BOX_STANDARD_RATED_EXPENSES, _("Standard rated expenses"), expense_boxes[0]
 	yield (

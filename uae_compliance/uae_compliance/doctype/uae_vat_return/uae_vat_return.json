@@ -74,6 +74,7 @@
   "column_break_uaevr3",
   "residual_input_vat",
   "residual_recoverable_vat",
+  "apportionment_recorded",
   "currency"
  ],
  "fields": [
@@ -245,6 +246,14 @@
    "fieldtype": "Currency",
    "label": "Residual Input VAT Recovered",
    "options": "currency",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "apportionment_recorded",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Apportionment Recorded",
    "read_only": 1
   },
   {

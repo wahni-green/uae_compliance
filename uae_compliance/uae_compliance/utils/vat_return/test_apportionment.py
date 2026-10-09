@@ -136,6 +136,58 @@ class TestAnnualApportionment(VATReturnTestCase):
 		again = get_annual_apportionment(self.company, start, end)
 		self.assertEqual(again["adjustment"], flt_(0.5 * 400 - 100))
 
+	def test_a_gap_in_the_year_is_refused(self):
+		from uae_compliance.tests import get_unique_test_date
+
+		first = self._filed_return(500, 500, 2000)
+		get_unique_test_date()  # a day with no return
+		self.date = get_unique_test_date()
+		second = self._filed_return(1000, 500, 2000)
+
+		with self.assertRaises(frappe.ValidationError) as ctx:
+			get_annual_apportionment(self.company, first.from_date, second.to_date)
+		self.assertIn("gap", str(ctx.exception))
+
+	def test_a_year_that_is_not_fully_filed_is_refused(self):
+		first = self._filed_return(500, 500, 2000)
+		end = frappe.utils.add_days(first.to_date, 30)
+
+		with self.assertRaises(frappe.ValidationError) as ctx:
+			get_annual_apportionment(self.company, first.from_date, end)
+		self.assertIn("end before", str(ctx.exception))
+
+	def test_returns_without_recorded_figures_are_refused(self):
+		first = self._filed_return(500, 500, 2000)
+		frappe.db.set_value("UAE VAT Return", first.name, "apportionment_recorded", 0)
+
+		self.assertRaises(
+			frappe.ValidationError,
+			get_annual_apportionment,
+			self.company,
+			first.from_date,
+			first.to_date,
+		)
+
+	def test_a_year_can_only_be_apportioned_once(self):
+		first = self._filed_return(500, 500, 2000)
+
+		def annual(**kwargs):
+			return frappe.get_doc(
+				{
+					"doctype": "UAE VAT Adjustment",
+					"company": self.company,
+					"adjustment_type": "Annual Apportionment",
+					"posting_date": frappe.utils.add_days(first.to_date, 40),
+					"period_from": first.from_date,
+					"period_to": first.to_date,
+					"vat_amount": 5,
+					**kwargs,
+				}
+			)
+
+		annual().insert()
+		self.assertRaises(frappe.ValidationError, annual().insert)
+
 	def test_requires_filed_returns(self):
 		self.new_return()
 		self.assertRaises(

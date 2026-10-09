@@ -2,7 +2,7 @@ import math
 
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import add_days, flt, getdate
 
 
 def get_recovery_ratio(taxable_supplies: float, exempt_supplies: float) -> int:
@@ -29,7 +29,10 @@ def get_period_supplies(sales_rows: list) -> tuple[float, float]:
 def get_annual_apportionment(company: str, from_date, to_date) -> dict:
 	"""The true-up of residual input VAT for a tax year, from the company's Filed returns in it. The
 	annual ratio is applied to the year's total residual input VAT, and the difference from what the
-	periods recovered is the adjustment, to be reported in the first return of the next tax year."""
+	periods recovered is the adjustment, to be reported in the first return of the next tax year.
+
+	The year has to be complete: its Filed returns must run without a gap from the first day to the
+	last, and each must have recorded its partial exemption figures."""
 	frappe.has_permission("Company", "read", doc=company, throw=True)
 
 	returns = frappe.get_all(
@@ -41,17 +44,33 @@ def get_annual_apportionment(company: str, from_date, to_date) -> dict:
 			"to_date": ["<=", to_date],
 		},
 		fields=[
+			"name",
+			"from_date",
+			"to_date",
+			"apportionment_recorded",
 			"taxable_supplies_value",
 			"exempt_supplies_value",
 			"residual_input_vat",
 			"residual_recoverable_vat",
 		],
+		order_by="from_date, to_date",
 	)
 	if not returns:
 		frappe.throw(
 			_("There are no Filed returns for {0} between {1} and {2}.").format(company, from_date, to_date),
 			title=_("No Returns"),
 		)
+
+	unrecorded = [r.name for r in returns if not r.apportionment_recorded]
+	if unrecorded:
+		frappe.throw(
+			_(
+				"These returns were filed before their partial exemption figures were recorded, so the year cannot be calculated: {0}."
+			).format(", ".join(unrecorded)),
+			title=_("Figures Not Recorded"),
+		)
+
+	_validate_year_is_covered(returns, from_date, to_date)
 
 	taxable = sum(flt(r.taxable_supplies_value) for r in returns)
 	exempt = sum(flt(r.exempt_supplies_value) for r in returns)
@@ -69,3 +88,26 @@ def get_annual_apportionment(company: str, from_date, to_date) -> dict:
 		"claimed": flt(claimed, 2),
 		"adjustment": flt(annual_recoverable - claimed, 2),
 	}
+
+
+def _validate_year_is_covered(returns: list, from_date, to_date) -> None:
+	"""The returns have to cover every day of the tax year, or the annual figures are incomplete."""
+	expected = getdate(from_date)
+	for row in returns:
+		if getdate(row.from_date) > expected:
+			frappe.throw(
+				_("The Filed returns leave a gap from {0}. File every return of the tax year first.").format(
+					frappe.format(expected, {"fieldtype": "Date"})
+				),
+				title=_("Incomplete Tax Year"),
+			)
+
+		expected = max(expected, add_days(getdate(row.to_date), 1))
+
+	if expected <= getdate(to_date):
+		frappe.throw(
+			_("The Filed returns end before {0}. File every return of the tax year first.").format(
+				frappe.format(to_date, {"fieldtype": "Date"})
+			),
+			title=_("Incomplete Tax Year"),
+		)

@@ -76,6 +76,24 @@ class TestUAECapitalAsset(FrappeTestCase):
 		self.assertEqual(asset.adjustments[1].vat_adjustment, name)
 		self.assertRaises(frappe.ValidationError, asset.create_adjustment, asset.adjustments[1].name)
 
+	def test_a_cancelled_adjustment_can_be_replaced(self):
+		asset = self._asset(asset_type="Other").insert()
+		asset.adjustments[1].recoverable_percentage = 60
+		asset.adjustments[1].adjustment_date = "2027-03-01"
+		asset.save()
+
+		first = asset.create_adjustment(asset.adjustments[1].name)
+		adjustment = frappe.get_doc("UAE VAT Adjustment", first)
+		adjustment.submit()
+		adjustment.cancel()
+
+		asset.reload()
+		second = asset.create_adjustment(asset.adjustments[1].name)
+
+		self.assertNotEqual(first, second)
+		asset.reload()
+		self.assertEqual(asset.adjustments[1].vat_adjustment, second)
+
 	def test_no_adjustment_to_create_when_nothing_changed(self):
 		asset = self._asset(asset_type="Other").insert()
 		asset.adjustments[1].adjustment_date = "2027-03-01"

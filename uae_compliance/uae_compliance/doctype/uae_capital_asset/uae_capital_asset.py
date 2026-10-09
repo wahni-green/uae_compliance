@@ -60,7 +60,11 @@ class UAECapitalAsset(Document):
 		if not row:
 			frappe.throw(_("Adjustment row not found."))
 
-		if row.vat_adjustment:
+		# A cancelled adjustment no longer counts, so its year can be adjusted again.
+		if (
+			row.vat_adjustment
+			and frappe.db.get_value("UAE VAT Adjustment", row.vat_adjustment, "docstatus") != 2
+		):
 			frappe.throw(_("An adjustment was already created for year {0}.").format(row.adjustment_year))
 
 		if not flt(row.adjustment_vat):

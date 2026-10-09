@@ -19,10 +19,64 @@ class UAEVATAdjustment(Document):
 			self.validate_bad_debt_relief()
 		elif self.adjustment_type == ADJUSTMENT_BAD_DEBT_REPAYMENT:
 			self.validate_bad_debt_repayment()
+		elif self.adjustment_type == ADJUSTMENT_ANNUAL_APPORTIONMENT:
+			self.validate_annual_apportionment()
 
 	def before_submit(self):
 		if not flt(self.vat_amount) and not flt(self.amount):
 			frappe.throw(_("Enter the VAT adjustment before submitting."))
+
+		self.validate_period_is_open()
+
+		if self.adjustment_type == ADJUSTMENT_BAD_DEBT_RELIEF:
+			# Two relief claims for one invoice could be submitted at the same moment and each pass
+			# the limit alone, so the invoice is locked while the limit is checked again.
+			frappe.db.get_value("Sales Invoice", self.sales_invoice, "name", for_update=True)
+			self.validate_within_invoice_vat()
+
+	def validate_period_is_open(self):
+		"""An adjustment is reported in the return of its period, which cannot change once Filed."""
+		filed = frappe.db.get_value(
+			"UAE VAT Return",
+			{
+				"company": self.company,
+				"status": "Filed",
+				"from_date": ["<=", self.posting_date],
+				"to_date": [">=", self.posting_date],
+			},
+			"name",
+		)
+		if filed:
+			frappe.throw(
+				_(
+					"The return {0} for this period is already Filed. Date the adjustment in an open period."
+				).format(filed),
+				title=_("Period Already Filed"),
+			)
+
+	def validate_annual_apportionment(self):
+		"""One annual apportionment per company and tax year, or the same difference is reported
+		twice."""
+		if not (self.period_from and self.period_to):
+			return
+
+		overlapping = frappe.db.get_value(
+			"UAE VAT Adjustment",
+			{
+				"company": self.company,
+				"adjustment_type": ADJUSTMENT_ANNUAL_APPORTIONMENT,
+				"docstatus": ["!=", 2],
+				"name": ["!=", self.name],
+				"period_from": ["<=", self.period_to],
+				"period_to": [">=", self.period_from],
+			},
+			"name",
+		)
+		if overlapping:
+			frappe.throw(
+				_("{0} already adjusts the apportionment of an overlapping tax year.").format(overlapping),
+				title=_("Duplicate Annual Apportionment"),
+			)
 
 	def validate_bad_debt_relief(self):
 		"""Decree-Law Art 64: a supplier may reduce its output tax when the supply was made and the tax
@@ -53,11 +107,31 @@ class UAEVATAdjustment(Document):
 				title=_("Too Early for Bad Debt Relief"),
 			)
 
+		if not self.emirate:
+			self.emirate = invoice.uae_emirate
+		elif invoice.uae_emirate and self.emirate != invoice.uae_emirate:
+			frappe.throw(
+				_("The relief is reported in {0}, the emirate of {1}, not {2}.").format(
+					invoice.uae_emirate, self.sales_invoice, self.emirate
+				),
+				title=_("Wrong Emirate"),
+			)
+
 		if not self.customer_notified or not self.notification_date:
 			frappe.throw(
 				_("The customer must be notified of the write-off. Tick it and enter the notification date."),
 				title=_("Customer Not Notified"),
 			)
+
+		for label, date in (
+			(_("Written Off On"), self.write_off_date),
+			(_("Notification Date"), self.notification_date),
+		):
+			if not date or getdate(date) > getdate(self.posting_date):
+				frappe.throw(
+					_("{0} is required and cannot be after the adjustment date.").format(label),
+					title=_("Conditions Not Met"),
+				)
 
 		self.validate_negative_vat()
 		self.validate_within_invoice_vat()
@@ -76,6 +150,12 @@ class UAEVATAdjustment(Document):
 				_("{0} must be a submitted purchase invoice (not a return) of {1}.").format(
 					self.purchase_invoice, self.company
 				)
+			)
+
+		if not self.notification_date or getdate(self.notification_date) > getdate(self.posting_date):
+			frappe.throw(
+				_("The supplier's notification date is required and cannot be after the adjustment date."),
+				title=_("Conditions Not Met"),
 			)
 
 		if getdate(self.posting_date) <= add_months(getdate(self.notification_date), BAD_DEBT_MONTHS):

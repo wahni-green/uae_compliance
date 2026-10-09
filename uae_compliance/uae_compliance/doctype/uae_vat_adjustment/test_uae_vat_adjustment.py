@@ -54,6 +54,39 @@ class TestUAEVATAdjustment(VATReturnTestCase):
 		doc = self._relief(invoice, customer_notified=0)
 		self.assertRaises(frappe.ValidationError, doc.insert)
 
+	def test_write_off_and_notice_cannot_be_after_the_adjustment(self):
+		invoice = self.sale(rate=1000)
+		late = add_months(self.date, 8)
+		self.assertRaises(frappe.ValidationError, self._relief(invoice, write_off_date=late).insert)
+		self.assertRaises(frappe.ValidationError, self._relief(invoice, notification_date=late).insert)
+
+	def test_emirate_must_match_the_invoice(self):
+		invoice = self.sale(rate=1000, emirate="Dubai")
+		self.assertRaises(frappe.ValidationError, self._relief(invoice, emirate="Sharjah").insert)
+
+	def test_emirate_is_taken_from_the_invoice_when_blank(self):
+		invoice = self.sale(rate=1000, emirate="Sharjah")
+		relief = self._relief(invoice, emirate="").insert()
+		self.assertEqual(relief.emirate, "Sharjah")
+
+	def test_two_drafts_cannot_both_be_submitted_over_the_limit(self):
+		invoice = self.sale(rate=1000)
+		first = self._relief(invoice, vat_amount=-30).insert()
+		second = self._relief(invoice, vat_amount=-30).insert()  # each is within the limit alone
+		first.submit()
+
+		self.assertRaises(frappe.ValidationError, second.submit)
+
+	def test_an_adjustment_in_a_filed_period_is_refused(self):
+		invoice = self.sale(rate=1000)
+		date = add_months(self.date, 7)
+		doc = self._return_for(date)
+		doc.generate_return()
+		doc.mark_as_filed()
+
+		relief = self._relief(invoice).insert()
+		self.assertRaises(frappe.ValidationError, relief.submit)
+
 	def test_relief_must_be_negative(self):
 		invoice = self.sale(rate=1000)
 		doc = self._relief(invoice, vat_amount=20)
@@ -168,6 +201,43 @@ class TestUAEVATAdjustment(VATReturnTestCase):
 		self.assertEqual((boxes["7"].amount, boxes["7"].vat_amount), (1000, 50))
 		self.assertEqual((boxes["8"].amount, boxes["8"].vat_amount), (1000, 50))
 		self.assertEqual(doc.total_due_tax, 50)
+
+	def _import_adjustment(self, date, **kwargs):
+		adjustment = frappe.get_doc(
+			{
+				"doctype": "UAE VAT Adjustment",
+				"company": self.company,
+				"adjustment_type": "Import Adjustment",
+				"posting_date": date,
+				"amount": 1000,
+				"vat_amount": 50,
+				**kwargs,
+			}
+		).insert()
+		adjustment.submit()
+		return adjustment
+
+	def test_import_adjustment_vat_is_recovered_in_box_10(self):
+		date = add_months(self.date, 10)
+		self._import_adjustment(date)
+
+		doc = self._return_for(date)
+		doc.generate_return()
+		boxes = _boxes(doc)
+
+		self.assertEqual((boxes["10"].amount, boxes["10"].vat_amount), (1000, 50))
+		self.assertEqual(doc.total_due_tax, 50)
+		self.assertEqual(doc.total_recoverable_tax, 50)
+
+	def test_import_adjustment_can_be_partly_or_not_recoverable(self):
+		date = add_months(self.date, 11)
+		self._import_adjustment(date, recoverable_percentage=40)
+
+		doc = self._return_for(date)
+		doc.generate_return()
+		box = _boxes(doc)["10"]
+
+		self.assertEqual((box.amount, box.vat_amount), (400, 20))
 
 	def test_cannot_submit_an_empty_adjustment(self):
 		doc = frappe.get_doc(
