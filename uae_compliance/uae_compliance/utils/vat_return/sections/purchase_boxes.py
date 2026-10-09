@@ -31,9 +31,9 @@ def classify_purchase_row(row) -> str | None:
 
 
 def get_recoverable_vat(row, recovery_ratio: float = 100) -> float:
-	"""The recoverable share of a row's input VAT: all of it, none of it (attributed to exempt
-	supplies), or the period's recovery ratio (residual input tax)."""
-	if row.uae_input_tax_attribution == ATTRIBUTION_EXEMPT:
+	"""The recoverable share of a row's input VAT: all of it, none of it (blocked input tax, or
+	attributed to exempt supplies), or the period's recovery ratio (residual input tax)."""
+	if row.uae_input_tax_not_recoverable or row.uae_input_tax_attribution == ATTRIBUTION_EXEMPT:
 		return 0.0
 
 	vat = flt(row.input_vat_amount)
