@@ -21,7 +21,7 @@ class TestSalesInvoice(FrappeTestCase):
 		self.zero = make_item("_Test Zero Item", "Zero Rated")
 
 	def _template(self, category, rate=0):
-		name = f"_Test SI {category} - TUVC"
+		name = f"_Test SI {category} - {frappe.get_cached_value('Company', self.company, 'abbr')}"
 		if frappe.db.exists("Item Tax Template", name):
 			return frappe.get_doc("Item Tax Template", name)
 

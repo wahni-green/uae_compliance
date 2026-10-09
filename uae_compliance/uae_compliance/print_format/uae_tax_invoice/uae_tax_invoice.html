@@ -1,0 +1,43 @@
+<style>
+	{% include "uae_compliance/uae_compliance/print_format/uae_tax_invoice/uae_tax_invoice.css" %}
+</style>
+{% import "uae_compliance/uae_compliance/print_format/_shared/tax_invoice_macros.html" as tax_invoice %}
+
+{#
+	One format for invoices and returns, so the default format always shows the right document:
+	a return renders as a Tax Credit Note, a flagged simplified invoice (uae_is_simplified_tax_invoice,
+	set in overrides/sales_invoice.py) as the simplified layout, anything else as the full layout.
+	The words "Tax Invoice" appear on both invoice layouts, as ER Art 59 requires.
+#}
+{% set data = get_tax_invoice_data(doc) %}
+<div class="uae-tax-invoice">
+	<div class="invoice-heading">
+		{% if doc.is_return %}
+			<h1>{{ _("Tax Credit Note") }}</h1>
+			<h2 lang="ar">إشعار دائن ضريبي</h2>
+		{% else %}
+			<h1>{{ _("Tax Invoice") }}</h1>
+			<h2 lang="ar">فاتورة ضريبية</h2>
+			{% if doc.uae_is_simplified_tax_invoice %}<h3>{{ _("Simplified") }}</h3>{% endif %}
+		{% endif %}
+		{{ tax_invoice.render_invoice_meta(doc) }}
+	</div>
+
+	<table class="parties"><tr>
+		<td>{{ tax_invoice.render_supplier_block(doc) }}</td>
+		{% if doc.is_return or not doc.uae_is_simplified_tax_invoice %}
+			<td>{{ tax_invoice.render_customer_block(doc) }}</td>
+		{% endif %}
+	</tr></table>
+
+	{% if doc.uae_is_simplified_tax_invoice and not doc.is_return %}
+		{{ tax_invoice.render_simplified_item_rows(doc, data) }}
+	{% else %}
+		{{ tax_invoice.render_item_rows(doc, data) }}
+	{% endif %}
+	{% if doc.is_return %}
+		{{ tax_invoice.render_credit_note_values(doc, data) }}
+	{% endif %}
+	{{ tax_invoice.render_totals(doc, data) }}
+	{{ tax_invoice.render_qr_code(doc) }}
+</div>

@@ -1,0 +1,234 @@
+{#
+	Shared macros for the UAE tax invoice, simplified tax invoice and tax credit note print formats.
+	Content follows VAT Executive Regulation Arts 59 and 60 (see docs/UAE_VERIFICATION.md).
+	A Jinja print format cannot block printing, so a missing mandatory element renders as a visible
+	warning instead of being silently omitted.
+#}
+
+{#
+	Amounts print as plain numbers with the currency named in the table headings: the Arabic AED
+	symbol mixes right-to-left text into number cells and detaches a minus sign from its number.
+#}
+{% macro m(value) %}{{ frappe.utils.fmt_money(value or 0) }}{% endmacro %}
+
+{# The AED figures are required. This app only has them when the company's own currency is AED. #}
+{% macro render_aed_warning(data) %}
+	{% if not data.is_aed_company %}
+		<p class="missing-mandatory-field">{{ _("The company currency is {0}, not AED. The AED amounts required on a tax invoice are not shown.").format(data.company_currency) }}</p>
+	{% endif %}
+{% endmacro %}
+
+{% macro render_supplier_block(doc) %}
+	{% set company_name_ar = frappe.db.get_value("Company", doc.company, "uae_company_name_in_arabic") %}
+	{% set company_trn = frappe.db.get_value("Company", doc.company, "uae_trn") %}
+	<div class="party-block supplier-block">
+		<h3>{{ doc.company }}{% if company_name_ar %} / <span lang="ar">{{ company_name_ar }}</span>{% endif %}</h3>
+		{% if doc.company_address_display %}
+			<p>{{ doc.company_address_display }}</p>
+		{% else %}
+			<p class="missing-mandatory-field">{{ _("Supplier address missing. It is required on a tax invoice.") }}</p>
+		{% endif %}
+		{% if company_trn %}
+			<p><b>{{ _("TRN") }} / <span lang="ar">الرقم الضريبي</span>:</b> {{ company_trn }}</p>
+		{% else %}
+			<p class="missing-mandatory-field">{{ _("Supplier TRN missing. It is required on a tax invoice.") }}</p>
+		{% endif %}
+	</div>
+{% endmacro %}
+
+{% macro render_customer_block(doc) %}
+	{% set customer_name_ar = frappe.db.get_value("Customer", doc.customer, "uae_customer_name_in_arabic") if doc.customer else None %}
+	{% set customer_trn = frappe.db.get_value("Customer", doc.customer, "uae_trn") if doc.customer else None %}
+	<div class="party-block customer-block">
+		<h4>{{ _("Bill To") }} / <span lang="ar">فاتورة إلى</span></h4>
+		<p>{{ doc.customer_name }}{% if customer_name_ar %} / <span lang="ar">{{ customer_name_ar }}</span>{% endif %}</p>
+		{% if doc.address_display %}
+			<p>{{ doc.address_display }}</p>
+		{% else %}
+			<p class="missing-mandatory-field">{{ _("Customer address missing. It is required on a full tax invoice.") }}</p>
+		{% endif %}
+		{# The recipient TRN is required only when the recipient is registered. #}
+		{% if customer_trn %}
+			<p><b>{{ _("TRN") }} / <span lang="ar">الرقم الضريبي</span>:</b> {{ customer_trn }}</p>
+		{% endif %}
+	</div>
+{% endmacro %}
+
+{% macro render_invoice_meta(doc) %}
+	<div class="invoice-meta">
+		<div>{{ _("Invoice No") }}: {{ doc.name }}</div>
+		<div>{{ _("Issue Date") }}: {{ frappe.utils.formatdate(doc.posting_date) }}</div>
+		{% if doc.uae_supply_date and doc.uae_supply_date != doc.posting_date %}
+			<div>{{ _("Supply Date") }}: {{ frappe.utils.formatdate(doc.uae_supply_date) }}</div>
+		{% endif %}
+	</div>
+{% endmacro %}
+
+{# Full layout: per-line unit price, quantity, discount, VAT rate and amount payable. #}
+{% macro render_item_rows(doc, data) %}
+	<table class="items-table">
+		<thead>
+			<tr>
+				<th>{{ _("#") }}</th>
+				<th>{{ _("Description") }} / <span lang="ar">الوصف</span></th>
+				<th>{{ _("Qty") }}</th>
+				<th>{{ _("Unit Price") }} ({{ doc.currency }})</th>
+				<th>{{ _("Discount") }}</th>
+				<th>{{ _("Taxable Amount") }} ({{ doc.currency }})</th>
+				<th>{{ _("VAT %") }}</th>
+				<th>{{ _("VAT Amount") }} ({{ doc.currency }})</th>
+				<th>{{ _("Total") }} ({{ doc.currency }})</th>
+				{% if data.is_foreign_currency %}
+				<th>{{ _("Unit Price") }} ({{ data.company_currency }})</th>
+				<th>{{ _("Total") }} ({{ data.company_currency }})</th>
+				{% endif %}
+			</tr>
+		</thead>
+		<tbody>
+			{% for line in data.lines %}
+			{% set item = line.item %}
+			<tr>
+				<td>{{ item.idx }}</td>
+				<td>{{ item.item_name }}{% if item.uae_vat_category and item.uae_vat_category != "Standard Rated" %}<br><small>{{ item.uae_vat_category }}</small>{% endif %}</td>
+				<td>{{ item.qty }} {{ item.uom or "" }}</td>
+				<td>{{ m(item.price_list_rate or item.rate) }}</td>
+				<td>
+					{% if item.discount_percentage %}{{ "%g" % item.discount_percentage }}%
+					{% elif item.discount_amount %}{{ m(item.discount_amount) }}{% endif %}
+				</td>
+				<td>{{ m(item.net_amount) }}</td>
+				<td>{% if line.vat_rate is not none %}{{ "%g" % line.vat_rate }}%{% endif %}</td>
+				<td>{{ m(line.vat_amount) }}</td>
+				<td>{{ m(line.total) }}</td>
+				{% if data.is_foreign_currency %}
+				<td>{{ m(item.base_price_list_rate or item.base_rate) }}</td>
+				<td>{{ m(line.base_total) }}</td>
+				{% endif %}
+			</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+{% endmacro %}
+
+{# Simplified layout: description and consideration only. #}
+{% macro render_simplified_item_rows(doc, data) %}
+	<table class="items-table">
+		<thead>
+			<tr>
+				<th>{{ _("#") }}</th>
+				<th>{{ _("Description") }} / <span lang="ar">الوصف</span></th>
+				<th>{{ _("Qty") }}</th>
+				<th>{{ _("Amount") }} ({{ doc.currency }})</th>
+				{% if data.is_foreign_currency %}<th>{{ _("Amount") }} ({{ data.company_currency }})</th>{% endif %}
+			</tr>
+		</thead>
+		<tbody>
+			{% for line in data.lines %}
+			<tr>
+				<td>{{ line.item.idx }}</td>
+				<td>{{ line.item.item_name }}</td>
+				<td>{{ line.item.qty }} {{ line.item.uom or "" }}</td>
+				<td>{{ m(line.total) }}</td>
+				{% if data.is_foreign_currency %}<td>{{ m(line.base_total) }}</td>{% endif %}
+			</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+{% endmacro %}
+
+{#
+	Totals in document currency and, for a foreign-currency document, in AED as well (the VAT
+	amounts must be shown in AED). The VAT amount only sums the company's Output VAT account rows;
+	it is None, not 0, when that account is not configured, which prints as a warning.
+#}
+{% macro render_totals(doc, data) %}
+	{{ render_aed_warning(data) }}
+	<table class="totals-table">
+		<tr class="currency-heading">
+			<td></td>
+			<td>{{ doc.currency }}</td>
+			{% if data.is_foreign_currency %}<td>{{ data.company_currency }}</td>{% endif %}
+		</tr>
+		<tr>
+			<td>{{ _("Total Excluding VAT") }} / <span lang="ar">الإجمالي قبل الضريبة</span></td>
+			<td>{{ m(doc.net_total) }}</td>
+			{% if data.is_foreign_currency %}<td>{{ m(doc.base_net_total) }}</td>{% endif %}
+		</tr>
+		<tr>
+			<td>{{ _("Total VAT") }} / <span lang="ar">إجمالي الضريبة</span></td>
+			{% if data.vat is none %}
+				<td colspan="{{ 2 if data.is_foreign_currency else 1 }}"><span class="missing-mandatory-field">{{ _("Output VAT Account not configured in UAE Compliance Settings") }}</span></td>
+			{% else %}
+				<td>{{ m(data.vat) }}</td>
+				{% if data.is_foreign_currency %}<td>{{ m(data.base_vat) }}</td>{% endif %}
+			{% endif %}
+		</tr>
+		<tr class="grand-total-row">
+			<td>{{ _("Total Including VAT") }} / <span lang="ar">الإجمالي شامل الضريبة</span></td>
+			<td>{{ m(doc.grand_total) }}</td>
+			{% if data.is_foreign_currency %}<td>{{ m(doc.base_grand_total) }}</td>{% endif %}
+		</tr>
+		{% if doc.in_words %}
+		<tr><td colspan="{{ 3 if data.is_foreign_currency else 2 }}">{{ _("In Words") }}: {{ doc.in_words }}</td></tr>
+		{% endif %}
+		{% set exchange_disclosure = get_exchange_rate_disclosure(doc) %}
+		{% if exchange_disclosure %}
+		<tr><td colspan="3">{{ exchange_disclosure }}</td></tr>
+		{% endif %}
+	</table>
+{% endmacro %}
+
+{# Figures a tax credit note must show, in AED (ER Art 60(1)). #}
+{% macro render_credit_note_values(doc, data) %}
+	{{ render_aed_warning(data) }}
+	{% set values = get_credit_note_values(doc) %}
+	<table class="totals-table credit-note-values">
+		<tr class="currency-heading"><td></td><td>{{ data.company_currency }}</td></tr>
+		{% if doc.return_against %}
+		<tr>
+			<td>{{ _("Original Invoice") }} / <span lang="ar">الفاتورة الأصلية</span></td>
+			<td>{{ doc.return_against }}</td>
+		</tr>
+		<tr>
+			<td>{{ _("Original Value (excl. VAT)") }}</td>
+			<td>{{ m(values.original_value) }}</td>
+		</tr>
+		<tr>
+			<td>{{ _("Corrected Value (excl. VAT)") }}</td>
+			<td>{{ m(values.corrected_value) }}</td>
+		</tr>
+		<tr>
+			<td>{{ _("Difference (excl. VAT)") }}</td>
+			<td>{{ m(values.difference) }}</td>
+		</tr>
+		<tr>
+			<td>{{ _("Tax on the Difference") }}</td>
+			<td>
+				{% if values.tax_on_difference is none %}
+					<span class="missing-mandatory-field">{{ _("Output VAT Account not configured in UAE Compliance Settings") }}</span>
+				{% else %}
+					{{ m(values.tax_on_difference) }}
+				{% endif %}
+			</td>
+		</tr>
+		{% else %}
+		<tr><td><span class="missing-mandatory-field">{{ _("Reference to the original supply missing. It is required on a tax credit note.") }}</span></td></tr>
+		{% endif %}
+		<tr>
+			<td>{{ _("Reason") }} / <span lang="ar">السبب</span></td>
+			<td>
+				{% if doc.uae_credit_note_reason and doc.uae_credit_note_reason|trim %}{{ doc.uae_credit_note_reason|trim }}
+				{% else %}<span class="missing-mandatory-field">{{ _("Reason missing. It is required on a tax credit note.") }}</span>{% endif %}
+			</td>
+		</tr>
+	</table>
+{% endmacro %}
+
+{% macro render_qr_code(doc) %}
+	{% set qr_code = get_tax_invoice_qr_code(doc) %}
+	{% if qr_code %}
+	<div class="qr-code">
+		<img src="{{ qr_code }}" alt="{{ _("QR Code") }}">
+	</div>
+	{% endif %}
+{% endmacro %}

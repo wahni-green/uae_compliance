@@ -39,6 +39,8 @@
   "mandatory_registration_threshold",
   "voluntary_registration_threshold",
   "settings_currency",
+  "print_section",
+  "show_qr_code",
   "validation_section",
   "trn_pattern",
   "tin_pattern"
@@ -92,6 +94,17 @@
    "hidden": 1,
    "label": "Currency",
    "options": "Currency"
+  },
+  {
+   "fieldname": "print_section",
+   "fieldtype": "Section Break",
+   "label": "Print"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_qr_code",
+   "fieldtype": "Check",
+   "label": "Show QR Code on Tax Invoices"
   },
   {
    "fieldname": "validation_section",

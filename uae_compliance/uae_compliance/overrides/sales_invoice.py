@@ -9,6 +9,7 @@ from uae_compliance.uae_compliance.overrides.vat_checks import (
 	validate_vat_category_tax_consistency,
 )
 from uae_compliance.uae_compliance.utils.company import is_uae_company
+from uae_compliance.uae_compliance.utils.print_data import get_value_before_credit_note
 from uae_compliance.uae_compliance.utils.tax_account import is_einvoicing_company
 
 
@@ -29,6 +30,24 @@ def before_submit(doc, method=None):
 		return
 
 	validate_emirate(doc)
+	validate_credit_note_reason(doc)
+	store_value_before_credit_note(doc)
+
+
+def store_value_before_credit_note(doc) -> None:
+	"""Fix the value a credit note starts from at the moment it is submitted, so that it follows the
+	order of issue and not the order the drafts were created in."""
+	if doc.get("is_return") and doc.get("return_against"):
+		doc.uae_credit_note_original_value = get_value_before_credit_note(doc)
+
+
+def validate_credit_note_reason(doc) -> None:
+	"""A tax credit note must state a brief reason (ER Art 60(1))."""
+	if doc.get("is_return") and not (doc.get("uae_credit_note_reason") or "").strip():
+		frappe.throw(
+			_("Reason for Credit Note is required: a tax credit note must state why it was issued."),
+			title=_("Reason Missing"),
+		)
 
 
 def validate_emirate(doc) -> None:

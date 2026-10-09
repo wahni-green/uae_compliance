@@ -1,3 +1,6 @@
+from uae_compliance.patches.v1.backfill_credit_note_original_value import (
+	execute as backfill_credit_note_original_value,
+)
 from uae_compliance.uae_compliance.setup import (
 	create_custom_fields,
 	create_designated_zones,
@@ -21,6 +24,7 @@ def after_install() -> None:
 	# Patches don't run on a fresh install, so migrate any existing ERPNext UAE data here too.
 	# All of these are idempotent.
 	migrate_item_vat_flags()
+	backfill_credit_note_original_value()
 	migrate_vat_settings()
 	migrate_master_data()
 	migrate_purchase_reverse_charge()
