@@ -9,4 +9,3 @@ execute:from uae_compliance.uae_compliance.setup import set_default_settings; se
 execute:from uae_compliance.uae_compliance.setup import hide_erpnext_uae_fields; hide_erpnext_uae_fields() #1
 uae_compliance.patches.v1.migrate_item_vat_flags
 uae_compliance.patches.v1.migrate_erpnext_uae_data
-uae_compliance.patches.v1.clear_custom_field_descriptions
