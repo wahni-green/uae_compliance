@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 
 import frappe
@@ -11,6 +12,7 @@ from uae_compliance.tests import (
 	make_sales_invoice,
 )
 from uae_compliance.uae_compliance.einvoice import pipeline
+from uae_compliance.uae_compliance.einvoice.asp_client import SubmitResult
 from uae_compliance.uae_compliance.einvoice.exceptions import EInvoiceError, ProviderRejectedError
 from uae_compliance.uae_compliance.einvoice.test_pint_ae import EInvoiceTestCase
 
@@ -80,6 +82,9 @@ class TestSubmission(PipelineTestCase):
 		self.assertEqual(log.direction, "Outbound")
 		self.assertEqual(log.provider, "Mock")
 		self.assertTrue(log.xml.startswith("<?xml"))
+		model = json.loads(log.payload)
+		self.assertEqual((model["number"], model["type_code"]), (doc.name, "380"))
+		self.assertEqual(model["totals"]["payable"], 2100)
 		self.assertTrue(log.uuid)
 		self.assertEqual(log.uuid, frappe.db.get_value("Sales Invoice", doc.name, "uae_einvoice_uuid"))
 		self.assertEqual(frappe.db.get_value("Sales Invoice", doc.name, "uae_einvoice_status"), "Generated")
@@ -133,6 +138,23 @@ class TestSendingAndPolling(PipelineTestCase):
 		self.assertTrue(log.cleared_on)
 		self.assertEqual(frappe.db.get_value("Sales Invoice", doc.name, "uae_einvoice_status"), "Cleared")
 		self.assertGreaterEqual(getdate(log.retain_until), add_years(getdate(), 5))
+
+	def test_the_provider_receives_both_the_xml_and_the_model(self):
+		doc, _enqueue = self.submit()
+		log = self.log_of(doc)
+
+		with patch(
+			"uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.submit",
+			return_value=SubmitResult("REF", "Submitted"),
+		) as submit:
+			pipeline.submit_log(log.name)
+
+		document, key = submit.call_args.args
+		self.assertEqual((document.number, document.uuid), (doc.name, log.uuid))
+		self.assertTrue(document.xml.startswith(b"<?xml"))
+		self.assertEqual(document.model["seller"]["trn"], "100123456789003")
+		self.assertEqual(document.model["lines"][0]["net_amount"], 2000)
+		self.assertEqual(key, log.idempotency_key)
 
 	def test_sending_twice_does_not_send_twice(self):
 		doc, _enqueue = self.submit()

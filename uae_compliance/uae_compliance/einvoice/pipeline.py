@@ -4,6 +4,8 @@ On submission an in-scope invoice gets a UAE E-Invoice Log, its PINT AE XML is b
 it is sent to the company's provider in the background. The scheduler retries transient failures with
 backoff and polls the provider until the invoice is Cleared (reported to the FTA) or Rejected."""
 
+import json
+
 import frappe
 from frappe import _
 from frappe.utils import add_to_date, add_years, cint, get_datetime, getdate, now_datetime
@@ -23,12 +25,13 @@ from uae_compliance.uae_compliance.constants.einvoice import (
 	STATUS_REJECTED,
 	SUBMIT_PENDING_STATUSES,
 )
+from uae_compliance.uae_compliance.einvoice.asp_client import OutgoingDocument
 from uae_compliance.uae_compliance.einvoice.exceptions import (
 	EInvoiceError,
 	EInvoiceNotSupportedError,
 	ProviderRejectedError,
 )
-from uae_compliance.uae_compliance.einvoice.pint_ae_builder import build_xml
+from uae_compliance.uae_compliance.einvoice.pint_ae_builder import build_document, build_xml
 from uae_compliance.uae_compliance.einvoice.registry import get_client, get_company_setting
 from uae_compliance.uae_compliance.einvoice.validators import validate_xml
 from uae_compliance.uae_compliance.utils.company import is_uae_company
@@ -151,10 +154,10 @@ def prepare(log, doc=None):
 	before = doc.get("uae_einvoice_uuid")
 
 	try:
-		xml, _summary = build_xml(doc)
+		xml, _summary, model = build_document(doc)
 		errors = validate_xml(xml)
 	except EInvoiceError as e:
-		xml, errors = b"", [str(e)]
+		xml, model, errors = b"", {}, [str(e)]
 
 	if doc.get("uae_einvoice_uuid") != before:
 		frappe.db.set_value(
@@ -163,6 +166,7 @@ def prepare(log, doc=None):
 
 	log.uuid = doc.get("uae_einvoice_uuid")
 	log.xml = xml.decode() if xml else ""
+	log.payload = frappe.as_json(model) if model else ""
 	log.errors = "\n".join(errors)
 	log.idempotency_key = f"{log.name}-{frappe.generate_hash(length=8)}"
 	log.attempts = 0
@@ -213,9 +217,14 @@ def submit_log(log: str) -> None:
 	try:
 		client = get_client(log.company)
 		result = client.submit(
-			log.xml.encode(),
+			OutgoingDocument(
+				number=log.document_number,
+				uuid=log.uuid,
+				xml=log.xml.encode(),
+				model=json.loads(log.payload) if log.payload else {},
+				metadata={"company": log.company},
+			),
 			log.idempotency_key,
-			{"number": log.document_number, "uuid": log.uuid, "company": log.company},
 		)
 	except ProviderRejectedError as e:
 		log.errors = str(e)

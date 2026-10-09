@@ -12,6 +12,7 @@ from uae_compliance.uae_compliance.constants.einvoice import (
 from uae_compliance.uae_compliance.einvoice.asp_client import (
 	ASPClient,
 	InboundDocument,
+	OutgoingDocument,
 	StatusResult,
 	SubmitResult,
 )
@@ -41,13 +42,13 @@ class MockASP(ASPClient):
 	def _save(self, store: dict) -> None:
 		frappe.cache().set_value(_CACHE_KEY, json.dumps(store))
 
-	def submit(self, xml: bytes, idempotency_key: str, metadata: dict) -> SubmitResult:
+	def submit(self, document: OutgoingDocument, idempotency_key: str) -> SubmitResult:
 		if self.behavior == "timeout":
 			raise GatewayTimeoutError("The mock provider timed out")
 
 		store = self._store()
 		reference = f"MOCK-{idempotency_key}"
-		store.setdefault(reference, {"checks": 0, "bytes": len(xml)})
+		store.setdefault(reference, {"checks": 0, "bytes": len(document.xml)})
 		self._save(store)
 		return SubmitResult(provider_reference=reference, status=STATUS_SUBMITTED, detail="Accepted")
 

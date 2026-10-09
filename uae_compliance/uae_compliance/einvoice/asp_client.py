@@ -23,6 +23,19 @@ class ProviderConfig:
 
 
 @dataclass
+class OutgoingDocument:
+	"""A document ready to send, in both forms providers ask for: the PINT AE XML, and the same
+	invoice as plain data (see PintAEBuilder.build_all) for providers whose API takes the invoice's
+	fields rather than a document. Both carry the same figures."""
+
+	number: str
+	uuid: str
+	xml: bytes
+	model: dict
+	metadata: dict = field(default_factory=dict)
+
+
+@dataclass
 class SubmitResult:
 	provider_reference: str
 	status: str
@@ -58,9 +71,9 @@ class ASPClient(ABC):
 		self.config = config
 
 	@abstractmethod
-	def submit(self, xml: bytes, idempotency_key: str, metadata: dict) -> SubmitResult:
-		"""Send a signed-off document. Sending the same idempotency key twice must not create a
-		second invoice at the provider."""
+	def submit(self, document: OutgoingDocument, idempotency_key: str) -> SubmitResult:
+		"""Send a document. Use whichever form the provider takes. Sending the same idempotency key
+		twice must not create a second invoice at the provider."""
 
 	@abstractmethod
 	def get_status(self, provider_reference: str) -> StatusResult:

@@ -16,7 +16,7 @@ class DemoASP(ASPClient):
 	name = "Demo"
 	required_settings = ("endpoint_url", "client_id", "client_secret")
 
-	def submit(self, xml, idempotency_key, metadata):
+	def submit(self, document, idempotency_key):
 		return SubmitResult("DEMO-1", "Submitted")
 
 	def get_status(self, provider_reference):

@@ -63,6 +63,7 @@
   "status_detail",
   "errors",
   "xml",
+  "payload",
   "response"
  ],
  "fields": [
@@ -212,6 +213,13 @@
    "fieldtype": "Code",
    "label": "XML",
    "options": "XML",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payload",
+   "fieldtype": "Code",
+   "label": "Document Model",
+   "options": "JSON",
    "read_only": 1
   },
   {
