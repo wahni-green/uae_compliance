@@ -98,7 +98,9 @@ CUSTOM_FIELDS = {
 		),
 	],
 	"Purchase Invoice": [
-		_field("uae_vat_section", "UAE VAT", "Section Break", "tax_category"),
+		# Anchored on the last field before the "Taxes and Charges" section, so that section's own
+		# fields are not pulled into this one (a Section Break swallows every field after it).
+		_field("uae_vat_section", "UAE VAT", "Section Break", "base_tax_withholding_net_total"),
 		_field("uae_is_reverse_charge", "Reverse Charge Applicable", "Check", "uae_vat_section"),
 		_field(
 			"uae_reverse_charge_type",
@@ -115,7 +117,6 @@ CUSTOM_FIELDS = {
 			"Check",
 			"uae_reverse_charge_type",
 			depends_on="eval:doc.uae_reverse_charge_type=='Metal Scrap'",
-			description="Metal scrap reverse charge requires the recipient's declaration before the supply date.",
 		),
 		_field("uae_is_gcc_supplier", "GCC Supplier", "Check", "uae_rc_declaration", read_only=1),
 		_field("uae_permit_no", "Import Permit Number", "Data", "uae_is_gcc_supplier"),
@@ -134,7 +135,6 @@ CUSTOM_FIELDS = {
 			"Input VAT Not Recoverable",
 			"Check",
 			"uae_vat_category",
-			description="Blocked input tax, e.g. entertainment. Excluded from recoverable VAT in the return.",
 		),
 	],
 	"Sales Invoice": [

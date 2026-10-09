@@ -66,7 +66,6 @@
   },
   {
    "default": "0",
-   "description": "Mandatory or voluntary e-invoicing: simplified tax invoices are then not allowed (ER Art 59(16)).",
    "fieldname": "issues_e_invoices",
    "fieldtype": "Check",
    "label": "Issues E-Invoices"

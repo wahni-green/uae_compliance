@@ -100,14 +100,12 @@
   },
   {
    "default": "^100[0-9]{12}$",
-   "description": "Regular expression a TRN must match. The FTA publishes no official format or checksum; adjust if needed.",
    "fieldname": "trn_pattern",
    "fieldtype": "Data",
    "label": "TRN Pattern"
   },
   {
    "default": "^1[0-9]{9}$",
-   "description": "Regular expression a 10-digit TIN (used for Peppol e-invoicing) must match.",
    "fieldname": "tin_pattern",
    "fieldtype": "Data",
    "label": "TIN Pattern"
