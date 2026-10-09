@@ -113,7 +113,9 @@ class TestInbound(PipelineTestCase):
 			inbound.receive(self.company)
 			inbound.receive(self.company)
 
-		self.assertEqual(seen, [set(), {"KNOWN-1"}])
+		# Other tests of this class leave documents behind, so only what this one logged is checked.
+		self.assertNotIn("KNOWN-1", seen[0])
+		self.assertIn("KNOWN-1", seen[1])
 
 	def test_a_received_document_is_logged(self):
 		self._enable(**{"REF-1": self._received_xml()})
