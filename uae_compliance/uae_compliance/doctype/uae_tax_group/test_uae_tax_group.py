@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -30,11 +32,36 @@ class TestUAETaxGroup(FrappeTestCase):
 		self.assertEqual(frappe.db.get_value("Company", self.b, "uae_tax_group"), group.name)
 
 	def test_removing_a_member_clears_its_link(self):
+		third = make_uae_company("_Test UAE Group Member C", "TGC")
+		group = self._group(members=[{"company": self.a}, {"company": self.b}, {"company": third}]).insert()
+		self.assertEqual(frappe.db.get_value("Company", third, "uae_tax_group"), group.name)
+
+		group.members = [row for row in group.members if row.company != third]
+		group.save()
+
+		self.assertFalse(frappe.db.get_value("Company", third, "uae_tax_group"))
+		self.assertEqual(frappe.db.get_value("Company", self.a, "uae_tax_group"), group.name)
+		self.assertEqual(frappe.db.get_value("Company", self.b, "uae_tax_group"), group.name)
+
+	def test_a_group_cannot_shrink_below_two_members(self):
 		group = self._group().insert()
-		group.members = [group.members[0], frappe.new_doc("UAE Tax Group Member")]
-		group.members[1].company = self.b
 		group.members = [row for row in group.members if row.company == self.a]
-		self.assertRaises(frappe.ValidationError, group.save)  # a group needs two members
+		self.assertRaises(frappe.ValidationError, group.save)
+
+	def test_member_companies_are_locked_in_a_fixed_order_before_the_check(self):
+		real = frappe.db.get_value
+		locked = []
+
+		def spy(*args, **kwargs):
+			if kwargs.get("for_update") and args[0] == "Company":
+				locked.append(args[1])
+			return real(*args, **kwargs)
+
+		with patch.object(frappe.db, "get_value", side_effect=spy):
+			self._group().insert()
+
+		self.assertEqual(locked, sorted(locked))
+		self.assertEqual(set(locked), {self.a, self.b})
 
 	def test_deleting_the_group_clears_the_links(self):
 		group = self._group().insert()

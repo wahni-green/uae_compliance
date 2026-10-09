@@ -22,15 +22,26 @@ class UAETaxGroup(Document):
 		if self.representative_member not in members:
 			frappe.throw(_("The representative member must be one of the members."))
 
+		# Two groups saved at the same moment could both claim a company, so its row is locked first, in
+		# a fixed order so that two saves cannot wait for each other, and membership is then read with
+		# a locking read, which sees what other saves have committed.
+		for company in sorted(members):
+			frappe.db.get_value("Company", company, "name", for_update=True)
+
 		for company in members:
 			if frappe.get_cached_value("Company", company, "country") != UAE:
 				frappe.throw(_("{0} is not a UAE company.").format(company))
 
-			other = frappe.db.get_value(
-				"UAE Tax Group Member",
-				{"company": company, "parenttype": "UAE Tax Group", "parent": ["!=", self.name]},
-				"parent",
+			other = frappe.db.sql(
+				"""
+				SELECT parent FROM `tabUAE Tax Group Member`
+				WHERE company = %s AND parenttype = 'UAE Tax Group' AND parent != %s
+				LIMIT 1
+				FOR UPDATE
+				""",
+				(company, self.name or ""),
 			)
+			other = other[0][0] if other else None
 			if other:
 				frappe.throw(
 					_("{0} is already a member of the tax group {1}.").format(company, other),

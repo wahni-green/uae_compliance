@@ -11,6 +11,7 @@ from uae_compliance.uae_compliance.constants import (
 	ATTRIBUTION_RESIDUAL,
 )
 from uae_compliance.uae_compliance.constants.vat_return import EMIRATE_BOX_CODES
+from uae_compliance.uae_compliance.utils.vat_return.group import get_internal_parties
 
 EXPENSE_ADJUSTMENTS = (
 	ADJUSTMENT_BAD_DEBT_REPAYMENT,
@@ -35,8 +36,17 @@ def get_adjustments(companies: list[str], from_date, to_date, recovery_ratio: fl
 			"docstatus": 1,
 			"posting_date": ["between", [from_date, to_date]],
 		},
-		fields=["adjustment_type", "emirate", "amount", "vat_amount", "input_tax_attribution"],
+		fields=[
+			"adjustment_type",
+			"emirate",
+			"amount",
+			"vat_amount",
+			"input_tax_attribution",
+			"sales_invoice",
+			"purchase_invoice",
+		],
 	)
+	rows = _without_intra_group_bad_debt(rows, companies)
 
 	by_emirate = dict.fromkeys(EMIRATE_BOX_CODES.values(), 0.0)
 	expenses = 0.0
@@ -71,3 +81,23 @@ def get_adjustments(companies: list[str], from_date, to_date, recovery_ratio: fl
 		"residual_input_vat": residual_vat,
 		"residual_recoverable_vat": residual_recovered,
 	}
+
+
+def _without_intra_group_bad_debt(rows: list, companies: list[str]) -> list:
+	"""Supplies between the members of a tax group are disregarded, so the bad debt relief or
+	repayment of such a supply has nothing to adjust."""
+	if len(companies) < 2:
+		return rows
+
+	customers = get_internal_parties("Customer", companies)
+	suppliers = get_internal_parties("Supplier", companies)
+
+	def is_internal(row) -> bool:
+		if row.sales_invoice:
+			return frappe.db.get_value("Sales Invoice", row.sales_invoice, "customer") in customers
+		if row.purchase_invoice:
+			return frappe.db.get_value("Purchase Invoice", row.purchase_invoice, "supplier") in suppliers
+
+		return False
+
+	return [row for row in rows if not is_internal(row)]

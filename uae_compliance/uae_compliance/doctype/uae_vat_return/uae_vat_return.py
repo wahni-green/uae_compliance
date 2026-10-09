@@ -21,7 +21,11 @@ from uae_compliance.uae_compliance.utils.vat_return.apportionment import (
 	get_period_supplies,
 	get_recovery_ratio,
 )
-from uae_compliance.uae_compliance.utils.vat_return.group import get_group_rows, get_return_companies
+from uae_compliance.uae_compliance.utils.vat_return.group import (
+	get_group_rows,
+	get_return_companies,
+	get_scope,
+)
 from uae_compliance.uae_compliance.utils.vat_return.period import (
 	get_due_date,
 	get_filing_frequency,
@@ -105,6 +109,11 @@ class UAEVATReturn(Document):
 		if not (self.generated_for_company and self.generated_for_from_date and self.generated_for_to_date):
 			return True
 
+		# The boxes cover the group as it was when they were generated. A member added or removed since
+		# makes them stale, and so does the company ceasing to be the representative.
+		if self.generated_for_companies != ",".join(get_scope(self.company)):
+			return True
+
 		return not (
 			self.company == self.generated_for_company
 			and getdate(self.from_date) == getdate(self.generated_for_from_date)
@@ -120,6 +129,7 @@ class UAEVATReturn(Document):
 		self.total_recoverable_tax = 0
 		self.payable_tax = 0
 		self.generated_for_company = None
+		self.generated_for_companies = None
 		self.generated_for_from_date = None
 		self.generated_for_to_date = None
 
@@ -203,6 +213,7 @@ class UAEVATReturn(Document):
 		self.payable_tax = get_payable_tax(self.total_due_tax, self.total_recoverable_tax)
 
 		self.generated_for_company = self.company
+		self.generated_for_companies = ",".join(get_scope(self.company))
 		self.generated_for_from_date = self.from_date
 		self.generated_for_to_date = self.to_date
 

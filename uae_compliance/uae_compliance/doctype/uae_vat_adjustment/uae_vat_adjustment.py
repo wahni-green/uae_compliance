@@ -12,7 +12,7 @@ from uae_compliance.uae_compliance.constants import (
 from uae_compliance.uae_compliance.constants.vat_return import EMIRATE_BOX_CODES
 from uae_compliance.uae_compliance.utils.print_data import get_output_vat_amount
 from uae_compliance.uae_compliance.utils.vat_return.apportionment import get_annual_apportionment
-from uae_compliance.uae_compliance.utils.vat_return.group import get_return_owner
+from uae_compliance.uae_compliance.utils.vat_return.group import get_return_owner, is_intra_group
 
 
 class UAEVATAdjustment(Document):
@@ -108,7 +108,15 @@ class UAEVATAdjustment(Document):
 		invoice = frappe.db.get_value(
 			"Sales Invoice",
 			self.sales_invoice,
-			["company", "docstatus", "is_return", "posting_date", "uae_supply_date", "uae_emirate"],
+			[
+				"company",
+				"docstatus",
+				"is_return",
+				"posting_date",
+				"uae_supply_date",
+				"uae_emirate",
+				"customer",
+			],
 			as_dict=True,
 		)
 		if invoice.company != self.company or invoice.docstatus != 1 or invoice.is_return:
@@ -162,6 +170,7 @@ class UAEVATAdjustment(Document):
 				)
 
 		self.validate_negative_vat()
+		self.validate_not_intra_group("Customer", invoice.customer, self.sales_invoice)
 		self.validate_within_invoice_vat()
 
 	def validate_bad_debt_repayment(self):
@@ -171,7 +180,10 @@ class UAEVATAdjustment(Document):
 			return
 
 		invoice = frappe.db.get_value(
-			"Purchase Invoice", self.purchase_invoice, ["company", "docstatus", "is_return"], as_dict=True
+			"Purchase Invoice",
+			self.purchase_invoice,
+			["company", "docstatus", "is_return", "supplier"],
+			as_dict=True,
 		)
 		if invoice.company != self.company or invoice.docstatus != 1 or invoice.is_return:
 			frappe.throw(
@@ -195,6 +207,18 @@ class UAEVATAdjustment(Document):
 			)
 
 		self.validate_negative_vat()
+		self.validate_not_intra_group("Supplier", invoice.supplier, self.purchase_invoice)
+
+	def validate_not_intra_group(self, party_doctype: str, party: str, invoice: str):
+		"""Supplies between the members of a tax group are disregarded for VAT, so there is no VAT
+		on them to relieve."""
+		if is_intra_group(self.company, party_doctype, party):
+			frappe.throw(
+				_(
+					"{0} is a supply between members of the same tax group, which is disregarded for VAT."
+				).format(invoice),
+				title=_("Intra-Group Supply"),
+			)
 
 	def validate_negative_vat(self):
 		if flt(self.vat_amount) >= 0:

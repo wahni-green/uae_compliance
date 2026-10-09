@@ -1,7 +1,10 @@
 import frappe
 from frappe import _
 
-from uae_compliance.uae_compliance.utils.tax_account import get_output_vat_account
+from uae_compliance.uae_compliance.utils.tax_account import (
+	get_input_vat_account,
+	get_output_vat_account,
+)
 from uae_compliance.uae_compliance.utils.vat_return import get_invoice_rows
 
 _PARTY = {"Sales Invoice": ("Customer", "customer"), "Purchase Invoice": ("Supplier", "supplier")}
@@ -54,7 +57,17 @@ def get_group_rows(doctype: str, company: str, from_date, to_date) -> list:
 
 	rows = []
 	for name in companies:
-		rows.extend(get_invoice_rows(doctype, name, from_date, to_date))
+		company_rows = get_invoice_rows(doctype, name, from_date, to_date)
+		# Without an Input VAT account the recoverable VAT of a company's purchases would silently be zero.
+		if company_rows and doctype == "Purchase Invoice" and not get_input_vat_account(name):
+			frappe.throw(
+				_(
+					"{0} has purchases in this period, so its Input VAT Account must be configured in UAE Compliance Settings."
+				).format(name),
+				title=_("VAT Accounts Not Configured"),
+			)
+
+		rows.extend(company_rows)
 
 	if len(companies) > 1:
 		rows = exclude_intra_group(rows, doctype, companies)
@@ -62,9 +75,37 @@ def get_group_rows(doctype: str, company: str, from_date, to_date) -> list:
 	return rows
 
 
+def get_scope(company: str) -> tuple[str, ...]:
+	"""The companies a return generated for `company` covers right now, as a sorted tuple. A member that
+	is not the representative has no return of its own."""
+	group = frappe.db.get_value("Company", company, "uae_tax_group")
+	if not group:
+		return (company,)
+
+	tax_group = frappe.get_doc("UAE Tax Group", group)
+	if tax_group.representative_member != company:
+		return (f"member of {group}",)
+
+	return tuple(sorted(row.company for row in tax_group.members))
+
+
+def get_internal_parties(party_doctype: str, companies: list[str]) -> set[str]:
+	"""Customers or suppliers that stand for one of the companies, i.e. the other members of a group."""
+	return set(frappe.get_all(party_doctype, filters={"represents_company": ["in", companies]}, pluck="name"))
+
+
+def is_intra_group(company: str, party_doctype: str, party: str) -> bool:
+	"""Whether a sale to a customer or a purchase from a supplier is between two members of the
+	company's tax group."""
+	group = frappe.db.get_value("Company", company, "uae_tax_group")
+	if not group or not party:
+		return False
+
+	members = [row.company for row in frappe.get_doc("UAE Tax Group", group).members]
+	return frappe.db.get_value(party_doctype, party, "represents_company") in members
+
+
 def exclude_intra_group(rows: list, doctype: str, companies: list[str]) -> list:
 	party_doctype, party_field = _PARTY[doctype]
-	internal = set(
-		frappe.get_all(party_doctype, filters={"represents_company": ["in", companies]}, pluck="name")
-	)
+	internal = get_internal_parties(party_doctype, companies)
 	return [row for row in rows if row.get(party_field) not in internal]
