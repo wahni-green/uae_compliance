@@ -444,6 +444,32 @@ class TestValidators(EInvoiceTestCase):
 
 		self.assertIn("AED line amount or VAT amount does not match", " ".join(self._problems(mutate)))
 
+	def test_a_foreign_line_with_a_rounded_vat_still_passes(self):
+		"""1.09 at 5% VAT is 0.05 in USD (rounded) and 0.60 at a rate of 12, not 0.654."""
+		abbr = frappe.get_cached_value("Company", self.company, "abbr")
+		account = f"Debtors USD - {abbr}"
+		if not frappe.db.exists("Account", account):
+			frappe.get_doc(
+				{
+					"doctype": "Account",
+					"account_name": "Debtors USD",
+					"company": self.company,
+					"parent_account": f"Accounts Receivable - {abbr}",
+					"account_type": "Receivable",
+					"account_currency": "USD",
+				}
+			).insert()
+
+		doc = self.invoice(
+			[{"item_code": "_Test EInv Service", "rate": 1.09}],
+			currency="USD",
+			conversion_rate=12,
+			debit_to=account,
+		)
+		xml_bytes = build_xml(doc)[0]
+
+		self.assertEqual(validate_xml(xml_bytes), [])
+
 	def test_aed_figures_follow_the_exchange_rate(self):
 		abbr = frappe.get_cached_value("Company", self.company, "abbr")
 		account = f"Debtors USD - {abbr}"

@@ -203,7 +203,8 @@ def _check_lines(xml, line_tag: str, is_credit_note: bool) -> list[str]:
 			if not extension_tax or not extension_amount:
 				errors.append(_("Line {0}: the AED line amount and VAT amount are required.").format(number))
 			else:
-				vat = net * flt(rate) / 100
+				# The builder rounds the VAT in the document currency before converting it.
+				vat = flt(net * flt(rate) / 100, 2)
 				if (
 					abs(flt(extension_tax) - vat * rate_to_aed) > AED_TOLERANCE
 					or abs(flt(extension_amount) - (net + vat) * rate_to_aed) > AED_TOLERANCE
