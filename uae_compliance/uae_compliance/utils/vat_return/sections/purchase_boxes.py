@@ -46,7 +46,14 @@ def get_purchase_boxes(company: str, from_date, to_date, rows: list | None = Non
 		"reverse_charge_supplies": summarize_box(buckets[REVERSE_CHARGE], "output_vat_amount"),
 		"imports": summarize_box(buckets[POSTPONED_IMPORT], "output_vat_amount"),
 		"standard_rated_expenses": summarize_box(buckets[ORDINARY], "input_vat_amount"),
+		# Rows flagged as non-recoverable input tax keep their VAT due in boxes 3 and 6 but recover
+		# nothing in box 10.
 		"reverse_charge_expenses": summarize_box(
-			buckets[REVERSE_CHARGE] + buckets[POSTPONED_IMPORT], "input_vat_amount"
+			[
+				row
+				for row in buckets[REVERSE_CHARGE] + buckets[POSTPONED_IMPORT]
+				if not row.uae_input_tax_not_recoverable
+			],
+			"input_vat_amount",
 		),
 	}

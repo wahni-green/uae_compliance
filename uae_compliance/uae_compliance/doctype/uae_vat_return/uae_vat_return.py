@@ -51,6 +51,7 @@ class UAEVATReturn(Document):
 			self.warn_if_period_mismatch()
 
 		self.validate_filed_is_immutable()
+		self.validate_can_be_filed()
 		self._clear_boxes_if_stale()
 
 	def warn_if_period_mismatch(self):
@@ -70,6 +71,23 @@ class UAEVATReturn(Document):
 
 		if self._get_locked_persisted_status() == "Filed":
 			frappe.throw(_("A Filed return cannot be modified."), title=_("Return Already Filed"))
+
+	def validate_can_be_filed(self):
+		"""A return may only become Filed through generated, current boxes, whichever way the status
+		is set. Without this a direct save with status Filed would skip the checks mark_as_filed()
+		makes and lock an empty return permanently."""
+		if self.status != "Filed":
+			return
+
+		if not self.boxes:
+			frappe.throw(_("Generate the return before filing it."))
+
+		if self._boxes_are_stale():
+			frappe.throw(
+				_(
+					"The generated boxes no longer match this return's Company, From Date and To Date. Regenerate the return before filing it."
+				)
+			)
 
 	def _boxes_are_stale(self) -> bool:
 		"""`boxes` is a snapshot computed from company, from date and to date, which stay editable.
@@ -170,17 +188,13 @@ class UAEVATReturn(Document):
 		if self.status == "Filed":
 			frappe.throw(_("This return has already been filed."))
 
-		if not self.boxes:
-			frappe.throw(_("Generate the return before filing it."))
-
-		if self._boxes_are_stale():
-			frappe.throw(
-				_(
-					"The generated boxes no longer match this return's Company, From Date and To Date. Regenerate the return before filing it."
-				)
-			)
-
 		self.status = "Filed"
+		try:
+			self.validate_can_be_filed()
+		except frappe.ValidationError:
+			self.status = "Draft"
+			raise
+
 		self.save()
 
 	@frappe.whitelist()

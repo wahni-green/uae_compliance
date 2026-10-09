@@ -139,6 +139,34 @@ class TestVATReturnGeneration(VATReturnTestCase):
 
 		self.assertEqual(_boxes(doc)["8"].amount, 0)
 
+	def test_blocked_input_vat_is_not_recovered_on_reverse_charge_purchases(self):
+		create_submitted_purchase_invoice(
+			[{"rate": 100, "uae_input_tax_not_recoverable": 1}],
+			taxes=[(self.output, 5, "Deduct"), (self.input, 5, "Add")],
+			posting_date=self.date,
+			uae_is_reverse_charge=1,
+			uae_reverse_charge_type="Import of Services",
+		)
+		doc = self.new_return()
+		doc.generate_return()
+		boxes = _boxes(doc)
+
+		# The VAT due is still declared in box 3, but nothing is recovered in box 10.
+		self.assertEqual((boxes["3"].amount, boxes["3"].vat_amount), (100, 5))
+		self.assertEqual((boxes["10"].amount, boxes["10"].vat_amount), (0, 0))
+
+	def test_tourist_refund_is_converted_to_company_currency(self):
+		from uae_compliance.uae_compliance.utils.vat_return.sections.sales_boxes import (
+			get_tourist_refund,
+		)
+
+		rows = [
+			frappe._dict(invoice="A", uae_tourist_refund=20, conversion_rate=3.6725),
+			frappe._dict(invoice="A", uae_tourist_refund=20, conversion_rate=3.6725),
+			frappe._dict(invoice="B", uae_tourist_refund=10, conversion_rate=1),
+		]
+		self.assertAlmostEqual(get_tourist_refund(rows), 20 * 3.6725 + 10)
+
 	def test_tourist_refund_reduces_output_vat(self):
 		self.sale(rate=1000, uae_tourist_refund=20)
 		doc = self.new_return()
@@ -213,6 +241,28 @@ class TestVATReturnLifecycle(VATReturnTestCase):
 			}
 		)
 		self.assertRaises(frappe.ValidationError, doc.insert)
+
+	def test_a_direct_save_cannot_file_an_empty_return(self):
+		doc = self.new_return()
+		doc.status = "Filed"
+		self.assertRaises(frappe.ValidationError, doc.save)
+
+		fresh = frappe.get_doc(
+			{
+				"doctype": "UAE VAT Return",
+				"company": self.company,
+				"from_date": self.date,
+				"to_date": self.date,
+				"status": "Filed",
+			}
+		)
+		self.assertRaises(frappe.ValidationError, fresh.insert)
+		self.assertEqual(frappe.db.get_value("UAE VAT Return", doc.name, "status"), "Draft")
+
+	def test_failed_filing_leaves_the_status_as_draft(self):
+		doc = self.new_return()
+		self.assertRaises(frappe.ValidationError, doc.mark_as_filed)
+		self.assertEqual(doc.status, "Draft")
 
 	def test_cannot_file_before_generating(self):
 		doc = self.new_return()

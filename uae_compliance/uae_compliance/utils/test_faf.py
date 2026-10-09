@@ -98,8 +98,46 @@ class TestFAF(VATReturnTestCase):
 		self.assertEqual(len(line), len(header))
 		self.assertEqual(line[0], "Acme  Trading LLC")
 
+	def test_ledger_access_is_required_to_export(self):
+		from unittest.mock import patch
+
+		real = frappe.has_permission
+
+		def deny_ledger(doctype=None, *args, **kwargs):
+			if doctype == "GL Entry":
+				if kwargs.get("throw"):
+					raise frappe.PermissionError
+				return False
+			return real(doctype, *args, **kwargs)
+
+		with patch("frappe.has_permission", side_effect=deny_ledger):
+			self.assertRaises(frappe.PermissionError, self._generate)
+
+	def test_account_ids_use_the_account_number(self):
+		from uae_compliance.uae_compliance.utils.faf import _account_ids
+
+		account = frappe.db.get_value("Account", {"company": self.company, "is_group": 0}, "name")
+		frappe.db.set_value("Account", account, "account_number", "1001")
+
+		self.assertEqual(_account_ids({account}), {account: "1001"})
+
+	def test_clashing_account_ids_are_refused(self):
+		from uae_compliance.uae_compliance.utils.faf import _account_ids
+
+		long_name = "A" * 25
+		accounts = {long_name + "1", long_name + "2"}
+		with patch_numbers():
+			self.assertRaises(frappe.ValidationError, _account_ids, accounts)
+
 	def test_download_faf_requires_read_permission(self):
 		doc = self.new_return()
 		frappe.set_user("Guest")
 		self.addCleanup(frappe.set_user, "Administrator")
 		self.assertRaises(frappe.PermissionError, doc.download_faf)
+
+
+def patch_numbers():
+	"""Two account names that only differ after the 20th character, with no account numbers."""
+	from unittest.mock import patch
+
+	return patch("frappe.get_all", return_value=[])

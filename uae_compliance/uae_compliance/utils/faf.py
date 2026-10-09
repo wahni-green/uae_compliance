@@ -11,6 +11,7 @@ import csv
 import io
 
 import frappe
+from frappe import _
 from frappe.utils import flt, formatdate, getdate, now_datetime
 
 import uae_compliance
@@ -28,7 +29,11 @@ REVERSE_CHARGE_CODE = "RC"
 def generate_faf(company: str, from_date, to_date) -> str:
 	"""The FAF for a company and period as CSV text: each table is a header row, its data rows and,
 	for the three listings, a totals row, separated by a blank line."""
+	# The export reads invoices and ledger entries through queries that bypass per-document
+	# permissions, so access to each is checked up front. Reading the return is not enough.
 	frappe.has_permission("Company", "read", doc=company, throw=True)
+	for doctype in ("Sales Invoice", "Purchase Invoice", "GL Entry"):
+		frappe.has_permission(doctype, "read", throw=True)
 
 	sections = [
 		_company_information(company, from_date, to_date),
@@ -300,6 +305,37 @@ def _line_numbers(child_doctype: str, invoices: dict) -> dict:
 	)
 
 
+def _account_ids(accounts: set[str]) -> dict[str, str]:
+	"""The 20 character AccountID of each account: its account number if it has one, else its
+	name. Two accounts that would end up with the same ID are refused rather than merged, because an
+	auditor reading the file could not tell them apart."""
+	numbers = dict(
+		frappe.get_all(
+			"Account",
+			filters={"name": ["in", list(accounts)]},
+			fields=["name", "account_number"],
+			as_list=True,
+		)
+	)
+	ids = {account: _text(numbers.get(account) or account, 20) for account in accounts}
+
+	by_id: dict[str, list[str]] = {}
+	for account, account_id in ids.items():
+		by_id.setdefault(account_id, []).append(account)
+
+	clashes = {account_id: names for account_id, names in by_id.items() if len(names) > 1}
+	if clashes:
+		account_id, names = next(iter(clashes.items()))
+		frappe.throw(
+			_(
+				"The FAF limits an account ID to 20 characters, and these accounts would share the ID {0}: {1}. Give them account numbers."
+			).format(frappe.bold(account_id), ", ".join(sorted(names))),
+			title=_("Account IDs Clash"),
+		)
+
+	return ids
+
+
 def _general_ledger(company: str, from_date, to_date):
 	entries = frappe.get_all(
 		"GL Entry",
@@ -322,6 +358,7 @@ def _general_ledger(company: str, from_date, to_date):
 		order_by="posting_date, account, voucher_no, creation",
 	)
 	company_currency = frappe.get_cached_value("Company", company, "default_currency")
+	account_ids = _account_ids({entry.account for entry in entries})
 
 	headers = [
 		"TransactionDate",
@@ -345,7 +382,7 @@ def _general_ledger(company: str, from_date, to_date):
 		data.append(
 			[
 				_date(entry.posting_date),
-				_text(entry.account, 20),
+				account_ids[entry.account],
 				_text(entry.account, 100),
 				_text(entry.remarks, 250),
 				_text(entry.party, 100),

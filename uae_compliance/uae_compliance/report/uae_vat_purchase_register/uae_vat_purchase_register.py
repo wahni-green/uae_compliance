@@ -119,6 +119,7 @@ def get_data(filters) -> list[dict]:
 		)
 		entry["amount"] += row.base_net_amount or 0
 		entry["vat_due"] += (row.output_vat_amount or 0) if bucket != ORDINARY else 0
-		entry["recoverable_vat"] += row.input_vat_amount or 0
+		if not row.uae_input_tax_not_recoverable:
+			entry["recoverable_vat"] += row.input_vat_amount or 0
 
 	return sorted(grouped.values(), key=lambda entry: (entry["box"], entry["posting_date"], entry["invoice"]))

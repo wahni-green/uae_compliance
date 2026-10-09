@@ -40,6 +40,31 @@ class TestRegisters(VATReturnTestCase):
 			),
 		)
 
+	def test_sales_register_lists_tourist_refunds_in_box_2(self):
+		self.sale(rate=1000, uae_tourist_refund=20)
+		doc = self.new_return()
+		doc.generate_return()
+
+		_columns, data = uae_vat_sales_register.execute(self._filters())
+		by_box = {row["box"]: row for row in data}
+
+		self.assertEqual(by_box["2"]["vat_amount"], -20)
+		# The register's VAT adds up to the VAT due on the return.
+		self.assertEqual(sum(row["vat_amount"] for row in data), doc.total_due_tax)
+
+	def test_purchase_register_shows_no_recoverable_vat_for_blocked_rows(self):
+		create_submitted_purchase_invoice(
+			[{"rate": 100, "uae_input_tax_not_recoverable": 1}],
+			taxes=[(self.output, 5, "Deduct"), (self.input, 5, "Add")],
+			posting_date=self.date,
+			uae_is_reverse_charge=1,
+			uae_reverse_charge_type="Import of Services",
+		)
+
+		_columns, data = uae_vat_purchase_register.execute(self._filters())
+
+		self.assertEqual((data[0]["vat_due"], data[0]["recoverable_vat"]), (5, 0))
+
 	def test_purchase_register_lists_reported_purchases_only(self):
 		create_submitted_purchase_invoice(
 			[{"rate": 500}], taxes=[(self.input, 5, "Add")], posting_date=self.date
