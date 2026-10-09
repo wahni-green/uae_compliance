@@ -93,13 +93,29 @@ class TestPurchaseInvoice(FrappeTestCase):
 		self.assertRaises(frappe.ValidationError, doc.insert)
 
 	def test_valuation_only_row_does_not_offset_the_supplier_total(self):
-		configure_vat_settings(self.company)
-		doc = self._invoice(
-			rc_rows=[(self.output, 5, "Deduct"), (self.input, 5, "Add", "Valuation")],
-			uae_is_reverse_charge=1,
-			uae_reverse_charge_type="Import of Services",
+		# ERPNext resets "Valuation" to "Total" on invoices with no stock item, so exercise the
+		# check directly with rows as a stock invoice would carry them.
+		from uae_compliance.uae_compliance.overrides.purchase_invoice import (
+			validate_reverse_charge_nets_to_zero,
 		)
-		self.assertRaises(frappe.ValidationError, doc.insert)
+
+		configure_vat_settings(self.company)
+
+		def row(account, add_deduct, category):
+			return frappe._dict(
+				account_head=account, add_deduct_tax=add_deduct, category=category, tax_amount=5.0
+			)
+
+		balanced = frappe._dict(
+			company=self.company, taxes=[row(self.output, "Deduct", "Total"), row(self.input, "Add", "Total")]
+		)
+		validate_reverse_charge_nets_to_zero(balanced)
+
+		valuation_only = frappe._dict(
+			company=self.company,
+			taxes=[row(self.output, "Deduct", "Total"), row(self.input, "Add", "Valuation")],
+		)
+		self.assertRaises(frappe.ValidationError, validate_reverse_charge_nets_to_zero, valuation_only)
 
 	def test_reverse_charge_rows_of_different_amounts_are_rejected(self):
 		configure_vat_settings(self.company)
