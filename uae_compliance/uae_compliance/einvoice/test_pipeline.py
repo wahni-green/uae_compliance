@@ -304,6 +304,17 @@ class TestSendingAndPolling(PipelineTestCase):
 
 		self.assertEqual(frappe.db.get_value("UAE E-Invoice Log", log.name, "status"), "Submitted")
 
+	def test_a_send_refused_for_changed_settings_leaves_the_invoice_cancellable(self):
+		doc, _enqueue = self.submit()
+		log = self.log_of(doc)
+		frappe.db.set_value("UAE E-Invoice Log", log.name, "environment", "Production")
+
+		pipeline.submit_log(log.name)
+
+		doc.reload()
+		doc.cancel()
+		self.assertEqual(doc.docstatus, 2)
+
 	def test_a_sent_document_cannot_be_retried(self):
 		doc, _enqueue = self.submit()
 		log = self.settle(self.log_of(doc), polls=1)

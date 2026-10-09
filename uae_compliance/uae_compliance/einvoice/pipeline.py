@@ -251,10 +251,13 @@ def submit_log(log: str) -> None:
 		return
 
 	log.attempts = cint(log.attempts) + 1
-	log.last_attempt_on = now_datetime()
 
 	try:
-		result = _client_for(log).submit(
+		client = _client_for(log)
+		# Only a call that can reach the provider makes the outcome uncertain; a settings problem
+		# found before it leaves the invoice as unsent as it was.
+		log.last_attempt_on = now_datetime()
+		result = client.submit(
 			OutgoingDocument(
 				number=log.document_number,
 				uuid=log.uuid,
