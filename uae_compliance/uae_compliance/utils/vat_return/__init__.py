@@ -25,7 +25,7 @@ _PARENT_FIELDS = {
 	),
 }
 
-_CHILD_FIELDS = {"Purchase Invoice": ("uae_input_tax_not_recoverable",)}
+_CHILD_FIELDS = {"Purchase Invoice": ("uae_input_tax_not_recoverable", "uae_input_tax_attribution")}
 
 
 def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:

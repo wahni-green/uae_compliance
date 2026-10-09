@@ -18,12 +18,17 @@ from uae_compliance.uae_compliance.constants.vat_return import (
 )
 from uae_compliance.uae_compliance.utils.tax_account import get_output_vat_account
 from uae_compliance.uae_compliance.utils.vat_return import get_invoice_rows
+from uae_compliance.uae_compliance.utils.vat_return.apportionment import (
+	get_period_supplies,
+	get_recovery_ratio,
+)
 from uae_compliance.uae_compliance.utils.vat_return.period import (
 	get_due_date,
 	get_filing_frequency,
 	get_period_type,
 	get_period_warning,
 )
+from uae_compliance.uae_compliance.utils.vat_return.sections.adjustments import get_adjustments
 from uae_compliance.uae_compliance.utils.vat_return.sections.purchase_boxes import get_purchase_boxes
 from uae_compliance.uae_compliance.utils.vat_return.sections.sales_boxes import get_sales_boxes
 from uae_compliance.uae_compliance.utils.vat_return.sections.standard_rated_by_emirate import (
@@ -36,8 +41,6 @@ from uae_compliance.uae_compliance.utils.vat_return.totals import (
 	get_total_due_tax,
 	get_total_recoverable_tax,
 )
-
-_EMPTY_BOX = {"amount": 0.0, "vat_amount": 0.0, "adjustment": 0.0}
 
 
 class UAEVATReturn(Document):
@@ -159,9 +162,21 @@ class UAEVATReturn(Document):
 			self.company, self.from_date, self.to_date, rows=sales_rows
 		)
 		sales = get_sales_boxes(self.company, self.from_date, self.to_date, rows=sales_rows)
-		purchases = get_purchase_boxes(self.company, self.from_date, self.to_date, rows=purchase_rows)
 
-		box_rows = list(_build_box_rows(by_emirate, sales, purchases))
+		taxable, exempt = get_period_supplies(sales_rows)
+		recovery_ratio = get_recovery_ratio(taxable, exempt)
+		purchases = get_purchase_boxes(
+			self.company, self.from_date, self.to_date, rows=purchase_rows, recovery_ratio=recovery_ratio
+		)
+		adjustments = get_adjustments([self.company], self.from_date, self.to_date)
+
+		box_rows = list(_build_box_rows(by_emirate, sales, purchases, adjustments))
+
+		self.recovery_ratio = recovery_ratio
+		self.taxable_supplies_value = taxable
+		self.exempt_supplies_value = exempt
+		self.residual_input_vat = purchases["residual_input_vat"]
+		self.residual_recoverable_vat = purchases["residual_recoverable_vat"]
 
 		self.boxes = []
 		for box_code, description, box in box_rows:
@@ -208,13 +223,13 @@ class UAEVATReturn(Document):
 		frappe.response["type"] = "download"
 
 
-def _build_box_rows(by_emirate, sales, purchases):
+def _build_box_rows(by_emirate, sales, purchases, adjustments):
 	"""Yield (box code, description, box) in the order of the VAT 201 form, with the totals rows
 	(8 and 11) computed from the rows above them."""
 	sales_boxes = []
 
 	for emirate, box_code in EMIRATE_BOX_CODES.items():
-		box = by_emirate[box_code]
+		box = {**by_emirate[box_code], "adjustment": adjustments["by_emirate"][box_code]}
 		sales_boxes.append(box)
 		yield box_code, _("Standard rated supplies in {0}").format(_(emirate)), box
 
@@ -228,7 +243,7 @@ def _build_box_rows(by_emirate, sales, purchases):
 		(BOX_ZERO_RATED, _("Zero rated supplies"), _amount_only(sales["zero_rated"])),
 		(BOX_EXEMPT, _("Exempt supplies"), _amount_only(sales["exempt"])),
 		(BOX_IMPORTS, _("Goods imported into the UAE"), purchases["imports"]),
-		(BOX_IMPORT_ADJUSTMENTS, _("Adjustments to goods imported into the UAE"), _EMPTY_BOX),
+		(BOX_IMPORT_ADJUSTMENTS, _("Adjustments to goods imported into the UAE"), adjustments["imports"]),
 	]
 	for code, description, box in rows:
 		sales_boxes.append(box)
@@ -236,7 +251,10 @@ def _build_box_rows(by_emirate, sales, purchases):
 
 	yield BOX_SALES_TOTALS, _("Totals"), get_sales_totals(sales_boxes)
 
-	expense_boxes = [purchases["standard_rated_expenses"], purchases["reverse_charge_expenses"]]
+	expense_boxes = [
+		{**purchases["standard_rated_expenses"], "adjustment": adjustments["expenses"]},
+		purchases["reverse_charge_expenses"],
+	]
 	yield BOX_STANDARD_RATED_EXPENSES, _("Standard rated expenses"), expense_boxes[0]
 	yield (
 		BOX_REVERSE_CHARGE_EXPENSES,

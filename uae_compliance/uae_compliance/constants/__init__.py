@@ -44,3 +44,31 @@ IMPORT_OF_SERVICES_TYPE = "Import of Services"
 
 # Tax invoice must be issued within 14 days of the supply (Decree-Law Art 67, ER Art 59(13)).
 TAX_INVOICE_ISSUE_DAYS = 14
+
+# Adjustments that are not transactions, reported in the adjustment columns of the VAT 201.
+ADJUSTMENT_BAD_DEBT_RELIEF = "Bad Debt Relief"
+ADJUSTMENT_BAD_DEBT_REPAYMENT = "Bad Debt Repayment"
+ADJUSTMENT_ANNUAL_APPORTIONMENT = "Annual Apportionment"
+ADJUSTMENT_CAPITAL_ASSETS = "Capital Assets Scheme"
+ADJUSTMENT_IMPORT = "Import Adjustment"
+ADJUSTMENT_TYPES = [
+	ADJUSTMENT_BAD_DEBT_RELIEF,
+	ADJUSTMENT_BAD_DEBT_REPAYMENT,
+	ADJUSTMENT_ANNUAL_APPORTIONMENT,
+	ADJUSTMENT_CAPITAL_ASSETS,
+	ADJUSTMENT_IMPORT,
+]
+ADJUSTMENT_TYPE_SELECT_OPTIONS = "\n".join(ADJUSTMENT_TYPES)
+
+# Bad debt relief needs more than six months to have passed (Decree-Law Art 64).
+BAD_DEBT_MONTHS = 6
+
+# Input tax attribution for partial exemption (ER Art 55).
+INPUT_TAX_ATTRIBUTIONS = ["Taxable Supplies", "Exempt Supplies", "Residual"]
+INPUT_TAX_ATTRIBUTION_SELECT_OPTIONS = "\n" + "\n".join(INPUT_TAX_ATTRIBUTIONS)
+ATTRIBUTION_EXEMPT = "Exempt Supplies"
+ATTRIBUTION_RESIDUAL = "Residual"
+
+# Capital assets scheme (ER Arts 57-58).
+CAPITAL_ASSET_THRESHOLD = 5_000_000
+CAPITAL_ASSET_YEARS = {"Building": 10, "Other": 5}

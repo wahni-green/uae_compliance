@@ -67,6 +67,13 @@
   "payable_tax",
   "request_refund",
   "profit_margin_scheme_applied",
+  "section_break_partial",
+  "recovery_ratio",
+  "taxable_supplies_value",
+  "exempt_supplies_value",
+  "column_break_uaevr3",
+  "residual_input_vat",
+  "residual_recoverable_vat",
   "currency"
  ],
  "fields": [
@@ -195,6 +202,50 @@
    "fieldname": "profit_margin_scheme_applied",
    "fieldtype": "Check",
    "label": "Profit Margin Scheme Applied in This Period"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_partial",
+   "fieldtype": "Section Break",
+   "label": "Partial Exemption"
+  },
+  {
+   "fieldname": "recovery_ratio",
+   "fieldtype": "Percent",
+   "label": "Recovery Ratio",
+   "read_only": 1
+  },
+  {
+   "fieldname": "taxable_supplies_value",
+   "fieldtype": "Currency",
+   "label": "Taxable Supplies",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "exempt_supplies_value",
+   "fieldtype": "Currency",
+   "label": "Exempt Supplies",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_uaevr3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "residual_input_vat",
+   "fieldtype": "Currency",
+   "label": "Residual Input VAT",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "residual_recoverable_vat",
+   "fieldtype": "Currency",
+   "label": "Residual Input VAT Recovered",
+   "options": "currency",
+   "read_only": 1
   },
   {
    "default": "AED",
