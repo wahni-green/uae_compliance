@@ -16,6 +16,7 @@ _PARENT_FIELDS = {
 		"uae_is_export",
 		"uae_tourist_refund",
 		"conversion_rate",
+		"uae_is_margin_scheme",
 	),
 	"Purchase Invoice": (
 		"uae_is_reverse_charge",
@@ -25,7 +26,10 @@ _PARENT_FIELDS = {
 	),
 }
 
-_CHILD_FIELDS = {"Purchase Invoice": ("uae_input_tax_not_recoverable", "uae_input_tax_attribution")}
+_CHILD_FIELDS = {
+	"Sales Invoice": ("uae_margin_purchase_price", "sales_invoice_item"),
+	"Purchase Invoice": ("uae_input_tax_not_recoverable", "uae_input_tax_attribution"),
+}
 
 
 def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:
@@ -103,10 +107,32 @@ def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:
 
 	# item_wise_tax_detail is keyed by item code, not row. Rows sharing an item code (which share a
 	# VAT treatment, checked above) split the combined amount by their share of the net amount.
+	#
+	# On a profit margin invoice the VAT is due on each row's margin, not on its sales value, so
+	# rows sharing an item code split it by margin; a row sold at a loss takes none.
+	margin_invoices = {
+		name for name, invoice in invoices_by_name.items() if invoice.get("uae_is_margin_scheme")
+	}
+	margin_ratios = _get_original_margin_ratios(items, margin_invoices, invoices_by_name, doctype)
+
+	def split_weight(item) -> float:
+		net = flt(item.base_net_amount)
+		if doctype != "Sales Invoice" or item.parent not in margin_invoices:
+			return net
+
+		if invoices_by_name[item.parent].is_return:
+			# A credit note keeps the original purchase prices, so each row takes the margin share of
+			# the row it credits. Without that link it falls back to its value.
+			ratio = margin_ratios.get(item.name)
+			return abs(net) * ratio if ratio is not None else abs(net)
+
+		rate = flt(invoices_by_name[item.parent].conversion_rate) or 1
+		return max(0.0, abs(net) - abs(flt(item.uae_margin_purchase_price)) * rate)
+
 	net_by_key: dict[tuple[str, str], float] = {}
 	for item in items:
 		key = (item.parent, item.item_code)
-		net_by_key[key] = net_by_key.get(key, 0) + flt(item.base_net_amount)
+		net_by_key[key] = net_by_key.get(key, 0) + split_weight(item)
 
 	rows = []
 	for item in items:
@@ -115,7 +141,7 @@ def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:
 
 		invoice = invoices_by_name[item.parent]
 		total_net = net_by_key[(item.parent, item.item_code)]
-		share = flt(item.base_net_amount) / total_net if total_net else 0
+		share = split_weight(item) / total_net if total_net else 0
 
 		row = frappe._dict(item)
 		row.invoice = item.parent
@@ -124,9 +150,68 @@ def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:
 		row.input_vat_amount = input_vat_by_parent.get(item.parent, {}).get(item.item_code, 0) * share
 		for field in _PARENT_FIELDS[doctype]:
 			row[field] = invoice.get(field)
+
+		# Profit margin scheme: the VAT is part of the price, and the return reports the full sales
+		# value in box 1 and the full purchase price in box 9. A return keeps the sign of its row.
+		row.reported_amount = flt(item.base_net_amount)
+		row.margin_purchase_price = 0.0
+		if doctype == "Sales Invoice" and invoice.uae_is_margin_scheme:
+			row.reported_amount += row.output_vat_amount
+			sign = 1 if flt(item.base_net_amount) >= 0 else -1
+			row.margin_purchase_price = (
+				abs(flt(item.uae_margin_purchase_price)) * (flt(invoice.conversion_rate) or 1) * sign
+			)
+
 		rows.append(row)
 
 	return rows
+
+
+def _get_original_margin_ratios(items, margin_invoices, invoices_by_name, doctype) -> dict:
+	"""For the rows of margin scheme credit notes, the share of the credited row's value that was
+	margin (zero for a row sold at a loss), keyed by the credit note row."""
+	if doctype != "Sales Invoice":
+		return {}
+
+	credited = {
+		item.name: item.sales_invoice_item
+		for item in items
+		if item.parent in margin_invoices
+		and invoices_by_name[item.parent].is_return
+		and item.get("sales_invoice_item")
+	}
+	if not credited:
+		return {}
+
+	originals = {
+		row.name: row
+		for row in frappe.get_all(
+			"Sales Invoice Item",
+			filters={"name": ["in", list(set(credited.values()))]},
+			fields=["name", "parent", "base_net_amount", "uae_margin_purchase_price"],
+		)
+	}
+	conversion = {
+		name: flt(rate) or 1
+		for name, rate in frappe.get_all(
+			"Sales Invoice",
+			filters={"name": ["in", list({row.parent for row in originals.values()})]},
+			fields=["name", "conversion_rate"],
+			as_list=True,
+		)
+	}
+
+	ratios = {}
+	for name, original_name in credited.items():
+		original = originals.get(original_name)
+		net = flt(original.base_net_amount) if original else 0
+		if not original or net <= 0:
+			continue
+
+		cost = abs(flt(original.uae_margin_purchase_price)) * conversion.get(original.parent, 1)
+		ratios[name] = max(0.0, net - cost) / net
+
+	return ratios
 
 
 class CategoryResolver:
@@ -193,7 +278,7 @@ def summarize_box(rows: list, vat_amount_field: str = "output_vat_amount") -> di
 	are already negative and net into the amount and VAT. The adjustment column is reserved for
 	adjustments that are not transactions (bad debt relief, apportionment) and starts at zero."""
 	return {
-		"amount": sum(flt(row.base_net_amount) for row in rows),
+		"amount": sum(flt(row.get("reported_amount", row.base_net_amount)) for row in rows),
 		"vat_amount": sum(flt(row.get(vat_amount_field)) for row in rows),
 		"adjustment": 0.0,
 	}

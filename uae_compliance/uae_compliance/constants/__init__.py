@@ -72,3 +72,10 @@ ATTRIBUTION_RESIDUAL = "Residual"
 # Capital assets scheme (ER Arts 57-58).
 CAPITAL_ASSET_THRESHOLD = 5_000_000
 CAPITAL_ASSET_YEARS = {"Building": 10, "Other": 5}
+
+# The standard rate of VAT. Used where a figure is derived from the rate (profit margin scheme).
+STANDARD_VAT_RATE = 5
+
+# Tax refunds for tourists (FTA Decision 2 of 2018 as amended).
+TOURIST_MIN_PURCHASE = 250
+TOURIST_REFUND_CAP = 35_000

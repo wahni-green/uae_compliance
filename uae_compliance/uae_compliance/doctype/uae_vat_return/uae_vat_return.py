@@ -30,7 +30,10 @@ from uae_compliance.uae_compliance.utils.vat_return.period import (
 )
 from uae_compliance.uae_compliance.utils.vat_return.sections.adjustments import get_adjustments
 from uae_compliance.uae_compliance.utils.vat_return.sections.purchase_boxes import get_purchase_boxes
-from uae_compliance.uae_compliance.utils.vat_return.sections.sales_boxes import get_sales_boxes
+from uae_compliance.uae_compliance.utils.vat_return.sections.sales_boxes import (
+	get_margin_scheme,
+	get_sales_boxes,
+)
 from uae_compliance.uae_compliance.utils.vat_return.sections.standard_rated_by_emirate import (
 	get_standard_rated_by_emirate,
 )
@@ -169,6 +172,11 @@ class UAEVATReturn(Document):
 			self.company, self.from_date, self.to_date, rows=purchase_rows, recovery_ratio=recovery_ratio
 		)
 		adjustments = get_adjustments([self.company], self.from_date, self.to_date, recovery_ratio)
+
+		margin = get_margin_scheme(sales_rows)
+		self.profit_margin_scheme_applied = int(margin["applied"])
+		if margin["applied"]:
+			purchases["standard_rated_expenses"]["amount"] += margin["purchase_price"]
 
 		box_rows = list(_build_box_rows(by_emirate, sales, purchases, adjustments))
 

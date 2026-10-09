@@ -6,6 +6,7 @@ from uae_compliance.uae_compliance.constants import DEFAULT_TIN_PATTERN, DEFAULT
 from uae_compliance.uae_compliance.constants.custom_fields import CUSTOM_FIELDS
 from uae_compliance.uae_compliance.constants.designated_zones import DESIGNATED_ZONES
 from uae_compliance.uae_compliance.constants.erpnext_uae_fields import ERPNEXT_UAE_FIELDS
+from uae_compliance.uae_compliance.constants.excise_rates import EFFECTIVE_FROM, EXCISE_RATES
 
 
 def create_custom_fields() -> None:
@@ -20,6 +21,17 @@ def create_designated_zones() -> None:
 			continue
 
 		frappe.get_doc({"doctype": "UAE Designated Zone", **zone}).insert(ignore_permissions=True)
+
+
+def create_excise_rates() -> None:
+	# Insert-only, like the designated zones: an admin may have edited a rate.
+	for rate in EXCISE_RATES:
+		if frappe.db.exists("UAE Excise Rate", rate["category"]):
+			continue
+
+		frappe.get_doc(
+			{"doctype": "UAE Excise Rate", "effective_from": EFFECTIVE_FROM, "is_active": 1, **rate}
+		).insert(ignore_permissions=True)
 
 
 def set_default_settings() -> None:

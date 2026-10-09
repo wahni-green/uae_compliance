@@ -66,6 +66,10 @@
 
 {# Full layout: per-line unit price, quantity, discount, VAT rate and amount payable. #}
 {% macro render_item_rows(doc, data) %}
+	{# Profit margin scheme: the invoice shows no tax amount, only the price. #}
+	{% if doc.uae_is_margin_scheme and not doc.is_return %}
+		{{ render_simplified_item_rows(doc, data) }}
+	{% else %}
 	<table class="items-table">
 		<thead>
 			<tr>
@@ -108,6 +112,7 @@
 			{% endfor %}
 		</tbody>
 	</table>
+	{% endif %}
 {% endmacro %}
 
 {# Simplified layout: description and consideration only. #}
@@ -143,6 +148,16 @@
 #}
 {% macro render_totals(doc, data) %}
 	{{ render_aed_warning(data) }}
+	{% if doc.uae_is_margin_scheme and not doc.is_return %}
+	<p class="margin-scheme-note">{{ _("Profit Margin Scheme: VAT is accounted for on the profit margin.") }} / <span lang="ar">يخضع لنظام هامش الربح</span></p>
+	<table class="totals-table">
+		<tr class="grand-total-row">
+			<td>{{ _("Total Payable") }} / <span lang="ar">الإجمالي المستحق</span> ({{ doc.currency }})</td>
+			<td>{{ m(doc.grand_total) }}</td>
+		</tr>
+		{% if doc.in_words %}<tr><td colspan="2">{{ _("In Words") }}: {{ doc.in_words }}</td></tr>{% endif %}
+	</table>
+	{% else %}
 	<table class="totals-table">
 		<tr class="currency-heading">
 			<td></td>
@@ -176,6 +191,7 @@
 		<tr><td colspan="3">{{ exchange_disclosure }}</td></tr>
 		{% endif %}
 	</table>
+	{% endif %}
 {% endmacro %}
 
 {# Figures a tax credit note must show, in AED (ER Art 60(1)). #}
