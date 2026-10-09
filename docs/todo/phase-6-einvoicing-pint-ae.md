@@ -24,3 +24,13 @@
 - [ ] Support self-billing CustomizationID
 - [ ] No QR code; retain XML 5 years (7 real estate)
 - [ ] Exclusions: B2C, exempt financial services, imports under RCM, etc.
+
+## PR 6a: PINT AE XML builder and validators
+- [x] Pin PINT-AE v1.0.4: builder follows the official samples; checked against the official Schematron and the OASIS UBL 2.1 schema (not bundled; see the architecture doc)
+- [x] Tax category codes S, Z, E (no `G`; N for the margin scheme is not produced yet, so margin invoices are refused)
+- [x] ProfileExecutionID flags for the margin scheme and exports; the other flags are not produced
+- [x] Invoice 380 and credit note 381; TaxCurrencyCode AED, exchange rate and `aedtotal-incl-vat` reference for foreign currency
+- [x] Participant ID `0235:<TIN>` with predefined endpoints 9900000098 (buyer not on the network) and 9900000099 (export); legal registration ID with type (TL, EID, PAS, CD) on Company and Customer
+- [x] No QR code on the e-invoice
+- [x] `UAE VAT` TRN default pattern now follows the specification (15 digits, starting with 1 and ending with 03)
+- [ ] Self-billing, summary, continuous, agent billing, deemed supply, free trade zone beneficiary, reverse charge and out of scope documents
