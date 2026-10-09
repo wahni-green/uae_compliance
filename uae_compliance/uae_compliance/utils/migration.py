@@ -9,6 +9,7 @@ review, not guessed.
 import re
 
 import frappe
+from frappe.query_builder.functions import IfNull
 
 from uae_compliance.uae_compliance.constants import DEFAULT_TRN_RE
 
@@ -203,14 +204,14 @@ def _copy_field(doctype: str, old: str, new: str) -> int:
 	if not frappe.db.has_column(doctype, old):
 		return 0
 
-	frappe.db.sql(
-		f"""
-		UPDATE `tab{doctype}`
-		SET `{new}` = `{old}`
-		WHERE IFNULL(`{old}`, '') NOT IN ('', '0', '0.0', '0.00')
-			AND IFNULL(`{new}`, '') IN ('', '0', '0.0', '0.00')
-		"""
-	)
+	empty = ["", "0", "0.0", "0.00"]
+	table = frappe.qb.DocType(doctype)
+	(
+		frappe.qb.update(table)
+		.set(table[new], table[old])
+		.where(IfNull(table[old], "").notin(empty))
+		.where(IfNull(table[new], "").isin(empty))
+	).run()
 	return frappe.db.sql("SELECT ROW_COUNT()")[0][0] or 0
 
 

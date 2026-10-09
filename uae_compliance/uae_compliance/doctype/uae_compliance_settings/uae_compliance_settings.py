@@ -33,7 +33,7 @@ class UAEComplianceSettings(Document):
 				re.compile(pattern)
 			except re.error as e:
 				frappe.throw(
-					_("{0} is not a valid regular expression: {1}").format(_(label), e),
+					_("{0} is not a valid regular expression: {1}").format(_(label), str(e)),
 					title=_("Invalid Pattern"),
 				)
 

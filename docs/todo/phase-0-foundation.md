@@ -8,7 +8,7 @@
 - [x] `utils/company.py::is_uae_company()` (Company.country == "United Arab Emirates")
 - [x] Constants: emirates, tax categories (S/Z/E/O/AE/N), GCC countries (designated zones seed list in Phase 1)
 - [x] `tests/__init__.py` with `before_tests` and UAE test company (AED) helpers
-- [x] CI (`.github/workflows/ci.yml`, `linter.yml`) modelled on oman_compliance
+- [x] Linter workflow (`.github/workflows/linter.yml`) modelled on oman_compliance; the server test workflow (`ci.yml`) was removed, run tests locally
 - [x] Docs: ARCHITECTURE and CONFIGURATION markdown files; update README
 - [x] Verify primary sources (FTA/MoF): done, see UAE_VERIFICATION.md
 
