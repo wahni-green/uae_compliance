@@ -2,7 +2,7 @@ import frappe
 from frappe import _
 
 from uae_compliance.uae_compliance.constants.vat_return import EMIRATE_BOX_CODES
-from uae_compliance.uae_compliance.utils.vat_return import get_invoice_rows
+from uae_compliance.uae_compliance.utils.vat_return.group import get_group_rows
 from uae_compliance.uae_compliance.utils.vat_return.sections.sales_boxes import (
 	SALES_BOX_BY_CATEGORY,
 	get_tourist_refunds_by_invoice,
@@ -66,7 +66,7 @@ def get_columns() -> list[dict]:
 def get_data(filters) -> list[dict]:
 	"""One row per invoice and VAT 201 box, using the same rows and the same box assignment as the
 	UAE VAT Return, so the register always agrees with the return it supports."""
-	rows = get_invoice_rows("Sales Invoice", filters.company, filters.from_date, filters.to_date)
+	rows = get_group_rows("Sales Invoice", filters.company, filters.from_date, filters.to_date)
 	if not rows:
 		return []
 

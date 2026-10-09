@@ -1,0 +1,99 @@
+{
+ "actions": [],
+ "creation": "2026-10-13 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-13 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "UAE Compliance",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "field:group_name",
+ "naming_rule": "By fieldname",
+ "name": "UAE Tax Group",
+ "title_field": "group_name",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User"
+  }
+ ],
+ "track_changes": 1,
+ "field_order": [
+  "group_name",
+  "representative_member",
+  "column_break_uaetg",
+  "effective_from",
+  "section_break_members",
+  "members"
+ ],
+ "fields": [
+  {
+   "fieldname": "group_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Group Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "representative_member",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Representative Member",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_uaetg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "effective_from",
+   "fieldtype": "Date",
+   "label": "Effective From"
+  },
+  {
+   "fieldname": "section_break_members",
+   "fieldtype": "Section Break",
+   "label": "Members"
+  },
+  {
+   "fieldname": "members",
+   "fieldtype": "Table",
+   "label": "Members",
+   "options": "UAE Tax Group Member",
+   "reqd": 1
+  }
+ ]
+}
