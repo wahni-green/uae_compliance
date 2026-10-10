@@ -12,6 +12,7 @@ from uae_compliance.uae_compliance.utils.tax_account import (
 	is_input_vat_account,
 	is_output_vat_account,
 )
+from uae_compliance.uae_compliance.utils.vat_return.cash_payments import get_invoices_paid_in_cash_over_limit
 
 _PARENT_FIELDS = {
 	"Sales Invoice": (
@@ -25,6 +26,9 @@ _PARENT_FIELDS = {
 	),
 	"Purchase Invoice": (
 		"supplier",
+		"is_paid",
+		"mode_of_payment",
+		"base_grand_total",
 		"uae_is_reverse_charge",
 		"uae_is_gcc_supplier",
 		"uae_is_import_of_goods",
@@ -105,6 +109,12 @@ def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:
 		for parent, rows in tax_rows_by_parent.items()
 	}
 
+	# Input VAT on a large payment in cash is not recoverable (ER Art 54(3)); empty while the Minister's
+	# amount is not configured.
+	cash_paid = (
+		get_invoices_paid_in_cash_over_limit(invoices_by_name) if doctype == "Purchase Invoice" else set()
+	)
+
 	resolver = CategoryResolver()
 	for item in items:
 		# A supply the recipient accounts for the VAT on is not reported by the supplier (CD 127/2024 and
@@ -164,6 +174,9 @@ def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:
 		row.input_vat_amount = input_vat_by_parent.get(item.parent, {}).get(item.item_code, 0) * share
 		for field in _PARENT_FIELDS[doctype]:
 			row[field] = invoice.get(field)
+
+		if item.parent in cash_paid:
+			row.uae_input_tax_not_recoverable = 1
 
 		# Profit margin scheme: the VAT is part of the price, and the return reports the full sales
 		# value in box 1 and the full purchase price in box 9. A return keeps the sign of its row.

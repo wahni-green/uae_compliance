@@ -156,6 +156,7 @@ def get_data_fingerprint(company: str, from_date, to_date) -> str:
 							round(flt(row.base_net_amount), 2),
 							round(flt(row.output_vat_amount), 2),
 							round(flt(row.input_vat_amount), 2),
+							bool(row.get("uae_input_tax_not_recoverable")),
 						)
 						for row in rows
 					)

@@ -25,6 +25,7 @@ from uae_compliance.uae_compliance.utils.vat_category import (
 	get_item_category,
 	get_item_tax_template_category,
 )
+from uae_compliance.uae_compliance.utils.vat_return.cash_payments import exceeds_cash_limit
 
 
 def validate(doc, method=None):
@@ -39,6 +40,26 @@ def validate(doc, method=None):
 	set_import_of_goods_flag(doc)
 	validate_postponed_import_vat(doc)
 	warn_designated_zone(doc)
+	warn_if_cash_payment_over_limit(doc)
+
+
+def warn_if_cash_payment_over_limit(doc) -> None:
+	"""Input VAT on a supply above the Minister's limit that is paid in cash is not recoverable (ER Art
+	54(3)). The VAT return applies it; this tells the user when the payment is on the invoice itself."""
+	if not (doc.get("is_paid") and doc.get("mode_of_payment")):
+		return
+
+	if frappe.db.get_value("Mode of Payment", doc.mode_of_payment, "type") != "Cash":
+		return
+
+	if exceeds_cash_limit(doc):
+		frappe.msgprint(
+			_(
+				"This invoice is above the cash payment limit and is paid in cash, so the input VAT on it is not recoverable (Executive Regulation Art 54(3))."
+			),
+			indicator="orange",
+			alert=True,
+		)
 
 
 def set_vat_category_defaults(doc) -> None:
