@@ -3,9 +3,9 @@
 - [ ] Confirm official PINT AE spec, XSD, Schematron and FTA/MoF timelines
 - [x] DocTypes: UAE E-Invoice Settings (provider, credentials, environment), UAE E-Invoice Log
 - [x] Status lifecycle on Sales Invoice (Draft -> ... -> FTA Cleared)
-- [ ] `einvoice/pint_ae_builder.py`: UBL 2.1, CustomizationID `urn:peppol:pint:billing-1@ae-1`, tax category mapping S/Z/E/G/O/AE
-- [ ] Credit notes (type 381), line-level VAT in AED
-- [ ] `einvoice/validators.py`: XSD + Schematron
+- [x] `einvoice/pint_ae_builder.py`: UBL 2.1, CustomizationID `urn:peppol:pint:billing-1@ae-1`, tax category mapping S/Z/E/G/O/AE
+- [x] Credit notes (type 381), line-level VAT in AED
+- [x] `einvoice/validators.py`: Python checks of the rules; the official XSD and Schematron run in the tests when supplied
 - [x] `einvoice/asp_client.py` abstract base: submit (idempotency key), get_status, fetch_inbound, credit/cancel, validate_credentials; normalized status enum and error model
 - [x] Provider registry + per-company provider selection in UAE E-Invoice Settings (credentials as Password fields, sandbox/production)
 - [x] Mock/sandbox adapter (`asp_clients/mock.py`) used for tests; real adapters added later per provider, no schema changes
@@ -13,7 +13,7 @@
 - [x] Scheduler status polling (`scheduler_events`)
 - [x] Inbound handling: documents received through the provider are logged (PR 6c); creating Purchase Invoices from them is not built
 - [x] XML retention and permissions
-- [ ] Tests with sample documents
+- [x] Tests with sample documents (and the official Schematron/XSD when supplied)
 
 ## From verification (see ../UAE_VERIFICATION.md)
 - [ ] Pin PINT-AE v1.0.4; load code lists and Schematron from resources.zip; XSD from OASIS UBL 2.1
@@ -47,3 +47,7 @@
 ## PR 6c: inbound documents
 - The scheduler fetches what each enabled company's provider holds for it (`ASPClient.fetch_inbound`) and logs each new document (by provider reference) as an Inbound UAE E-Invoice Log: number, UUID, type, date, sender name and TIN, currency, total, and the XML, kept for five years. The sender is matched to a Supplier by TIN, then by TRN. A document that cannot be read, or that is addressed to another TIN or TRN, is logged as Invalid with the reason.
 - Not built: turning a received invoice into a Purchase Invoice (it needs a mapping of the sender's lines to items and accounts), acknowledging or disputing a received document, and validating the sender's document against the specification.
+
+## Providers
+- [x] Microvista adapter (PR 6d), verified against its sandbox: submit, duplicate recovery, polling to Cleared. Credit notes and inbound listing not yet exercised live.
+- [ ] Credit-note payload shape and the inbound listing against the sandbox, then production
