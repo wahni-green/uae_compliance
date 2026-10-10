@@ -106,3 +106,24 @@ Tobacco and tobacco products 100%; e-cigarette liquids and devices 100%; energy 
 - [ ] CD 91/2023 text (electronic devices RCM)
 - [ ] Text of MD 243/244/64 and CD 106/2025
 - [ ] Greek "N" vs Latin N tax category in PINT-AE Schematron
+
+## 8. Reverse charge on the supplier's side (researched 2026-10-10)
+
+Needed before sales invoices under a domestic reverse charge (PINT category AE) can be built.
+
+**Settled by primary sources**
+- **The supplier does not account for or report the tax.** Cabinet Decision 153/2025 (metal scrap) Art 2(1)(a): "The supplier shall not be responsible for accounting for Tax related to the supply ... and shall not report such Tax in his Tax Return". Cabinet Decision 127/2024 (precious metals and stones) Art 2(1)(a) says the same. The recipient accounts for it.
+- **The invoice must carry an explicit reverse charge statement** (CD 153/2025 Art 2(3)(b)(3)).
+- **Before the supply the supplier must hold the recipient's two written declarations** (intended use for resale or production; registered with the FTA) **and verify the recipient's registration** (both decisions, Art 2(3)). Without the declarations the reverse charge does not apply and the supplier charges VAT in the ordinary way (Art 2(4)).
+- **It does not apply to a supply that is zero rated** (Art 2(2)).
+- **The VAT 201 has no supplier-side reverse charge box.** The FTA's VAT Returns User Guide (v4.0, 2021) defines Box 3 as "the value of supplies of goods and services *received*" under the reverse charge, listing "local supplies subject to the reverse charge provisions (e.g. specific supplies within the oil and gas industry)" among what the recipient includes, and Box 10 as the recipient's recovery.
+
+**Not settled by any primary source found**
+- Where, or whether, the *value* of such a supply appears on the supplier's return. The decisions say only that the supplier does not report "such Tax". The FAF sales tax code list does include `RC` (section 4), which suggests the supply is recorded in the books but carries no tax. Confirm with the FTA or an adviser before relying on it.
+- Whether electronic devices (CD 91/2023, public clarification VATP034) have the same supplier rules in the current text; only secondary sources were read.
+
+**PINT AE requirements for category AE lines** (official Schematron)
+- Percent 5, line and breakdown tax amounts 0 (ibr-162-ae, aligned-ibrp-ae-09-ae); the buyer's TRN is required (ibr-103-ae).
+- A goods or services type (BTAE-09, `NatureCode`) from a closed list (ibr-006-ae, ibr-166-ae): `DL8.48.8.2` Electronic Devices, `DL8.48.8.1` Gold and Diamonds, `DL8.48.3.1` Crude or refined oil, `DL8.48.3.2` Natural gas, `DL8.48.3.3` Pure hydrocarbons. **There is no code for metal scrap**, so a metal scrap supply cannot be expressed in PINT AE v1.0.4.
+- An item standard identifier with scheme `0160` (GTIN) on every AE line (ibr-174-ae).
+- AE appears on mixed documents; a document with only E and O lines is a 480/81 (rule ibr-122-ae).

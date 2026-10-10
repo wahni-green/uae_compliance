@@ -21,6 +21,7 @@ Data from ERPNext's own UAE VAT setup (item flags, VAT accounts, TRNs) is migrat
 - **Exports:** **Export** is set for you when the shipping (or customer) address is in a country other than the company's. You cannot tick it yourself. Choose Zero Rated for the rows.
 - **Designated zones** are never zero rated automatically. Whether a supply is zero rated depends on the goods and the customs conditions, so you choose the category.
 - **Simplified tax invoices** (under AED 10,000, customer details optional) are flagged **Simplified Tax Invoice** automatically: only for customers without a TRN, up to the threshold in UAE Compliance Settings, and never for companies that send e-invoices.
+- **Free trade zone, deemed and e-commerce supplies:** tick **Supply Involving Free Trade Zone** (and enter the **Free Zone Beneficiary ID**), **Deemed Supply** (a supply without consideration; it has no due date or payment details on the e-invoice) or **Supply through E-commerce** (the e-invoice then carries the delivery address, taken from the shipping address, else the customer's: it needs a street, city and emirate). These only mark the e-invoice; VAT is worked out as before.
 - **Foreign currency:** the invoice shows the VAT in AED as well.
 - **Tourist refunds** are entered as **Tax Refund provided to Tourists** (minimum purchase total of AED 250, refund up to AED 35,000) and appear in Box 2.
 - **Profit margin scheme:** tick **Profit Margin Scheme** and enter the **Margin Scheme Purchase Price**; VAT is charged on the margin only.
@@ -57,7 +58,7 @@ The app does not calculate penalties.
 
 Only companies enabled in **UAE E-Invoice Settings** send e-invoices (see the configuration guide). From then on:
 
-1. Submitting a Sales Invoice builds its PINT AE document and checks it. An invoice that would be invalid is **not issued**: fix what the message says (a missing TRN, TIN, address, VAT Emirate, and so on) and submit again.
+1. Submitting a Sales Invoice builds its PINT AE document and checks it. An invoice whose lines are all exempt or out of scope is sent as an out of scope invoice (type 480; a credit note is type 81), because the specification does not allow them on an ordinary tax invoice. An invoice that would be invalid is **not issued**: fix what the message says (a missing TRN, TIN, address, VAT Emirate, and so on) and submit again.
 2. The invoice is sent in the background. Its **E-Invoice Status** shows the progress: Generated, Submitted (accepted by the provider), Delivered (to the buyer) and Cleared (reported to the FTA). Rejected means the provider or the FTA refused it; the reasons are in the **E-Invoice Log**.
 3. A failed send is retried automatically with increasing waits. After the retry limit the log shows Failed. Fix the cause and use **Retry** on the log.
 4. **A sent invoice cannot be cancelled.** Issue a credit note. An invoice whose last send attempt has no known outcome (for example, a timeout) also cannot be cancelled: use **Retry** until the status is settled.
@@ -66,7 +67,7 @@ Only companies enabled in **UAE E-Invoice Settings** send e-invoices (see the co
 Received invoices appear as **inbound** logs, matched to your suppliers by TIN or TRN. One that cannot be read or is addressed to someone else is marked Invalid with the reason. Entering them as Purchase Invoices is still done by hand.
 
 ### What cannot be sent yet
-Invoices with reverse charge or out of scope supplies, margin scheme invoices, charges or discounts outside the item rows, and VAT that differs from the rows are refused or logged as Invalid with a clear message. Self-billing, summary, continuous, agent and deemed supply invoices are also unsupported, but the app does not detect or reject them: identify these yourself and issue all unsupported invoices outside the app, following your provider's process until support is added. A company whose own currency is not AED cannot send e-invoices.
+Invoices with reverse charge supplies, margin scheme invoices, charges or discounts outside the item rows, and VAT that differs from the rows are refused or logged as Invalid with a clear message. Self-billing, summary, continuous and agent billing invoices are also unsupported, but the app does not detect or reject them: identify these yourself and issue all unsupported invoices outside the app, following your provider's process until support is added. A company whose own currency is not AED cannot send e-invoices.
 
 ## 7. When something looks wrong
 

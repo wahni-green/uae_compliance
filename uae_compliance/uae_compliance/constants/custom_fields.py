@@ -293,6 +293,22 @@ CUSTOM_FIELDS = {
 			"uae_is_simplified_tax_invoice",
 		),
 		_field(
+			"uae_is_free_zone_supply",
+			"Supply Involving Free Trade Zone",
+			"Check",
+			"uae_is_margin_scheme",
+		),
+		_field(
+			"uae_free_zone_beneficiary_id",
+			"Free Zone Beneficiary ID",
+			"Data",
+			"uae_is_free_zone_supply",
+			depends_on="uae_is_free_zone_supply",
+			mandatory_depends_on="uae_is_free_zone_supply",
+		),
+		_field("uae_is_deemed_supply", "Deemed Supply", "Check", "uae_free_zone_beneficiary_id"),
+		_field("uae_is_ecommerce_supply", "Supply through E-commerce", "Check", "uae_is_deemed_supply"),
+		_field(
 			"uae_tourist_refund",
 			"Tax Refund provided to Tourists",
 			"Currency",

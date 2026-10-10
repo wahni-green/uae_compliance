@@ -4,7 +4,8 @@
 - [x] DocTypes: UAE E-Invoice Settings (provider, credentials, environment), UAE E-Invoice Log
 - [x] Status lifecycle on Sales Invoice (Draft -> ... -> FTA Cleared)
 - [x] `einvoice/pint_ae_builder.py`: UBL 2.1, CustomizationID `urn:peppol:pint:billing-1@ae-1`, tax category mapping S/Z/E
-- [ ] Tax categories O (out of scope) and AE (reverse charge) are refused for now; there is no `G` in PINT AE
+- [x] Tax category O (out of scope); exempt/out of scope only documents are types 480/81
+- [ ] Tax category AE (reverse charge) on sales: needs a Sales Invoice reverse charge flag and a verified VAT 201 treatment for the supplier; there is no `G` in PINT AE
 - [x] Credit notes (type 381), line-level VAT in AED
 - [x] `einvoice/validators.py`: Python checks of the rules; the official XSD and Schematron run in the tests when supplied
 - [x] `einvoice/asp_client.py` abstract base: submit (idempotency key), get_status, fetch_inbound, credit/cancel, validate_credentials; normalized status enum and error model
@@ -34,7 +35,8 @@
 - [x] Participant ID `0235:<TIN>` with predefined endpoints 9900000098 (buyer not on the network) and 9900000099 (export); legal registration ID with type (TL, EID, PAS, CD) on Company and Customer
 - [x] No QR code on the e-invoice
 - [x] `UAE VAT` TRN default pattern now follows the specification (15 digits, starting with 1 and ending with 03)
-- [ ] Self-billing, summary, continuous, agent billing, deemed supply, free trade zone beneficiary, reverse charge and out of scope documents
+- [x] Deemed supply, free trade zone beneficiary, e-commerce and out of scope documents (verified against the official rules and the Microvista sandbox)
+- [ ] Margin scheme (category N), summary, continuous, agent billing, self-billing and reverse charge documents
 
 ## PR 6b: provider framework and sending pipeline
 - **UAE E-Invoice Settings** (one row per company: provider, environment, "E-Invoice From" date, endpoint, client ID, client secret as a Password, extra JSON configuration) and **UAE E-Invoice Log** (one per document: status, provider reference, idempotency key, attempts, next attempt, the XML, the provider's response, errors, retention date).

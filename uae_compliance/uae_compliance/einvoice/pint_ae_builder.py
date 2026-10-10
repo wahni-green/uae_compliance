@@ -24,11 +24,17 @@ from uae_compliance.uae_compliance.constants.pint_ae import (
 	ENDPOINT_BUYER_NOT_ON_NETWORK,
 	ENDPOINT_EXPORT,
 	ENDPOINT_SCHEME,
+	FLAG_DEEMED_SUPPLY,
+	FLAG_E_COMMERCE,
 	FLAG_EXPORT,
+	FLAG_FREE_TRADE_ZONE,
 	FLAG_MARGIN_SCHEME,
 	INVOICE_TYPE_CODE,
 	ITEM_TYPE_CODES,
 	LEGAL_REGISTRATION_TYPES,
+	NO_VAT_CATEGORY_CODES,
+	OUT_OF_SCOPE_CREDIT_NOTE_TYPE_CODE,
+	OUT_OF_SCOPE_INVOICE_TYPE_CODE,
 	PAYMENT_MEANS_CODE,
 	PROFILE_ID,
 	TRADE_LICENSE_AGENCY,
@@ -119,6 +125,7 @@ class PintAEBuilder:
 		need only the XML skip the model."""
 		self._refuse_unsupported()
 		self._compute_lines()
+		self._refuse_flags_the_type_cannot_carry()
 		self._compute_totals()
 
 		root = etree.Element(_q_root(self.root_name), nsmap={None: ROOTS[self.root_name], **NAMESPACES})
@@ -146,6 +153,19 @@ class PintAEBuilder:
 			# VAT" category (rule ibr-116-ae), which this builder does not produce yet.
 			raise EInvoiceNotSupportedError(
 				_("Profit margin scheme invoices cannot be sent as e-invoices yet.")
+			)
+
+	def _refuse_flags_the_type_cannot_carry(self):
+		"""An out of scope invoice or credit note (480/81) cannot be a deemed supply, summary invoice or
+		margin scheme invoice (rule ibr-157-ae)."""
+		if self.type_code in (
+			OUT_OF_SCOPE_INVOICE_TYPE_CODE,
+			OUT_OF_SCOPE_CREDIT_NOTE_TYPE_CODE,
+		) and self.doc.get("uae_is_deemed_supply"):
+			raise EInvoiceNotSupportedError(
+				_(
+					"A deemed supply cannot be an out of scope or exempt only document. Add a taxable line or clear Deemed Supply."
+				)
 			)
 
 	def _compute_lines(self):
@@ -252,12 +272,12 @@ class PintAEBuilder:
 		return {
 			"number": doc.name,
 			"uuid": self.uuid,
-			"type_code": CREDIT_NOTE_TYPE_CODE if self.is_credit_note else INVOICE_TYPE_CODE,
+			"type_code": self.type_code,
 			"transaction_flags": self._transaction_flags(),
 			"issue_date": getdate(doc.posting_date).isoformat(),
 			"issue_time": f"{get_time(doc.get('posting_time') or '00:00:00').strftime('%H:%M:%S')}{UTC_OFFSET}",
 			"due_date": getdate(doc.due_date).isoformat()
-			if doc.get("due_date") and not self.is_credit_note
+			if doc.get("due_date") and not self.is_credit_note and not self._is_deemed_supply
 			else None,
 			"vat_point_date": self._vat_point_date(),
 			"currency": self.currency,
@@ -271,7 +291,11 @@ class PintAEBuilder:
 			}
 			if self.is_credit_note
 			else None,
-			"payment_means_code": None if self.is_credit_note else PAYMENT_MEANS_CODE,
+			"payment_means_code": None
+			if self.is_credit_note or self._is_deemed_supply
+			else PAYMENT_MEANS_CODE,
+			"beneficiary_id": self._beneficiary_id,
+			"delivery": self._delivery_details(),
 			"seller": seller,
 			"buyer": buyer,
 			"lines": [self._line_model(line) for line in self.lines],
@@ -332,7 +356,7 @@ class PintAEBuilder:
 		return {
 			"uuid": self.uuid,
 			"number": self.doc.name,
-			"type_code": CREDIT_NOTE_TYPE_CODE if self.is_credit_note else INVOICE_TYPE_CODE,
+			"type_code": self.type_code,
 			"currency": self.currency,
 			"line_total": self.line_total,
 			"tax_total": self.tax_total,
@@ -351,10 +375,26 @@ class PintAEBuilder:
 
 		return self.doc.uae_einvoice_uuid
 
+	@property
+	def type_code(self) -> str:
+		"""380/381, or 480/81 when every line is exempt or out of scope: the specification keeps such
+		lines off ordinary invoices and credit notes (rules ibr-151-ae and ibr-122-ae)."""
+		only_no_vat = bool(self.lines) and all(line["code"] in NO_VAT_CATEGORY_CODES for line in self.lines)
+		if self.is_credit_note:
+			return OUT_OF_SCOPE_CREDIT_NOTE_TYPE_CODE if only_no_vat else CREDIT_NOTE_TYPE_CODE
+
+		return OUT_OF_SCOPE_INVOICE_TYPE_CODE if only_no_vat else INVOICE_TYPE_CODE
+
 	def _transaction_flags(self) -> str:
 		flags = ["0"] * 8
+		if self.doc.get("uae_is_free_zone_supply"):
+			flags[FLAG_FREE_TRADE_ZONE] = "1"
+		if self.doc.get("uae_is_deemed_supply"):
+			flags[FLAG_DEEMED_SUPPLY] = "1"
 		if self.doc.get("uae_is_margin_scheme"):
 			flags[FLAG_MARGIN_SCHEME] = "1"
+		if self.doc.get("uae_is_ecommerce_supply"):
+			flags[FLAG_E_COMMERCE] = "1"
 		if self.doc.get("uae_is_export"):
 			flags[FLAG_EXPORT] = "1"
 
@@ -374,13 +414,13 @@ class PintAEBuilder:
 			"IssueTime",
 			f"{get_time(doc.get('posting_time') or '00:00:00').strftime('%H:%M:%S')}{UTC_OFFSET}",
 		)
-		if not self.is_credit_note and doc.get("due_date"):
+		if not self.is_credit_note and not self._is_deemed_supply and doc.get("due_date"):
 			_add(root, "cbc", "DueDate", getdate(doc.due_date).isoformat())
 
 		if self.is_credit_note:
-			_add(root, "cbc", "CreditNoteTypeCode", CREDIT_NOTE_TYPE_CODE)
+			_add(root, "cbc", "CreditNoteTypeCode", self.type_code)
 		else:
-			_add(root, "cbc", "InvoiceTypeCode", INVOICE_TYPE_CODE)
+			_add(root, "cbc", "InvoiceTypeCode", self.type_code)
 
 		if self._vat_point_date():
 			_add(root, "cbc", "TaxPointDate", self._vat_point_date())
@@ -545,10 +585,66 @@ class PintAEBuilder:
 		seller, buyer = self._collect_parties()
 		self._party(root, "AccountingSupplierParty", seller)
 		self._party(root, "AccountingCustomerParty", buyer)
+		self._beneficiary(root)
+		self._delivery(root)
+
+	@property
+	def _is_deemed_supply(self) -> bool:
+		return bool(self.doc.get("uae_is_deemed_supply"))
+
+	@property
+	def _beneficiary_id(self) -> str | None:
+		"""The beneficiary of a free trade zone supply (BTAE-01)."""
+		if not self.doc.get("uae_is_free_zone_supply"):
+			return None
+
+		return (self.doc.get("uae_free_zone_beneficiary_id") or "").strip()
+
+	def _delivery_details(self) -> dict | None:
+		"""Where an e-commerce supply was delivered: the shipping address, else the customer's."""
+		if not self.doc.get("uae_is_ecommerce_supply"):
+			return None
+
+		address = self._address(self.doc.get("shipping_address_name") or self.doc.get("customer_address"))
+		return {
+			"date": getdate(self.doc.get("uae_supply_date") or self.doc.posting_date).isoformat(),
+			"street": address.get("street"),
+			"city": address.get("city"),
+			"subdivision": address.get("subdivision"),
+			"country": address.get("country") or "AE",
+		}
+
+	def _beneficiary(self, root):
+		if self._beneficiary_id is None:
+			return
+
+		wrapper = _add(root, "cac", "BuyerCustomerParty")
+		party = _add(wrapper, "cac", "Party")
+		identification = _add(party, "cac", "PartyIdentification")
+		_add(identification, "cbc", "ID", self._beneficiary_id)
+
+	def _delivery(self, root):
+		details = self._delivery_details()
+		if not details:
+			return
+
+		delivery = _add(root, "cac", "Delivery")
+		_add(delivery, "cbc", "ActualDeliveryDate", details["date"])
+		location = _add(delivery, "cac", "DeliveryLocation")
+		postal = _add(location, "cac", "Address")
+		if details["street"]:
+			_add(postal, "cbc", "StreetName", details["street"])
+		if details["city"]:
+			_add(postal, "cbc", "CityName", details["city"])
+		if details["subdivision"]:
+			_add(postal, "cbc", "CountrySubentity", details["subdivision"])
+		country = _add(postal, "cac", "Country")
+		_add(country, "cbc", "IdentificationCode", details["country"])
 
 	def _payment_means(self, root):
-		# A credit note carries no payment means.
-		if self.is_credit_note:
+		# A credit note carries no payment means, and neither does a deemed supply, which has no
+		# consideration (rule ibr-191-ae).
+		if self.is_credit_note or self._is_deemed_supply:
 			return
 
 		means = _add(root, "cac", "PaymentMeans")
@@ -577,8 +673,9 @@ class PintAEBuilder:
 	def _tax_category(self, parent, code: str, rate: float, reason: str | None = None, tag="TaxCategory"):
 		category = _add(parent, "cac", tag)
 		_add(category, "cbc", "ID", code)
-		# An exempt category has no rate (rules ibr-121-ae and aligned-ibrp-e-05).
-		if code != "E":
+		# An exempt or out of scope category has no rate (rules ibr-121-ae, aligned-ibrp-e-05 and
+		# aligned-ibrp-o-05).
+		if code not in NO_VAT_CATEGORY_CODES:
 			_add(category, "cbc", "Percent", _decimal(rate, 2))
 		if code == "E" and reason:
 			_add(category, "cbc", "TaxExemptionReasonCode", reason)
@@ -630,6 +727,7 @@ class PintAEBuilder:
 		# Line amounts in AED (BTAE-10, BTAE-08). An exempt line carries no VAT amount.
 		extension = _add(element, "cac", "ItemPriceExtension")
 		_add(extension, "cbc", "Amount", _amount(line["total"] * self.rate), currencyID="AED")
+		# Only an exempt line omits the VAT amount; an out of scope line states 0 (rule ibr-104-ae).
 		if line["code"] != "E":
 			tax = _add(extension, "cac", "TaxTotal")
 			_add(tax, "cbc", "TaxAmount", _amount(line["vat"] * self.rate), currencyID="AED")
