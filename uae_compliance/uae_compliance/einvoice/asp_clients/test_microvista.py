@@ -249,10 +249,35 @@ class TestMicrovista(EInvoiceTestCase):
 		self.assertEqual(model["payable"], 105)
 		self.assertEqual(model["kind"], "Invoice")
 
-	def test_a_failed_detail_fetch_is_not_logged_as_an_empty_invoice(self):
-		listing = {"data": {"paginationData": [{"invoiceMasterId": "new-2"}]}}
-		with patch(POST, side_effect=[reply(TOKEN), reply(listing), reply({"success": False})]):
+	def test_a_failed_detail_fetch_is_skipped_and_the_others_are_received(self):
+		listing = {
+			"data": {
+				"paginationData": [
+					{"invoiceMasterId": "bad", "invoiceDate": "05-10-2026"},
+					{"invoiceMasterId": "ok", "invoiceDate": "05-10-2026"},
+				]
+			}
+		}
+		detail = {"success": True, "data": {"Invoice": {"invoiceCurrencyCode": "AED"}, "Items": [{}]}}
+		with (
+			patch(POST, side_effect=[reply(TOKEN), reply(listing), reply({"success": False}), reply(detail)]),
+			patch("frappe.log_error"),
+		):
+			documents = self.provider.fetch_inbound(set())
+
+		self.assertEqual([d.provider_reference for d in documents], ["ok"])
+
+	def test_a_failed_listing_is_an_error_not_an_empty_page(self):
+		with patch(POST, side_effect=[reply(TOKEN), reply({"success": False, "message": "busy"})]):
 			self.assertRaises(ServiceProviderError, self.provider.fetch_inbound, set())
+
+	def test_a_failed_lookup_of_a_duplicate_is_retryable_not_a_rejection(self):
+		duplicate = {"success": False, "statusCode": 3, "data": ["Invoice number already exists"]}
+		with patch(POST, side_effect=[reply(TOKEN), reply(duplicate), reply({"success": False})]):
+			with self.assertRaises(ServiceProviderError) as ctx:
+				self.provider.submit(self.document(), "key")
+
+		self.assertNotIsInstance(ctx.exception, ProviderRejectedError)
 
 	# ---------------------------------------------------------------- configuration
 

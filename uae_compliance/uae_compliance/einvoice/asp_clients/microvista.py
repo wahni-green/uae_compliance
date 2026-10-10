@@ -192,6 +192,17 @@ class MicrovistaASP(ASPClient):
 
 		return [m for m in messages if m] or [body.get("message") or "Rejected"]
 
+	@staticmethod
+	def _rows(body: dict) -> list[dict]:
+		"""The rows of a listing. A listing that failed is an error to retry, not an empty page."""
+		data = body.get("data")
+		if body.get("success") is False or not isinstance(data, dict):
+			raise ServiceProviderError(
+				_("Microvista could not give the list: {0}").format(body.get("message"))
+			)
+
+		return data.get("paginationData") or []
+
 	# ------------------------------------------------------------------ the interface
 
 	def validate_credentials(self) -> None:
@@ -241,7 +252,7 @@ class MicrovistaASP(ASPClient):
 					"tin": self.taxpayer_tin,
 				},
 			)
-			rows = ((body.get("data") or {}).get("paginationData")) or []
+			rows = self._rows(body)
 			for row in rows:
 				if row.get("invoiceNumber") == document.number:
 					# The list has no FTA status, so the invoice's own status decides: delivered at the
@@ -313,15 +324,22 @@ class MicrovistaASP(ASPClient):
 					"tin": self.taxpayer_tin,
 				},
 			)
-			rows = ((body.get("data") or {}).get("paginationData")) or []
+			rows = self._rows(body)
 			for row in rows:
 				reference = row.get("invoiceMasterId")
 				if not reference or reference in known:
 					continue
 
-				documents.append(
-					InboundDocument(provider_reference=reference, model=self._inbound_model(row))
-				)
+				try:
+					model = self._inbound_model(row)
+				except ServiceProviderLimitExceededError:
+					raise
+				except ServiceProviderError:
+					# Left unlogged, so the next fetch tries it again; the others are still received.
+					frappe.log_error(title=f"Microvista inbound invoice failed: {reference}")
+					continue
+
+				documents.append(InboundDocument(provider_reference=reference, model=model))
 
 			if len(rows) < PAGE_SIZE:
 				return documents
