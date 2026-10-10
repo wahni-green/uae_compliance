@@ -218,11 +218,6 @@ class TestBuilder(EInvoiceTestCase):
 
 		self.assertRaises(EInvoiceNotSupportedError, build_xml, doc)
 
-	def test_margin_scheme_invoices_are_refused(self):
-		doc = self.invoice()
-		doc.uae_is_margin_scheme = 1
-		self.assertRaises(EInvoiceNotSupportedError, build_xml, doc)
-
 
 class TestDocumentModel(EInvoiceTestCase):
 	def test_the_model_carries_the_same_figures_as_the_xml(self):

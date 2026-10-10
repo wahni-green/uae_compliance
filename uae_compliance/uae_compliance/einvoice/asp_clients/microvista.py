@@ -530,6 +530,8 @@ def _build_payload(model: dict) -> dict:
 			"taxAmountReverseCharge": tax("AE"),
 			"taxableNotSubject": taxable("O"),
 			"taxAmountNotSubject": tax("O"),
+			"taxableAdditionalVat": taxable("N"),
+			"taxAmountAdditionalVat": tax("N"),
 		},
 		"delivery": _delivery(model.get("delivery")),
 		"payment": {

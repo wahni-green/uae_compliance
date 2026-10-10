@@ -101,15 +101,17 @@ class TestSubmission(PipelineTestCase):
 		self.assertIn("legal registration identifier", str(ctx.exception))
 
 	def test_an_unsupported_invoice_is_issued_and_logged_as_invalid(self):
+		# Metal scrap under the reverse charge has no type of goods in the specification.
 		doc = self.invoice()
-		doc.uae_is_margin_scheme = 1
+		doc.uae_is_reverse_charge = 1
+		doc.uae_reverse_charge_type = "Metal Scrap"
 		doc.flags.ignore_validate = True
 		with patch("frappe.enqueue") as enqueue:
 			doc.submit()
 
 		log = self.log_of(doc)
 		self.assertEqual(log.status, "Invalid")
-		self.assertIn("margin scheme", log.errors)
+		self.assertIn("metal scrap", log.errors.lower())
 		enqueue.assert_not_called()
 
 	def test_retention_runs_five_years_from_the_invoice_date(self):
