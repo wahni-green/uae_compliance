@@ -22,6 +22,7 @@ from uae_compliance.uae_compliance.utils.vat_return.apportionment import (
 	get_recovery_ratio,
 )
 from uae_compliance.uae_compliance.utils.vat_return.group import (
+	get_data_fingerprint,
 	get_group_rows,
 	get_return_companies,
 	get_scope,
@@ -63,6 +64,17 @@ class UAEVATReturn(Document):
 		self.validate_filed_is_immutable()
 		self.validate_can_be_filed()
 		self._clear_boxes_if_stale()
+		self.warn_if_data_changed()
+
+	def warn_if_data_changed(self):
+		if self.status != "Filed" and self._data_has_changed():
+			frappe.msgprint(
+				_(
+					"Documents of this period changed after the return was generated. Regenerate it before filing."
+				),
+				indicator="orange",
+				alert=True,
+			)
 
 	def warn_if_period_mismatch(self):
 		# A warning, not an error: the FTA may assign other periods, for example a first period that
@@ -99,6 +111,26 @@ class UAEVATReturn(Document):
 				)
 			)
 
+		if self._data_has_changed():
+			frappe.throw(
+				_(
+					"Invoices or adjustments of this period were submitted, cancelled or changed after the return was generated. Regenerate the return before filing it."
+				),
+				title=_("Return Out of Date"),
+			)
+
+	def _data_has_changed(self) -> bool:
+		"""True when documents of the period were submitted, cancelled or changed since the boxes were
+		generated. A return generated before this was recorded cannot be checked, so it counts as
+		changed."""
+		if not (self.boxes and self.company and self.from_date and self.to_date):
+			return False
+
+		if not self.generated_for_data:
+			return True
+
+		return self.generated_for_data != get_data_fingerprint(self.company, self.from_date, self.to_date)
+
 	def _boxes_are_stale(self) -> bool:
 		"""`boxes` is a snapshot computed from company, from date and to date, which stay editable.
 		generate_return() stamps `generated_for_*`; any difference means the snapshot is stale. This
@@ -132,6 +164,7 @@ class UAEVATReturn(Document):
 		self.generated_for_companies = None
 		self.generated_for_from_date = None
 		self.generated_for_to_date = None
+		self.generated_for_data = None
 
 		frappe.msgprint(
 			_(
@@ -168,6 +201,9 @@ class UAEVATReturn(Document):
 				title=_("VAT Accounts Not Configured"),
 			)
 
+		# Taken before the figures are read, so a document submitted meanwhile makes the return out of
+		# date instead of being silently missed.
+		fingerprint = get_data_fingerprint(self.company, self.from_date, self.to_date)
 		sales_rows = get_group_rows("Sales Invoice", self.company, self.from_date, self.to_date)
 		purchase_rows = get_group_rows("Purchase Invoice", self.company, self.from_date, self.to_date)
 
@@ -216,6 +252,7 @@ class UAEVATReturn(Document):
 		self.generated_for_companies = ",".join(get_scope(self.company))
 		self.generated_for_from_date = self.from_date
 		self.generated_for_to_date = self.to_date
+		self.generated_for_data = fingerprint
 
 		self.save()
 

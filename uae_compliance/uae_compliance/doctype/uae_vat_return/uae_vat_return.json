@@ -61,6 +61,7 @@
   "generated_for_from_date",
   "generated_for_to_date",
   "generated_for_companies",
+  "generated_for_data",
   "section_break_totals",
   "total_due_tax",
   "total_recoverable_tax",
@@ -169,6 +170,14 @@
    "hidden": 1,
    "label": "Generated For Companies",
    "read_only": 1
+  },
+  {
+   "fieldname": "generated_for_data",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Generated For Data",
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "section_break_totals",

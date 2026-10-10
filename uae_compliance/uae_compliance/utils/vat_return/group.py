@@ -1,3 +1,5 @@
+import hashlib
+
 import frappe
 from frappe import _
 
@@ -109,3 +111,32 @@ def exclude_intra_group(rows: list, doctype: str, companies: list[str]) -> list:
 	party_doctype, party_field = _PARTY[doctype]
 	internal = get_internal_parties(party_doctype, companies)
 	return [row for row in rows if row.get(party_field) not in internal]
+
+
+def get_data_fingerprint(company: str, from_date, to_date) -> str:
+	"""A fingerprint of everything a return of the period is built from: the submitted invoices and
+	VAT adjustments of the companies it covers, with their amounts. It changes when a document is
+	submitted, cancelled or amended in the period, so a return generated earlier can be seen to be out
+	of date."""
+	companies = get_return_companies(company)
+	parts = []
+	for doctype, fields in (
+		("Sales Invoice", ["name", "base_grand_total", "base_total_taxes_and_charges"]),
+		("Purchase Invoice", ["name", "base_grand_total", "base_total_taxes_and_charges"]),
+		("UAE VAT Adjustment", ["name", "amount", "vat_amount"]),
+	):
+		rows = frappe.get_all(
+			doctype,
+			filters={
+				"company": ["in", companies],
+				"docstatus": 1,
+				"posting_date": ["between", [from_date, to_date]],
+			},
+			fields=fields,
+			order_by="name asc",
+			limit_page_length=0,
+			as_list=True,
+		)
+		parts.append(f"{doctype}:{rows}")
+
+	return hashlib.sha256("|".join(parts).encode()).hexdigest()
