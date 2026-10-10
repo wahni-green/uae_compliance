@@ -28,3 +28,5 @@ RETURN_DUE_DAYS = 28
 
 # Categories reported on the return. Out of Scope supplies are not.
 REPORTABLE_VAT_CATEGORIES = ("Standard Rated", "Zero Rated", "Exempt")
+# The category given to the rows of a sale under the reverse charge, which the return leaves out.
+REVERSE_CHARGE_SUPPLY_CATEGORY = "Reverse Charge Supply"

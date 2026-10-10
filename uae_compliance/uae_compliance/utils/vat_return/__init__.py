@@ -3,7 +3,10 @@ from frappe import _
 from frappe.utils import flt
 
 from uae_compliance.uae_compliance.constants import DEFAULT_VAT_CATEGORY
-from uae_compliance.uae_compliance.constants.vat_return import REPORTABLE_VAT_CATEGORIES
+from uae_compliance.uae_compliance.constants.vat_return import (
+	REPORTABLE_VAT_CATEGORIES,
+	REVERSE_CHARGE_SUPPLY_CATEGORY,
+)
 from uae_compliance.uae_compliance.utils.tax_account import (
 	get_item_wise_vat_amounts,
 	is_input_vat_account,
@@ -18,6 +21,7 @@ _PARENT_FIELDS = {
 		"uae_tourist_refund",
 		"conversion_rate",
 		"uae_is_margin_scheme",
+		"uae_is_reverse_charge",
 	),
 	"Purchase Invoice": (
 		"supplier",
@@ -103,7 +107,12 @@ def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:
 
 	resolver = CategoryResolver()
 	for item in items:
-		item.category = resolver.resolve(item)
+		# A supply the recipient accounts for the VAT on is not reported by the supplier (CD 127/2024 and
+		# CD 153/2025, Art 2(1)(a)) and has no box of its own on the VAT 201.
+		if doctype == "Sales Invoice" and invoices_by_name[item.parent].get("uae_is_reverse_charge"):
+			item.category = REVERSE_CHARGE_SUPPLY_CATEGORY
+		else:
+			item.category = resolver.resolve(item)
 
 	_validate_unambiguous_item_codes(items)
 

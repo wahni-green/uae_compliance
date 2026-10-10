@@ -19,9 +19,23 @@ OUT_OF_SCOPE_INVOICE_TYPE_CODE = "480"
 OUT_OF_SCOPE_CREDIT_NOTE_TYPE_CODE = "81"
 NO_VAT_CATEGORY_CODES = ("E", "O")
 
+# Type of goods subject to the reverse charge (BTAE-09, rule ibr-006-ae). The code list has no entry for
+# metal scrap, so a metal scrap supply cannot be sent as an e-invoice. The list names "Gold and
+# Diamonds"; precious metals and stones are sent under it as its closest entry.
+REVERSE_CHARGE_NATURE_CODES = {
+	"Crude or Refined Oil": "DL8.48.3.1",
+	"Natural Gas": "DL8.48.3.2",
+	"Pure Hydrocarbons": "DL8.48.3.3",
+	"Electronic Devices": "DL8.48.8.2",
+	"Precious Metals and Stones": "DL8.48.8.1",
+}
+GTIN_SCHEME = "0160"
+GTIN_LENGTHS = (8, 12, 13, 14)
+
 # Tax category codes (IBT-151). There is no code for exports: those are flagged in the transaction
 # type (ProfileExecutionID).
 CATEGORY_CODES = {"Standard Rated": "S", "Zero Rated": "Z", "Exempt": "E", "Out of Scope": "O"}
+REVERSE_CHARGE_CODE = "AE"
 SUPPORTED_CATEGORIES = tuple(CATEGORY_CODES)
 
 # ProfileExecutionID: eight 0/1 flags (BTAE-02).

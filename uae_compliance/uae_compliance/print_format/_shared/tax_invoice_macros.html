@@ -148,6 +148,10 @@
 #}
 {% macro render_totals(doc, data) %}
 	{{ render_aed_warning(data) }}
+	{# A supply the recipient accounts for the VAT on must say so (ER Art 59(1)). #}
+	{% if doc.uae_is_reverse_charge %}
+	<p class="reverse-charge-note">{{ _("Reverse charge applies: the recipient is liable to account for the VAT on this supply (Federal Decree-Law No. 8 of 2017, reverse charge provisions).") }} / <span lang="ar">تطبق آلية الاحتساب العكسي: المستلم مسؤول عن احتساب الضريبة على هذه التوريدات</span></p>
+	{% endif %}
 	{% if doc.uae_is_margin_scheme and not doc.is_return %}
 	<p class="margin-scheme-note">{{ _("Profit Margin Scheme: VAT is accounted for on the profit margin.") }} / <span lang="ar">يخضع لنظام هامش الربح</span></p>
 	<table class="totals-table">

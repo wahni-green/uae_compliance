@@ -29,6 +29,8 @@ from uae_compliance.uae_compliance.constants.pint_ae import (
 	FLAG_EXPORT,
 	FLAG_FREE_TRADE_ZONE,
 	FLAG_MARGIN_SCHEME,
+	GTIN_LENGTHS,
+	GTIN_SCHEME,
 	INVOICE_TYPE_CODE,
 	ITEM_TYPE_CODES,
 	LEGAL_REGISTRATION_TYPES,
@@ -37,6 +39,8 @@ from uae_compliance.uae_compliance.constants.pint_ae import (
 	OUT_OF_SCOPE_INVOICE_TYPE_CODE,
 	PAYMENT_MEANS_CODE,
 	PROFILE_ID,
+	REVERSE_CHARGE_CODE,
+	REVERSE_CHARGE_NATURE_CODES,
 	TRADE_LICENSE_AGENCY,
 	UNIT_CODES,
 	UTC_OFFSET,
@@ -148,6 +152,15 @@ class PintAEBuilder:
 				_("E-invoicing needs the company currency to be AED, not {0}.").format(self.company_currency)
 			)
 
+		if doc.get("uae_is_reverse_charge") and doc.get("uae_reverse_charge_type") not in (
+			REVERSE_CHARGE_NATURE_CODES
+		):
+			raise EInvoiceNotSupportedError(
+				_(
+					"A {0} supply under the reverse charge cannot be sent as an e-invoice: the specification has no type of goods for it."
+				).format(_(doc.get("uae_reverse_charge_type") or ""))
+			)
+
 		if doc.get("uae_is_margin_scheme"):
 			# The specification reports a margin scheme invoice under the "standard rate additional
 			# VAT" category (rule ibr-116-ae), which this builder does not produce yet.
@@ -175,6 +188,10 @@ class PintAEBuilder:
 		for row in self.doc.items:
 			category = resolver.resolve(row)
 			code = CATEGORY_CODES.get(category)
+			if self._is_reverse_charge and code == "S":
+				# The recipient accounts for the VAT: the line is reported at the standard rate with no
+				# VAT charged (rules aligned-ibrp-ae-05 and ibr-162-ae).
+				code = REVERSE_CHARGE_CODE
 			if not code:
 				raise EInvoiceNotSupportedError(
 					_("Row #{0}: {1} supplies cannot be sent as e-invoices yet.").format(row.idx, _(category))
@@ -191,6 +208,8 @@ class PintAEBuilder:
 					)
 
 				vat_rate = flt(rates.get(row.item_code)) or STANDARD_VAT_RATE
+			elif code == REVERSE_CHARGE_CODE:
+				vat_rate = STANDARD_VAT_RATE
 			else:
 				vat_rate = 0.0
 
@@ -334,6 +353,8 @@ class PintAEBuilder:
 			"vat_amount": line["vat"],
 			"total": line["total"],
 			"exemption_reason_code": self._exemption_reason(row) if line["code"] == "E" else None,
+			"nature_code": self._nature_code(line),
+			"gtin": self._gtin(row) if line["code"] == REVERSE_CHARGE_CODE else None,
 			"amount_aed": flt(line["total"] * self.rate, 2),
 			"vat_amount_aed": flt(line["vat"] * self.rate, 2) if line["code"] != "E" else None,
 		}
@@ -589,6 +610,10 @@ class PintAEBuilder:
 		self._delivery(root)
 
 	@property
+	def _is_reverse_charge(self) -> bool:
+		return bool(self.doc.get("uae_is_reverse_charge"))
+
+	@property
 	def _is_deemed_supply(self) -> bool:
 		return bool(self.doc.get("uae_is_deemed_supply"))
 
@@ -705,7 +730,7 @@ class PintAEBuilder:
 		item = _add(element, "cac", "Item")
 		_add(item, "cbc", "Description", (row.description or row.item_name or row.item_code)[:2000])
 		_add(item, "cbc", "Name", (row.item_name or row.item_code)[:200])
-		self._classification(item, row)
+		self._classification(item, row, line)
 		self._tax_category(
 			item, line["code"], line["rate"], self._exemption_reason(row), "ClassifiedTaxCategory"
 		)
@@ -732,19 +757,46 @@ class PintAEBuilder:
 			tax = _add(extension, "cac", "TaxTotal")
 			_add(tax, "cbc", "TaxAmount", _amount(line["vat"] * self.rate), currencyID="AED")
 
-	def _classification(self, item, row):
+	def _nature_code(self, line: dict) -> str | None:
+		"""The type of goods subject to the reverse charge (BTAE-09)."""
+		if line["code"] != REVERSE_CHARGE_CODE:
+			return None
+
+		return REVERSE_CHARGE_NATURE_CODES.get(self.doc.get("uae_reverse_charge_type"))
+
+	@staticmethod
+	def _gtin(row) -> str | None:
+		"""The item's GTIN: the first barcode of 8, 12, 13 or 14 digits (rule ibr-174-ae)."""
+		for barcode in frappe.get_all(
+			"Item Barcode", filters={"parent": row.item_code}, pluck="barcode", order_by="idx asc"
+		):
+			digits = (barcode or "").strip()
+			if digits.isdigit() and len(digits) in GTIN_LENGTHS:
+				return digits
+
+		return None
+
+	def _classification(self, item, row, line: dict | None = None):
 		"""The item type, HS code (goods) and service accounting code (services). The service
 		accounting code is an additional item identifier with the scheme SAC, not a classification
 		code, and comes before the classification in the Item element."""
 		item_type = self._item_type(row)
 		hs_code = frappe.db.get_value("Item", row.item_code, "customs_tariff_number")
 		sac_code = frappe.db.get_value("Item", row.item_code, "uae_sac_code")
+		is_reverse_charge = bool(line) and line["code"] == REVERSE_CHARGE_CODE
+
+		# A reverse charge line names the item by its GTIN, which comes before the other identifiers.
+		if is_reverse_charge and self._gtin(row):
+			standard = _add(item, "cac", "StandardItemIdentification")
+			_add(standard, "cbc", "ID", self._gtin(row), schemeID=GTIN_SCHEME)
 
 		if item_type in ("Services", "Both") and sac_code:
 			identification = _add(item, "cac", "AdditionalItemIdentification")
 			_add(identification, "cbc", "ID", sac_code, schemeID="SAC")
 
 		classification = _add(item, "cac", "CommodityClassification")
+		if is_reverse_charge:
+			_add(classification, "cbc", "NatureCode", self._nature_code(line) or "")
 		_add(classification, "cbc", "CommodityCode", ITEM_TYPE_CODES[item_type])
 		if item_type in ("Goods", "Both") and hs_code:
 			_add(classification, "cbc", "ItemClassificationCode", hs_code, listID="HS")

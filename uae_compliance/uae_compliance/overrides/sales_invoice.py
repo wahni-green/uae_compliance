@@ -15,7 +15,11 @@ from uae_compliance.uae_compliance.overrides.vat_checks import (
 )
 from uae_compliance.uae_compliance.utils.company import is_uae_company
 from uae_compliance.uae_compliance.utils.print_data import get_value_before_credit_note
-from uae_compliance.uae_compliance.utils.tax_account import is_einvoicing_company
+from uae_compliance.uae_compliance.utils.tax_account import (
+	get_item_wise_vat_rates,
+	is_einvoicing_company,
+	is_output_vat_account,
+)
 
 
 def validate(doc, method=None):
@@ -29,8 +33,57 @@ def validate(doc, method=None):
 	set_simplified_tax_invoice_flag(doc)
 	warn_late_tax_invoice(doc)
 	validate_margin_scheme(doc)
+	validate_reverse_charge_supply(doc)
 	validate_tourist_refund(doc)
 	warn_if_excise_missing(doc)
+
+
+def validate_reverse_charge_supply(doc) -> None:
+	"""A supply the recipient accounts for the VAT on (CD 127/2024 and CD 153/2025 Art 2): the supplier
+	charges and reports no VAT, must hold the recipient's declarations, and may not use it for a zero
+	rated supply, which the decisions exclude. Every row is then a standard rated supply."""
+	if not doc.get("uae_is_reverse_charge"):
+		return
+
+	if not doc.get("uae_reverse_charge_type"):
+		frappe.throw(_("Choose the Reverse Charge Type."), title=_("Reverse Charge"))
+
+	if not doc.get("uae_rc_declaration"):
+		frappe.throw(
+			_(
+				"Tick Recipient Declarations Held: before the supply the supplier must hold the recipient's written declarations of intended use and of registration."
+			),
+			title=_("Reverse Charge"),
+		)
+
+	if not frappe.db.get_value("Customer", doc.customer, "uae_trn"):
+		frappe.throw(
+			_("The customer needs a TRN: a reverse charge supply is only made to a registered recipient."),
+			title=_("Reverse Charge"),
+		)
+
+	if doc.get("uae_is_export") or doc.get("uae_is_margin_scheme") or doc.get("uae_tourist_refund"):
+		frappe.throw(
+			_(
+				"A reverse charge supply cannot be an export, a margin scheme supply or have a tourist refund."
+			),
+			title=_("Reverse Charge"),
+		)
+
+	if any(row.get("uae_vat_category") != "Standard Rated" for row in doc.get("items") or []):
+		frappe.throw(
+			_(
+				"Every row of a reverse charge supply must be Standard Rated: it does not apply to zero rated, exempt or out of scope supplies."
+			),
+			title=_("Reverse Charge"),
+		)
+
+	charged = get_item_wise_vat_rates(doc.get("taxes") or [], doc.get("company"), is_output_vat_account)
+	if any(charged.values()):
+		frappe.throw(
+			_("A reverse charge supply carries no VAT: remove the Output VAT from the taxes."),
+			title=_("Reverse Charge"),
+		)
 
 
 def before_submit(doc, method=None):
@@ -120,6 +173,10 @@ def set_simplified_tax_invoice_flag(doc) -> None:
 def is_simplified_tax_invoice_candidate(doc) -> bool:
 	company = doc.get("company")
 	if is_einvoicing_company(company):
+		return False
+
+	# A simplified tax invoice is not allowed for a supply under the reverse charge (ER Art 59(2)).
+	if doc.get("uae_is_reverse_charge"):
 		return False
 
 	settings = frappe.get_cached_doc("UAE Compliance Settings")

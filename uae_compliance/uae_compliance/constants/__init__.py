@@ -44,6 +44,18 @@ METAL_SCRAP_TYPE = "Metal Scrap"
 IMPORT_OF_GOODS_TYPE = "Import of Goods"
 IMPORT_OF_SERVICES_TYPE = "Import of Services"
 
+# What a supplier can supply under a domestic reverse charge (see docs/UAE_VERIFICATION.md section 8).
+# The recipient then accounts for the VAT and the supplier does not report it.
+SALES_REVERSE_CHARGE_TYPES = [
+	"Crude or Refined Oil",
+	"Natural Gas",
+	"Pure Hydrocarbons",
+	"Electronic Devices",
+	"Precious Metals and Stones",
+	"Metal Scrap",
+]
+SALES_REVERSE_CHARGE_TYPE_SELECT_OPTIONS = "\n" + "\n".join(SALES_REVERSE_CHARGE_TYPES)
+
 # Tax invoice must be issued within 14 days of the supply (Decree-Law Art 67, ER Art 59(13)).
 TAX_INVOICE_ISSUE_DAYS = 14
 

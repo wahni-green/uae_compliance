@@ -2,6 +2,7 @@ from uae_compliance.uae_compliance.constants import (
 	INPUT_TAX_ATTRIBUTION_SELECT_OPTIONS,
 	MODULE,
 	REVERSE_CHARGE_TYPE_SELECT_OPTIONS,
+	SALES_REVERSE_CHARGE_TYPE_SELECT_OPTIONS,
 	VAT_CATEGORY_SELECT_OPTIONS,
 )
 from uae_compliance.uae_compliance.constants.emirates import EMIRATE_SELECT_OPTIONS
@@ -308,6 +309,24 @@ CUSTOM_FIELDS = {
 		),
 		_field("uae_is_deemed_supply", "Deemed Supply", "Check", "uae_free_zone_beneficiary_id"),
 		_field("uae_is_ecommerce_supply", "Supply through E-commerce", "Check", "uae_is_deemed_supply"),
+		_field("uae_is_reverse_charge", "Reverse Charge Supply", "Check", "uae_is_ecommerce_supply"),
+		_field(
+			"uae_reverse_charge_type",
+			"Reverse Charge Type",
+			"Select",
+			"uae_is_reverse_charge",
+			options=SALES_REVERSE_CHARGE_TYPE_SELECT_OPTIONS,
+			depends_on="uae_is_reverse_charge",
+			mandatory_depends_on="uae_is_reverse_charge",
+		),
+		_field(
+			"uae_rc_declaration",
+			"Recipient Declarations Held",
+			"Check",
+			"uae_reverse_charge_type",
+			depends_on="uae_is_reverse_charge",
+			mandatory_depends_on="uae_is_reverse_charge",
+		),
 		_field(
 			"uae_tourist_refund",
 			"Tax Refund provided to Tourists",
