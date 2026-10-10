@@ -103,7 +103,8 @@ Tobacco and tobacco products 100%; e-cigarette liquids and devices 100%; energy 
 - [ ] Obtain a current FAF spec (2017 doc may be superseded) and confirm FAF tax codes; ask info_tas@tax.gov.ae
 - [ ] Current designated zones list (FTA legislation page)
 - [ ] Late-payment penalty regime (CD 129/2025) and AED 150M monthly rule
-- [ ] CD 91/2023 text (electronic devices RCM)
+- [ ] CD 91/2023 text (electronic devices RCM) and its current supplier rules
+- [ ] **Open point:** where the supplier reports the *value* of a sale under a domestic reverse charge on the VAT 201. The Cabinet Decisions say only that the supplier does not report "such Tax", and the FTA's guide has no supplier-side box (section 8). The app leaves such sales out of every box; confirm with the FTA or a tax adviser, and change `get_invoice_rows` (`REVERSE_CHARGE_SUPPLY_CATEGORY`) if the value belongs in a box, such as Box 4
 - [ ] Text of MD 243/244/64 and CD 106/2025
 - [ ] Greek "N" vs Latin N tax category in PINT-AE Schematron
 
