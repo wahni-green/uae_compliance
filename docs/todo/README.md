@@ -16,7 +16,7 @@ Phase checklists for [UAE_COMPLIANCE_PLAN.md](../UAE_COMPLIANCE_PLAN.md). Tick i
 **To build**
 - E-invoice cases: margin scheme (category N), summary, continuous and agent billing invoices, self-billing ([Phase 6](phase-6-einvoicing-pint-ae.md)).
 - Inbound e-invoices: create Purchase Invoices from received documents; acknowledge or dispute them ([Phase 6](phase-6-einvoicing-pint-ae.md)).
-- **CD 149/2026**, in force since 1 October 2026: margin scheme purchase price rules, composite supply (ER Art 4(6)), input tax and apportionment changes ([Phase 5](phase-5-advanced-schemes.md)).
+- **CD 149/2026** (read; [UAE_VERIFICATION.md](../UAE_VERIFICATION.md) section 9): the cash payment rule once the Minister's decision publishes the amount, and the apportionment changes from the first tax year after 1 October 2027 ([Phase 5](phase-5-advanced-schemes.md)).
 - Tourist refund: the 90-day limit and the daily cap across invoices ([Phase 5](phase-5-advanced-schemes.md)).
 - Smaller gaps: the excise return, 7-year retention for real estate, detection of other e-invoice exclusions.
 

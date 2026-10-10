@@ -13,7 +13,9 @@
 - [x] Capital assets: 5 years non-buildings, 10 years buildings, AED 5M threshold (PR 5a)
 - [x] Excise rates per CD 197/2025 (volumetric sweetened drinks AED 1.09 / 0.79 per litre, 100% tobacco, e-liquids and energy drinks), item categories and an invoice check (PR 5b)
 - [ ] Excise return and excise on purchases (not built; only needed if the company files excise through this app)
-- [ ] **CD 149/2026 (in force since 1 Oct 2026, so already applicable): not implemented.** (a) Margin scheme: the purchase price includes costs only where the related input tax is not recoverable; the app takes the purchase price as entered, so it neither checks nor derives it. (b) Composite supply (ER Art 4(6)): interconnected components are one supply, which matters for licence, support and hosting bundles; nothing in the app identifies or treats them. (c) Input tax and apportionment changes, including the government/charity method from the first tax year starting after 1 Oct 2027. Read the Cabinet Decision text before building
+- [x] CD 149/2026 read (in force since 1 Oct 2026; analysis in UAE_VERIFICATION.md section 9). Most changes are rules the user applies, not calculations: the margin scheme purchase price basis, composite supply (Art 4(6)), employee benefits and the medical product rate are covered in the user guide, and nothing in the app can derive them
+- [ ] CD 149/2026 Art 54(3): input VAT not recoverable on large cash payments. Blocked until the Minister's decision sets the amount (unpublished as of 10 Oct 2026); then add a configurable amount and a check on cash-paid purchases
+- [ ] CD 149/2026 from the first tax year after 1 Oct 2027: exclude capital asset supplies and reverse charge receipts from the recovery percentage, and the government and charity apportionment method
 - [x] Tourist refund: minimum purchase AED 250, cap AED 35,000, refund not above the VAT charged, standard rated only (PR 5b)
 - [ ] Tourist refund: the 90-day limit and the AED 35,000 cap per 24 hours across invoices are not validated (only a single invoice is checked)
 
