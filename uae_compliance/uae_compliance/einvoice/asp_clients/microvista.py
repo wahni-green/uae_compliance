@@ -372,10 +372,10 @@ class MicrovistaASP(ASPClient):
 			"uuid": row.get("uuid") or "",
 			"issue_date": _iso_date(issued),
 			"currency": invoice.get("invoiceCurrencyCode") or "AED",
-			"seller_tin": row.get("sellerElectronicID") or "",
+			"seller_tin": _tin(row.get("sellerElectronicID")),
 			"seller_trn": row.get("sellerTRN") or "",
 			"seller_name": row.get("sellerName") or "",
-			"buyer_tin": row.get("buyerElectronicID") or "",
+			"buyer_tin": _tin(row.get("buyerElectronicID")),
 			"buyer_trn": row.get("buyerTRN") or "",
 			"tax_total": flt(row.get("taxAmount")),
 			"payable": flt(row.get("totalAmount")),
@@ -384,6 +384,14 @@ class MicrovistaASP(ASPClient):
 
 
 # ---------------------------------------------------------------------- mapping
+
+
+def _tin(value) -> str:
+	"""A TIN from an electronic id. The list gives the Peppol scheme alone ("0235") where the buyer's
+	id is not held, and may prefix the TIN with it, so only what is a 10 digit TIN is kept; an empty
+	value is not compared with the company's."""
+	text = str(value or "").strip().removeprefix(f"{ENDPOINT_SCHEME}:")
+	return text if len(text) == 10 and text.isdigit() else ""
 
 
 def _iso_date(value: str) -> str:
@@ -443,8 +451,14 @@ def _build_payload(model: dict) -> dict:
 			"taxAccountingCurrency": "AED",
 			"vatPointDate": model.get("vat_point_date"),
 			"creditNoteReasonCode": credit.get("reason_code"),
-			"precedingInvoiceReference": credit.get("preceding_number"),
-			"precedingInvoiceIssueDate": credit.get("preceding_date"),
+			"precedingInvoices": [
+				{
+					"precedingInvoiceReference": credit["preceding_number"],
+					"precedingInvoiceIssueDate": credit.get("preceding_date"),
+				}
+			]
+			if credit.get("preceding_number")
+			else [],
 			"invoiceNote": None,
 		},
 		"seller": {

@@ -231,7 +231,7 @@ class TestMicrovista(EInvoiceTestCase):
 						"invoiceType": "380",
 						"invoiceDate": "05-10-2026",
 						"sellerElectronicID": "1555555555",
-						"buyerElectronicID": "1234567890",
+						"buyerElectronicID": "0235:1234567890",
 						"taxAmount": 5,
 						"totalAmount": 105,
 					},
@@ -248,6 +248,9 @@ class TestMicrovista(EInvoiceTestCase):
 		self.assertEqual(model["lines"], 2)
 		self.assertEqual(model["payable"], 105)
 		self.assertEqual(model["kind"], "Invoice")
+		# The list gives the bare scheme where it does not hold the buyer's id.
+		self.assertEqual(model["seller_tin"], "1555555555")
+		self.assertEqual(model["buyer_tin"], "1234567890")
 
 	def test_a_failed_detail_fetch_is_skipped_and_the_others_are_received(self):
 		listing = {
@@ -266,6 +269,13 @@ class TestMicrovista(EInvoiceTestCase):
 			documents = self.provider.fetch_inbound(set())
 
 		self.assertEqual([d.provider_reference for d in documents], ["ok"])
+
+	def test_a_bare_scheme_is_not_taken_for_a_tin(self):
+		from uae_compliance.uae_compliance.einvoice.asp_clients.microvista import _tin
+
+		self.assertEqual(_tin("0235"), "")
+		self.assertEqual(_tin(None), "")
+		self.assertEqual(_tin("0235:1005018055"), "1005018055")
 
 	def test_a_failed_listing_is_an_error_not_an_empty_page(self):
 		with patch(POST, side_effect=[reply(TOKEN), reply({"success": False, "message": "busy"})]):
@@ -312,3 +322,39 @@ class TestMicrovista(EInvoiceTestCase):
 
 		self.assertEqual(payload["invoice"]["invoiceNumber"], model["number"])
 		json.dumps(payload)
+
+	def test_a_credit_note_names_its_original_in_the_nested_list(self):
+		from erpnext.controllers.sales_and_purchase_return import make_return_doc
+
+		original = self.invoice(submit=True)
+		credit = make_return_doc("Sales Invoice", original.name)
+		credit.uae_emirate = "Dubai"
+		credit.uae_credit_note_reason = "Returned"
+		credit.uae_credit_note_reason_code = "DL8.61.1.D"
+		credit.items[0].qty = -1
+		credit.insert()
+
+		payload = to_payload(build_document(credit)[2])
+
+		invoice = payload["invoice"]
+		self.assertEqual(invoice["invoiceTypeCode"], "381")
+		self.assertEqual(invoice["creditNoteReasonCode"], "DL8.61.1.D")
+		self.assertEqual(
+			invoice["precedingInvoices"],
+			[
+				{
+					"precedingInvoiceReference": original.name,
+					"precedingInvoiceIssueDate": str(frappe.utils.getdate(original.posting_date)),
+				}
+			],
+		)
+		self.assertNotIn("precedingInvoiceReference", invoice)
+		self.assertNotIn("precedingInvoiceIssueDate", invoice)
+		# Amounts are positive, as the provider requires.
+		self.assertGreater(payload["items"][0]["invoicedQuantity"], 0)
+		self.assertGreater(payload["invoiceDetail"]["invoiceTotalAmountWithTax"], 0)
+
+	def test_an_invoice_has_no_preceding_invoices(self):
+		_xml, _summary, model = build_document(self.invoice(submit=True))
+
+		self.assertEqual(to_payload(model)["invoice"].get("precedingInvoices", []), [])

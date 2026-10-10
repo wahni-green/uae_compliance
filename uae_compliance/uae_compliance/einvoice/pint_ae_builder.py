@@ -96,6 +96,9 @@ class PintAEBuilder:
 	def __init__(self, doc):
 		self.doc = doc
 		self.is_credit_note = bool(doc.get("is_return"))
+		# ERPNext holds a return's quantities and amounts as negatives; a PINT AE credit note states
+		# them as positive figures.
+		self.sign = -1 if self.is_credit_note else 1
 		self.root_name = "CreditNote" if self.is_credit_note else "Invoice"
 		self.currency = doc.currency
 		self.company_currency = frappe.get_cached_value("Company", doc.company, "default_currency")
@@ -171,9 +174,9 @@ class PintAEBuilder:
 			else:
 				vat_rate = 0.0
 
-			net = flt(row.net_amount, 2)
+			net = flt(row.net_amount * self.sign, 2)
 			vat = flt(net * vat_rate / 100, 2) if code == "S" else 0.0
-			qty = flt(row.qty) or 1
+			qty = flt(row.qty * self.sign) or 1
 			net_price = flt(net / qty, 6)
 			gross_price = flt(row.get("price_list_rate") or row.rate, 6)
 
@@ -220,7 +223,7 @@ class PintAEBuilder:
 		self.inclusive_total = flt(self.line_total + self.tax_total, 2)
 		self.rounding = 0.0
 		if self.doc.get("rounded_total") and not self.doc.get("disable_rounded_total"):
-			self.rounding = flt(flt(self.doc.rounded_total) - self.inclusive_total, 2)
+			self.rounding = flt(flt(self.doc.rounded_total) * self.sign - self.inclusive_total, 2)
 
 		self.payable = flt(self.inclusive_total + self.rounding, 2)
 		self._refuse_untracked_amounts()
@@ -233,7 +236,7 @@ class PintAEBuilder:
 		"""The e-invoice is built from the item rows and the VAT on them. Anything else on the invoice
 		(freight and other charges, a discount outside the rows, VAT that differs from the rows)
 		would silently change the amount billed, so such an invoice is refused instead."""
-		grand_total = flt(self.doc.get("grand_total"), 2)
+		grand_total = flt(flt(self.doc.get("grand_total")) * self.sign, 2)
 		if abs(self.inclusive_total - grand_total) > 0.02:
 			raise EInvoiceNotSupportedError(
 				_(
