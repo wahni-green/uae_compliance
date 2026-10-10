@@ -128,3 +128,28 @@ Needed before sales invoices under a domestic reverse charge (PINT category AE) 
 - A goods or services type (BTAE-09, `NatureCode`) from a closed list (ibr-006-ae, ibr-166-ae): `DL8.48.8.2` Electronic Devices, `DL8.48.8.1` Gold and Diamonds, `DL8.48.3.1` Crude or refined oil, `DL8.48.3.2` Natural gas, `DL8.48.3.3` Pure hydrocarbons. **There is no code for metal scrap**, so a metal scrap supply cannot be expressed in PINT AE v1.0.4.
 - An item standard identifier with scheme `0160` (GTIN) on every AE line (ibr-174-ae).
 - AE appears on mixed documents; a document with only E and O lines is a 480/81 (rule ibr-122-ae).
+
+## 9. Cabinet Decision 149/2026 (read 2026-10-10)
+
+Source: the FTA's consolidated Executive Regulation of September 2026, which footnotes every change made by CD 149/2026 (issued 1 September 2026, effective **1 October 2026**, so already in force), checked against secondary summaries. Almost all of it is a rule the user applies, not a calculation the app makes.
+
+**In force now**
+| ER article | Change | What it means for the app |
+|---|---|---|
+| Art 4(6), new | A supply of several components is **one composite supply**, taxed by its principal component, where the components are interconnected and cannot be separated | A judgement on the facts. Sold as a **Product Bundle**: one invoice row, for the bundle item, carrying the principal component's VAT category, tax template and rate. A **Principal Component** field on the bundle warns when the bundle item's category differs. Whether components are really inseparable is the user's judgement |
+| Art 29(5) (margin scheme) | The "purchase price" includes costs and fees **only where the input VAT on them is not recoverable** | The app takes the purchase price as entered and cannot tell what it contains. The user must enter it on this basis |
+| Art 41(4) | Zero rating of medical products (as specified by Cabinet decision) | A choice of VAT category by the user |
+| Art 46(2) | A person is "outside the State" if present for under 30 days and not effectively connected with the supply | Bears on the place of supply of services; the user's judgement |
+| Art 53 (employee benefits, sub-clauses 34 and 35) | Tighter tests for recovering input VAT on goods and services provided to employees, such as accommodation | The user ticks **Input VAT Not Recoverable**; nothing is derived |
+| Art 54(3), new | Input VAT is **not recoverable** on a supply whose value exceeds an amount set by a decision of the Minister, where it is paid or intended to be paid **in cash** | **The Ministerial Decision with the amount had not been published** in any source found (about 10 days after the effective date). Built as a setting (UAE Compliance Settings, off until set): cash paid on the invoice, by a Payment Entry, or marked intended, on a supply above the limit. The wording refers to the value of the supply, not the cash part |
+| Art 57 | Capital asset defined as a "business asset" of AED 5M or more | No change to the scheme as built |
+| Art 60(1)(a) | The credit note must show the words "Tax Credit Note" | The print format already does |
+
+**From the first tax year starting after 1 October 2027**
+- Art 55(6) and (7) are rewritten: input VAT is recovered in full where it relates to taxable supplies, none where it relates to others, and the rest by the percentage of taxable supplies in all supplies, rounded to a whole number. Capital assets and reverse charge receipts are excluded from the percentage.
+- A new Art 55 clause sets a separate calculation for **government entities and charities**.
+- The app's partial exemption (rounded percentage of taxable over taxable plus exempt supplies) is close to this already. The exclusion of capital asset supplies and reverse charge receipts from the percentage, and the government and charity method, are not built.
+
+**Open points**
+- The Ministerial Decision on the cash payment amount: watch the Ministry of Finance and FTA sites and enter the amount in UAE Compliance Settings when it is published. The rule counts the supply's value, not the cash part, and a payment intended in cash is marked by the user; confirm the reading with an adviser.
+- Confirm with an adviser how the composite supply rule applies to a given bundle (software licence, support and hosting) and which component is principal.
