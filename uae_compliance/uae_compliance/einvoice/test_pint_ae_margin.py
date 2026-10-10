@@ -97,6 +97,43 @@ class TestMarginSchemeDocument(MarginTestCase):
 		self.assertEqual(lines[2], 50.0)
 		self.assertEqual(validate_xml(etree.tostring(xml)), [])
 
+	def test_many_rows_whose_vat_rounds_to_nothing_still_add_up(self):
+		# 20 rows with a margin of 0.08 each: the VAT charged is 0.08 in all, which no row's own share
+		# reaches a cent for.
+		rows = [
+			{"item_code": "_Test EInv Service", "rate": 100.08, "uae_margin_purchase_price": 100}
+			for _ in range(20)
+		]
+		doc = self.margin_invoice(rows)
+		xml = self.xml(doc)
+		lines = [float(_text(line, "cbc:LineExtensionAmount")) for line in _find(xml, "cac:InvoiceLine")]
+
+		self.assertAlmostEqual(sum(lines), doc.grand_total, places=2)
+		self.assertEqual(validate_xml(etree.tostring(xml)), [])
+
+	def test_a_row_sold_at_a_loss_keeps_its_price(self):
+		rows = [
+			{"item_code": "_Test EInv Service", "rate": 100.12, "uae_margin_purchase_price": 100},
+			{"item_code": "_Test EInv Service", "rate": 100.12, "uae_margin_purchase_price": 100},
+			{"item_code": "_Test EInv Service", "rate": 50, "uae_margin_purchase_price": 80},
+		]
+		doc = self.margin_invoice(rows)
+		xml = self.xml(doc)
+		lines = [float(_text(line, "cbc:LineExtensionAmount")) for line in _find(xml, "cac:InvoiceLine")]
+
+		self.assertEqual(lines[2], 50.0)
+		self.assertAlmostEqual(sum(lines), doc.grand_total, places=2)
+
+	def test_the_shares_are_whole_cents_that_add_up(self):
+		from uae_compliance.uae_compliance.einvoice.pint_ae_builder import _share_in_cents
+
+		self.assertEqual(_share_in_cents(0.08, [0.08] * 20).count(0.01), 8)
+		self.assertAlmostEqual(sum(_share_in_cents(0.08, [0.08] * 20)), 0.08)
+		self.assertEqual(_share_in_cents(0.01, [0.12, 0.12, 0.0]), [0.01, 0.0, 0.0])
+		self.assertEqual(_share_in_cents(-20, [500, 500]), [-10.0, -10.0])
+		self.assertEqual(_share_in_cents(5, [0, 0]), [0.0, 0.0])
+		self.assertEqual(_share_in_cents(0, [1, 2]), [0.0, 0.0])
+
 	def test_only_standard_rated_rows_are_allowed(self):
 		doc = self.margin_invoice()
 		doc.items[0].uae_vat_category = "Zero Rated"

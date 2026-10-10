@@ -622,29 +622,20 @@ class PintAEBuilder:
 		return bool(self.doc.get("uae_is_margin_scheme"))
 
 	def _margin_vat_of(self, row) -> float:
-		"""The VAT on the margin that is part of a row's price. An invoice's rows carry the VAT due on
-		their margin (net amount less purchase price, never below zero), which the invoice validation
-		makes equal to the VAT charged; a credit note takes its VAT in proportion to its rows."""
+		"""The VAT on the margin that is part of a row's price. The VAT charged on the invoice is shared
+		among its rows in proportion to their margin (net amount less purchase price, never below zero),
+		so a row sold at a loss takes none and the shares add up to exactly what was charged. A credit
+		note shares its VAT in proportion to its rows' amounts."""
 		if "_margin_vat" not in self.__dict__:
 			doc = self.doc
 			if doc.get("is_return"):
-				total = flt(get_output_vat_amount(doc))
-				weight = sum(abs(flt(r.net_amount)) for r in doc.items) or 1
-				shares = [total * abs(flt(r.net_amount)) / weight for r in doc.items]
+				weights = [abs(flt(r.net_amount)) for r in doc.items]
 			else:
-				shares = [
-					max(0.0, flt(r.net_amount) - flt(r.get("uae_margin_purchase_price")))
-					* STANDARD_VAT_RATE
-					/ 100
-					for r in doc.items
+				weights = [
+					max(0.0, flt(r.net_amount) - flt(r.get("uae_margin_purchase_price"))) for r in doc.items
 				]
 
-			shares = [flt(share, 2) for share in shares]
-			# What was charged is what is reported: the rounding difference goes to the last row.
-			charged = flt(get_output_vat_amount(doc))
-			if shares and abs(sum(shares) - charged) <= 0.05:
-				shares[-1] = flt(shares[-1] + charged - sum(shares), 2)
-
+			shares = _share_in_cents(flt(get_output_vat_amount(doc)), weights)
 			self._margin_vat = {r.name: share for r, share in zip(doc.items, shares, strict=True)}
 
 		return self._margin_vat[row.name]
@@ -853,6 +844,24 @@ class PintAEBuilder:
 			return explicit
 
 		return "Goods" if frappe.db.get_value("Item", row.item_code, "is_stock_item") else "Services"
+
+
+def _share_in_cents(total: float, weights: list[float]) -> list[float]:
+	"""`total` divided among the weights in whole cents, so that the shares add up to it exactly. The
+	cents that rounding leaves over go to the largest remainders; a zero weight takes nothing."""
+	cents = round(abs(total) * 100)
+	weight_sum = sum(weights)
+	if not cents or weight_sum <= 0:
+		return [0.0] * len(weights)
+
+	raw = [weight * cents / weight_sum for weight in weights]
+	whole = [int(value) for value in raw]
+	leftover = cents - sum(whole)
+	for index in sorted(range(len(raw)), key=lambda i: raw[i] - whole[i], reverse=True)[:leftover]:
+		whole[index] += 1
+
+	sign = 1 if total >= 0 else -1
+	return [sign * value / 100 for value in whole]
 
 
 def is_valid_gtin(value: str) -> bool:
