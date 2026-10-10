@@ -38,6 +38,7 @@
   "column_break_uaecs",
   "mandatory_registration_threshold",
   "voluntary_registration_threshold",
+  "cash_payment_limit",
   "settings_currency",
   "print_section",
   "show_qr_code",
@@ -85,6 +86,13 @@
    "fieldname": "voluntary_registration_threshold",
    "fieldtype": "Currency",
    "label": "Voluntary VAT Registration Threshold",
+   "options": "settings_currency"
+  },
+  {
+   "default": "0",
+   "fieldname": "cash_payment_limit",
+   "fieldtype": "Currency",
+   "label": "Cash Payment Limit for Input VAT",
    "options": "settings_currency"
   },
   {
