@@ -19,6 +19,7 @@ from uae_compliance.uae_compliance.constants.pint_ae import (
 	EMIRATE_SUBDIVISIONS,
 	ENDPOINT_BUYER_NOT_ON_NETWORK,
 	ENDPOINT_EXPORT,
+	GTIN_SCHEME,
 	INVOICE_TYPE_CODE,
 	NO_VAT_CATEGORY_CODES,
 	OUT_OF_SCOPE_CREDIT_NOTE_TYPE_CODE,
@@ -26,6 +27,7 @@ from uae_compliance.uae_compliance.constants.pint_ae import (
 	PINT_TIN_PATTERN,
 	PINT_TRN_PATTERN,
 	PROFILE_ID,
+	REVERSE_CHARGE_NATURE_CODES,
 )
 from uae_compliance.uae_compliance.einvoice.pint_ae_builder import NAMESPACES, ROOTS
 
@@ -202,6 +204,8 @@ def _check_lines(xml, line_tag: str, is_credit_note: bool) -> list[str]:
 			errors.append(_("Line {0}: an exempt line needs a VAT exemption reason code.").format(number))
 		if category == "O" and rate:
 			errors.append(_("Line {0}: an out of scope line must not carry a rate.").format(number))
+		if category == "AE":
+			errors += _check_reverse_charge_line(line, number)
 		if category == "S" and not flt(rate):
 			errors.append(_("Line {0}: a standard rated line needs a rate above 0%.").format(number))
 
@@ -225,7 +229,8 @@ def _check_lines(xml, line_tag: str, is_credit_note: bool) -> list[str]:
 				errors.append(_("Line {0}: the AED line amount and VAT amount are required.").format(number))
 			else:
 				# The builder rounds the VAT in the document currency before converting it.
-				vat = flt(net * flt(rate) / 100, 2)
+				# A reverse charge line states the rate but charges no VAT.
+				vat = 0.0 if category == "AE" else flt(net * flt(rate) / 100, 2)
 				if (
 					abs(flt(extension_tax) - vat * rate_to_aed) > AED_TOLERANCE
 					or abs(flt(extension_amount) - (net + vat) * rate_to_aed) > AED_TOLERANCE
@@ -237,6 +242,29 @@ def _check_lines(xml, line_tag: str, is_credit_note: bool) -> list[str]:
 					)
 		elif _x(line, "cac:ItemPriceExtension/cac:TaxTotal/cbc:TaxAmount"):
 			errors.append(_("Line {0}: an exempt line must not carry a VAT amount.").format(number))
+
+	return errors
+
+
+def _check_reverse_charge_line(line, number: str) -> list[str]:
+	"""A reverse charge line needs its type of goods (BTAE-09, ibr-006-ae) and the item's GTIN
+	(ibr-174-ae)."""
+	errors = []
+	if (
+		_text(line, "cac:Item/cac:CommodityClassification/cbc:NatureCode")
+		not in REVERSE_CHARGE_NATURE_CODES.values()
+	):
+		errors.append(
+			_("Line {0}: a reverse charge line needs a type of goods from the list.").format(number)
+		)
+
+	gtin = _text(line, f"cac:Item/cac:StandardItemIdentification/cbc:ID[@schemeID='{GTIN_SCHEME}']")
+	if not gtin:
+		errors.append(
+			_(
+				"Line {0}: a reverse charge line needs the item's GTIN: add a barcode of 8, 12, 13 or 14 digits with a correct check digit to the Item."
+			).format(number)
+		)
 
 	return errors
 
@@ -278,7 +306,8 @@ def _check_totals(xml, line_tag: str) -> list[str]:
 		tax = flt(_text(subtotal, "cbc:TaxAmount"))
 		if abs(taxable - by_category.get(key, 0)) > TOLERANCE:
 			errors.append(_("The taxable amount of category {0} is not the sum of its lines.").format(key[0]))
-		if abs(tax - taxable * key[1] / 100) > TOLERANCE:
+		expected_tax = 0 if key[0] == "AE" else taxable * key[1] / 100
+		if abs(tax - expected_tax) > TOLERANCE:
 			errors.append(_("A VAT breakdown amount does not equal its taxable amount times its rate."))
 
 	if seen != set(by_category):
@@ -358,6 +387,12 @@ def _check_conditional(xml, is_credit_note: bool, line_tag: str) -> list[str]:
 			errors.append(_("An invoice with an amount due needs a due date."))
 		if not _x(xml, "cac:PaymentMeans/cbc:PaymentMeansCode") and not is_deemed:
 			errors.append(_("The payment means are required."))
+
+	has_reverse_charge = bool(_x(xml, "//cac:ClassifiedTaxCategory[cbc:ID='AE']"))
+	if has_reverse_charge and not _text(
+		xml, "cac:AccountingCustomerParty/cac:Party/cac:PartyTaxScheme/cbc:CompanyID"
+	):
+		errors.append(_("A reverse charge supply needs the buyer's TRN."))
 
 	flags = _text(xml, "cbc:ProfileExecutionID")
 	if flags[:1] == "1" and not _text(xml, "cac:BuyerCustomerParty/cac:Party/cac:PartyIdentification/cbc:ID"):

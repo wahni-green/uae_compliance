@@ -7,3 +7,4 @@
 - [x] User guide (docs/UAE_COMPLIANCE_USER_GUIDE.md)
 - [ ] CI green; linter/semgrep/pip-audit clean
 - [ ] UAT with a real UAE company
+- [ ] Open point: confirm with the FTA or a tax adviser where the value of a supplier's reverse charge sale is reported on the VAT 201 (the app leaves it out of every box; see docs/UAE_VERIFICATION.md sections 7 and 8)

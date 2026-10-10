@@ -4,6 +4,8 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, flt, getdate
 
+from uae_compliance.uae_compliance.constants.vat_return import REVERSE_CHARGE_SUPPLY_CATEGORY
+
 
 def get_recovery_ratio(taxable_supplies: float, exempt_supplies: float) -> int:
 	"""The share of residual input VAT that can be recovered: taxable supplies (standard and zero
@@ -20,7 +22,11 @@ def get_recovery_ratio(taxable_supplies: float, exempt_supplies: float) -> int:
 def get_period_supplies(sales_rows: list) -> tuple[float, float]:
 	"""(taxable, exempt) supplies of a set of sales rows. Credit notes net in already."""
 	taxable = sum(
-		flt(row.base_net_amount) for row in sales_rows if row.category in ("Standard Rated", "Zero Rated")
+		flt(row.base_net_amount)
+		for row in sales_rows
+		# A sale under the reverse charge is a taxable supply for the recovery ratio, although the
+		# supplier does not report it in a box.
+		if row.category in ("Standard Rated", "Zero Rated", REVERSE_CHARGE_SUPPLY_CATEGORY)
 	)
 	exempt = sum(flt(row.base_net_amount) for row in sales_rows if row.category == "Exempt")
 	return taxable, exempt

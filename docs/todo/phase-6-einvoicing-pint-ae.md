@@ -5,7 +5,7 @@
 - [x] Status lifecycle on Sales Invoice (Draft -> ... -> FTA Cleared)
 - [x] `einvoice/pint_ae_builder.py`: UBL 2.1, CustomizationID `urn:peppol:pint:billing-1@ae-1`, tax category mapping S/Z/E
 - [x] Tax category O (out of scope); exempt/out of scope only documents are types 480/81
-- [ ] Tax category AE (reverse charge) on sales: needs a Sales Invoice reverse charge flag and a verified VAT 201 treatment for the supplier; there is no `G` in PINT AE
+- [x] Tax category AE (reverse charge) on sales (PR 6g), for oil, natural gas, pure hydrocarbons, electronic devices and precious metals and stones; metal scrap has no PINT code. The VAT 201 leaves such sales out (conservative: confirm with the FTA where the value belongs). There is no `G` in PINT AE
 - [x] Credit notes (type 381), line-level VAT in AED
 - [x] `einvoice/validators.py`: Python checks of the rules; the official XSD and Schematron run in the tests when supplied
 - [x] `einvoice/asp_client.py` abstract base: submit (idempotency key), get_status, fetch_inbound, credit/cancel, validate_credentials; normalized status enum and error model
