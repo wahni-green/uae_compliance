@@ -764,17 +764,21 @@ class PintAEBuilder:
 
 		return REVERSE_CHARGE_NATURE_CODES.get(self.doc.get("uae_reverse_charge_type"))
 
-	@staticmethod
-	def _gtin(row) -> str | None:
-		"""The item's GTIN: the first barcode of 8, 12, 13 or 14 digits (rule ibr-174-ae)."""
-		for barcode in frappe.get_all(
-			"Item Barcode", filters={"parent": row.item_code}, pluck="barcode", order_by="idx asc"
-		):
-			digits = (barcode or "").strip()
-			if digits.isdigit() and len(digits) in GTIN_LENGTHS:
-				return digits
+	def _gtin(self, row) -> str | None:
+		"""The item's GTIN: the first barcode of 8, 12, 13 or 14 digits (rule ibr-174-ae). Read once per
+		item and build, for the XML and the provider model."""
+		cache = self.__dict__.setdefault("_gtin_cache", {})
+		if row.item_code not in cache:
+			cache[row.item_code] = None
+			for barcode in frappe.get_all(
+				"Item Barcode", filters={"parent": row.item_code}, pluck="barcode", order_by="idx asc"
+			):
+				digits = (barcode or "").strip()
+				if digits.isdigit() and len(digits) in GTIN_LENGTHS:
+					cache[row.item_code] = digits
+					break
 
-		return None
+		return cache[row.item_code]
 
 	def _classification(self, item, row, line: dict | None = None):
 		"""The item type, HS code (goods) and service accounting code (services). The service

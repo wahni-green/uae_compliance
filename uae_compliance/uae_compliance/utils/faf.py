@@ -15,13 +15,20 @@ from frappe import _
 from frappe.utils import flt, formatdate, getdate, now_datetime
 
 import uae_compliance
+from uae_compliance.uae_compliance.constants.vat_return import REVERSE_CHARGE_SUPPLY_CATEGORY
 from uae_compliance.uae_compliance.utils.vat_return import get_invoice_rows
 
 FAF_VERSION = "FAFv1.0.0"
 EMPTY_CURRENCY = "XXX"
 
 # Tax codes from Appendix 3 of the same document.
-SALES_TAX_CODES = {"Standard Rated": "SR", "Zero Rated": "ZR", "Exempt": "EX"}
+SALES_TAX_CODES = {
+	"Standard Rated": "SR",
+	"Zero Rated": "ZR",
+	"Exempt": "EX",
+	# Sales under the reverse charge are listed with the reverse charge code (FAF Appendix 3).
+	REVERSE_CHARGE_SUPPLY_CATEGORY: "RC",
+}
 PURCHASE_TAX_CODES = {"Standard Rated": "SR", "Zero Rated": "ZR", "Exempt": "EX"}
 REVERSE_CHARGE_CODE = "RC"
 

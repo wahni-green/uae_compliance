@@ -1,7 +1,10 @@
 import frappe
 from frappe import _
 
-from uae_compliance.uae_compliance.constants.vat_return import EMIRATE_BOX_CODES
+from uae_compliance.uae_compliance.constants.vat_return import (
+	EMIRATE_BOX_CODES,
+	REVERSE_CHARGE_SUPPLY_CATEGORY,
+)
 from uae_compliance.uae_compliance.utils.vat_return.group import get_group_rows
 from uae_compliance.uae_compliance.utils.vat_return.sections.sales_boxes import (
 	SALES_BOX_BY_CATEGORY,
@@ -89,11 +92,12 @@ def get_data(filters) -> list[dict]:
 
 	grouped: dict[tuple[str, str], dict] = {}
 	for row in rows:
-		box = (
-			EMIRATE_BOX_CODES.get(row.uae_emirate, "")
-			if row.category == "Standard Rated"
-			else SALES_BOX_BY_CATEGORY[row.category]
-		)
+		if row.category == "Standard Rated":
+			box = EMIRATE_BOX_CODES.get(row.uae_emirate, "")
+		elif row.category == REVERSE_CHARGE_SUPPLY_CATEGORY:
+			box = ""  # listed, but the supplier reports it in no box
+		else:
+			box = SALES_BOX_BY_CATEGORY[row.category]
 		invoice = invoices[row.invoice]
 		entry = grouped.setdefault(
 			(row.invoice, box),

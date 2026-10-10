@@ -108,7 +108,8 @@ def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:
 	resolver = CategoryResolver()
 	for item in items:
 		# A supply the recipient accounts for the VAT on is not reported by the supplier (CD 127/2024 and
-		# CD 153/2025, Art 2(1)(a)) and has no box of its own on the VAT 201.
+		# CD 153/2025, Art 2(1)(a)) and has no box of its own on the VAT 201. It is still a taxable supply
+		# for the input VAT recovery ratio, and the audit file lists it with the tax code RC.
 		if doctype == "Sales Invoice" and invoices_by_name[item.parent].get("uae_is_reverse_charge"):
 			item.category = REVERSE_CHARGE_SUPPLY_CATEGORY
 		else:
@@ -147,7 +148,9 @@ def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:
 
 	rows = []
 	for item in items:
-		if item.category not in REPORTABLE_VAT_CATEGORIES:
+		# A sale under the reverse charge stays in the rows (the recovery ratio and the audit file need it);
+		# no box section picks it up, as each selects its own categories.
+		if item.category not in REPORTABLE_VAT_CATEGORIES and item.category != REVERSE_CHARGE_SUPPLY_CATEGORY:
 			continue
 
 		invoice = invoices_by_name[item.parent]

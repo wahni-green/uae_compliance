@@ -116,12 +116,62 @@ class TestReverseChargeSale(ReverseChargeTestCase):
 
 		self.assertFalse(doc.uae_is_simplified_tax_invoice)
 
-	def test_the_vat_return_leaves_it_out(self):
+	def test_the_rows_keep_the_sale_but_no_box_reports_it(self):
 		self.rc_invoice(submit=True)
 
 		rows = get_invoice_rows("Sales Invoice", self.company, self.date, self.date)
-		self.assertEqual(rows, [])
-		self.assertTrue(REVERSE_CHARGE_SUPPLY_CATEGORY)
+		self.assertEqual({row.category for row in rows}, {REVERSE_CHARGE_SUPPLY_CATEGORY})
+
+		vat_return = frappe.get_doc(
+			{
+				"doctype": "UAE VAT Return",
+				"company": self.company,
+				"from_date": self.date,
+				"to_date": self.date,
+			}
+		).insert()
+		vat_return.generate_return()
+		self.assertEqual(vat_return.total_due_tax, 0)
+		self.assertEqual(sum(row.amount for row in vat_return.boxes if row.box_code != "8"), 0)
+
+	def test_it_counts_as_a_taxable_supply_for_the_recovery_ratio(self):
+		self.rc_invoice(submit=True)
+		self.invoice([{"item_code": "_Test EInv Exempt", "rate": 1500, "vat_rate": 0}], submit=True)
+
+		vat_return = frappe.get_doc(
+			{
+				"doctype": "UAE VAT Return",
+				"company": self.company,
+				"from_date": self.date,
+				"to_date": self.date,
+			}
+		).insert()
+		vat_return.generate_return()
+
+		self.assertEqual(vat_return.taxable_supplies_value, 1500)
+		self.assertEqual(vat_return.exempt_supplies_value, 1500)
+		self.assertEqual(vat_return.recovery_ratio, 50)
+
+	def test_the_audit_file_lists_it_with_the_reverse_charge_code(self):
+		from uae_compliance.uae_compliance.utils.faf import generate_faf
+
+		doc = self.rc_invoice(submit=True)
+		line = next(
+			row for row in generate_faf(self.company, self.date, self.date).splitlines() if doc.name in row
+		)
+
+		self.assertIn(",RC", line.replace('"', "").replace(", ", ","))
+
+	def test_the_sales_register_lists_it_outside_every_box(self):
+		from uae_compliance.uae_compliance.report.uae_vat_sales_register.uae_vat_sales_register import execute
+
+		doc = self.rc_invoice(submit=True)
+		data = execute({"company": self.company, "from_date": self.date, "to_date": self.date})[1]
+
+		entry = next(row for row in data if row["invoice"] == doc.name)
+		self.assertEqual(entry["box"], "")
+		self.assertEqual(entry["category"], REVERSE_CHARGE_SUPPLY_CATEGORY)
+		self.assertEqual(entry["vat_amount"], 0)
 
 
 class TestReverseChargeDocument(ReverseChargeTestCase):
@@ -143,6 +193,30 @@ class TestReverseChargeDocument(ReverseChargeTestCase):
 		self.assertEqual(_text(xml, "cac:LegalMonetaryTotal/cbc:PayableAmount"), "1500.00")
 		self.assertEqual(_text(xml, "cbc:InvoiceTypeCode"), "380")
 		self.assertEqual(validate_xml(etree.tostring(xml)), [])
+
+	def test_each_item_s_barcodes_are_read_once(self):
+		doc = self.invoice(
+			[
+				{"item_code": "_Test EInv RC Goods", "rate": 500, "qty": 1},
+				{"item_code": "_Test EInv RC Goods", "rate": 400, "qty": 1},
+			],
+			uae_is_reverse_charge=1,
+			uae_reverse_charge_type="Electronic Devices",
+			uae_rc_declaration=1,
+			taxes=[],
+		)
+		real = frappe.get_all
+		calls = []
+
+		def counting(doctype, *args, **kwargs):
+			if doctype == "Item Barcode":
+				calls.append(kwargs.get("filters"))
+			return real(doctype, *args, **kwargs)
+
+		with patch("frappe.get_all", counting):
+			build_document(doc)
+
+		self.assertEqual(len(calls), 1)
 
 	def test_each_type_has_its_code(self):
 		for rc_type, code in (
