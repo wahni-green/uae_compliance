@@ -28,6 +28,7 @@ _PARENT_FIELDS = {
 		"supplier",
 		"is_paid",
 		"mode_of_payment",
+		"uae_cash_payment_intended",
 		"base_grand_total",
 		"uae_is_reverse_charge",
 		"uae_is_gcc_supplier",

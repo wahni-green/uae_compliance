@@ -64,6 +64,18 @@ class TestCashPaymentLimit(VATReturnTestCase):
 
 		self.assertEqual(self.recovered(self.generate()), 0)
 
+	def test_a_payment_intended_in_cash_counts_before_it_is_made(self):
+		self.set_limit(1000)
+		self.purchase(uae_cash_payment_intended=1)
+
+		self.assertEqual(self.recovered(self.generate()), 0)
+
+	def test_an_intended_cash_payment_under_the_limit_is_recovered(self):
+		self.set_limit(10000)
+		self.purchase(uae_cash_payment_intended=1)
+
+		self.assertEqual(self.recovered(self.generate()), 250)
+
 	def test_a_payment_under_the_limit_is_recovered(self):
 		self.set_limit(10000)
 		self.pay_in_cash(self.purchase())

@@ -23,8 +23,9 @@ def exceeds_cash_limit(invoice, limit: float | None = None) -> bool:
 
 
 def get_invoices_paid_in_cash_over_limit(invoices: dict) -> set[str]:
-	"""The names of the Purchase Invoices (by name) that were paid in cash, on the invoice itself or by
-	a submitted Payment Entry, and whose value is above the limit. Empty while no limit is set."""
+	"""The names of the Purchase Invoices that are paid in cash, on the invoice itself or by a submitted
+	Payment Entry, or are marked as intended to be paid in cash, and whose value is above the limit.
+	Empty while no limit is set."""
 	limit = get_cash_payment_limit()
 	if not limit or not invoices:
 		return set()
@@ -33,11 +34,14 @@ def get_invoices_paid_in_cash_over_limit(invoices: dict) -> set[str]:
 	if not candidates:
 		return set()
 
+	# The regulation also covers a payment intended to be made in cash, before it happens.
+	paid = {name for name in candidates if invoices[name].get("uae_cash_payment_intended")}
+
 	cash_modes = get_cash_modes_of_payment()
 	if not cash_modes:
-		return set()
+		return paid
 
-	paid = {
+	paid |= {
 		name
 		for name in candidates
 		if invoices[name].get("is_paid") and invoices[name].get("mode_of_payment") in cash_modes

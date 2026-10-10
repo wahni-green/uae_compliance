@@ -167,6 +167,15 @@ CUSTOM_FIELDS = {
 		),
 		_field("uae_fetch_vat_accounts", "Fetch VAT Accounts", "Button", "section_break_5"),
 	],
+	"Product Bundle": [
+		_field(
+			"uae_principal_item",
+			"Principal Component",
+			"Link",
+			"description",
+			options="Item",
+		),
+	],
 	("Sales Order", "Delivery Note", "Sales Invoice"): [
 		_field(
 			"uae_emirate",
@@ -208,6 +217,12 @@ CUSTOM_FIELDS = {
 			"Postponed Import VAT",
 			"Check",
 			"uae_is_import_of_goods",
+		),
+		_field(
+			"uae_cash_payment_intended",
+			"Cash Payment Intended",
+			"Check",
+			"uae_is_postponed_import_vat",
 		),
 	],
 	"Sales Invoice Item": [

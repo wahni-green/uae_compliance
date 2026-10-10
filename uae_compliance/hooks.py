@@ -290,6 +290,9 @@ doc_events = {
 	"Item Tax Template": {
 		"validate": "uae_compliance.uae_compliance.overrides.item_tax_template.validate",
 	},
+	"Product Bundle": {
+		"validate": "uae_compliance.uae_compliance.overrides.product_bundle.validate",
+	},
 }
 
 jinja = {

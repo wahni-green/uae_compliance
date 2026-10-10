@@ -46,16 +46,18 @@ def validate(doc, method=None):
 def warn_if_cash_payment_over_limit(doc) -> None:
 	"""Input VAT on a supply above the Minister's limit that is paid in cash is not recoverable (ER Art
 	54(3)). The VAT return applies it; this tells the user when the payment is on the invoice itself."""
-	if not (doc.get("is_paid") and doc.get("mode_of_payment")):
-		return
-
-	if frappe.db.get_value("Mode of Payment", doc.mode_of_payment, "type") != "Cash":
+	paid_in_cash = bool(
+		doc.get("is_paid")
+		and doc.get("mode_of_payment")
+		and frappe.db.get_value("Mode of Payment", doc.mode_of_payment, "type") == "Cash"
+	)
+	if not (paid_in_cash or doc.get("uae_cash_payment_intended")):
 		return
 
 	if exceeds_cash_limit(doc):
 		frappe.msgprint(
 			_(
-				"This invoice is above the cash payment limit and is paid in cash, so the input VAT on it is not recoverable (Executive Regulation Art 54(3))."
+				"This invoice is above the cash payment limit and is paid, or intended to be paid, in cash, so the input VAT on it is not recoverable (Executive Regulation Art 54(3))."
 			),
 			indicator="orange",
 			alert=True,
