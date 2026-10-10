@@ -67,7 +67,7 @@ Only companies enabled in **UAE E-Invoice Settings** send e-invoices (see the co
 Received invoices appear as **inbound** logs, matched to your suppliers by TIN or TRN. One that cannot be read or is addressed to someone else is marked Invalid with the reason. Entering them as Purchase Invoices is still done by hand.
 
 ### What cannot be sent yet
-Invoices with reverse charge supplies, margin scheme invoices, charges or discounts outside the item rows, and VAT that differs from the rows are refused or logged as Invalid with a clear message. Self-billing, summary, continuous, agent and deemed supply invoices are also unsupported, but the app does not detect or reject them: identify these yourself and issue all unsupported invoices outside the app, following your provider's process until support is added. A company whose own currency is not AED cannot send e-invoices.
+Invoices with reverse charge supplies, margin scheme invoices, charges or discounts outside the item rows, and VAT that differs from the rows are refused or logged as Invalid with a clear message. Self-billing, summary, continuous and agent billing invoices are also unsupported, but the app does not detect or reject them: identify these yourself and issue all unsupported invoices outside the app, following your provider's process until support is added. A company whose own currency is not AED cannot send e-invoices.
 
 ## 7. When something looks wrong
 
