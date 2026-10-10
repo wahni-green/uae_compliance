@@ -3,7 +3,8 @@
 - [ ] Confirm official PINT AE spec, XSD, Schematron and FTA/MoF timelines
 - [x] DocTypes: UAE E-Invoice Settings (provider, credentials, environment), UAE E-Invoice Log
 - [x] Status lifecycle on Sales Invoice (Draft -> ... -> FTA Cleared)
-- [x] `einvoice/pint_ae_builder.py`: UBL 2.1, CustomizationID `urn:peppol:pint:billing-1@ae-1`, tax category mapping S/Z/E/G/O/AE
+- [x] `einvoice/pint_ae_builder.py`: UBL 2.1, CustomizationID `urn:peppol:pint:billing-1@ae-1`, tax category mapping S/Z/E
+- [ ] Tax categories O (out of scope) and AE (reverse charge) are refused for now; there is no `G` in PINT AE
 - [x] Credit notes (type 381), line-level VAT in AED
 - [x] `einvoice/validators.py`: Python checks of the rules; the official XSD and Schematron run in the tests when supplied
 - [x] `einvoice/asp_client.py` abstract base: submit (idempotency key), get_status, fetch_inbound, credit/cancel, validate_credentials; normalized status enum and error model

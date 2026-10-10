@@ -18,7 +18,7 @@ Its custom fields (`is_zero_rated`, `is_exempt`, `vat_emirate`, `company_trn`, `
 Create a **UAE VAT Return** for the company and period, then **Generate Return**. It fills boxes 1a-1g, 2-11 and the net figures (boxes 12-14); tick **Request a Refund** for box 15. Standard rated sales need a VAT Emirate on the invoice. **Mark as Filed** locks the return. **Download FAF** produces the FTA Audit File for the period. The **UAE VAT Sales Register** and **UAE VAT Purchase Register** list the invoices behind each box.
 
 ## E-invoicing
-Open **UAE E-Invoice Settings** and add a row per company: tick **Enabled**, choose the **Provider** and **Environment** (Sandbox or Production), set **Mandatory From** (invoices dated earlier are not sent), and fill in the provider's connection fields. **Retry Limit** (default 5) applies to all companies. The company needs its **UAE TIN** (the Peppol endpoint, 10 digits), TRN and **Legal Registration** (type and ID: Trade Licence with issuing authority, Emirates ID, Passport with its issuing country, or Customs Code); customers that are businesses need their TIN, or are sent to the predefined endpoint for buyers not on the network. Invoices to individuals are not e-invoiced.
+Open **UAE E-Invoice Settings** and add a row per company: tick **Enabled**, choose the **Provider** and **Environment** (Sandbox or Production), set **E-Invoice From** (invoices dated earlier are not sent), and fill in the provider's connection fields. **Retry Limit** (default 5) applies to all companies. The company needs its **UAE TIN** (the Peppol endpoint, 10 digits), TRN and **Legal Registration** (type and ID: Trade License with its issuing authority, Emirates ID, Passport with its issuing country, or Cabinet Decision); customers that are businesses need their TIN, or are sent to the predefined endpoint for buyers not on the network. Invoices to individuals are not e-invoiced.
 
 Each invoice shows its e-invoice status; the **UAE E-Invoice Log** holds the XML, the provider's response, errors and attempts, and has **Retry** and **Check Status** buttons. Changing a company's provider or environment does not move existing logs: they keep using the ones they were created under, so finish or retry them before switching.
 
@@ -34,7 +34,7 @@ Each invoice shows its e-invoice status; the **UAE E-Invoice Log** holds the XML
 The company's UAE TIN is the taxpayer. `client_code` is required; a missing one is reported before any call. Use the sandbox until a document has been sent, polled to Cleared and checked in Microvista's portal.
 
 ### Mock
-Provider `Mock` talks to nobody. Extra Configuration `{"behavior": "clear"|"reject"|"timeout"}` chooses what happens; documents are cleared over successive status checks. For development and tests only.
+Provider `Mock` talks to nobody. Extra Configuration `{"behavior": "clear"}` clears documents over successive status checks. Set `behavior` to `reject` to reject documents, or to `timeout` to simulate a timeout on submission. For development and tests only.
 
 ## Schemes and other documents
 - **UAE VAT Adjustment:** bad debt relief and other non-transaction adjustments that appear in the adjustment column of the return.
