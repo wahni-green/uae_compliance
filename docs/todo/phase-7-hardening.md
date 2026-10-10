@@ -1,8 +1,9 @@
 # Phase 7 – Hardening
 
-- [ ] Test suites beside every module; helpers like oman's `_without_broken_third_party_hooks`
-- [ ] Idempotent patches; run `bench migrate` twice
+- [x] Test suites beside every module (378 tests)
+- [x] Idempotent patches; `bench migrate` twice runs cleanly
 - [ ] Non-UAE company unaffected on shared bench
-- [ ] Documentation finalized (architecture, configuration, user guide)
+- [x] Documentation: architecture and configuration cover every phase
+- [ ] User guide
 - [ ] CI green; linter/semgrep/pip-audit clean
 - [ ] UAT with a real UAE company
