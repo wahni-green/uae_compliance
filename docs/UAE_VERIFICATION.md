@@ -136,12 +136,12 @@ Source: the FTA's consolidated Executive Regulation of September 2026, which foo
 **In force now**
 | ER article | Change | What it means for the app |
 |---|---|---|
-| Art 4(6), new | A supply of several components is **one composite supply**, taxed by its principal component, where the components are interconnected and cannot be separated | A judgement on the facts. The app takes the category row by row, so for such a bundle the user must give every row the principal component's category. Nothing detects it |
+| Art 4(6), new | A supply of several components is **one composite supply**, taxed by its principal component, where the components are interconnected and cannot be separated | A judgement on the facts. Sold as a **Product Bundle**: one invoice row, for the bundle item, carrying the principal component's VAT category, tax template and rate. A **Principal Component** field on the bundle warns when the bundle item's category differs. Whether components are really inseparable is the user's judgement |
 | Art 29(5) (margin scheme) | The "purchase price" includes costs and fees **only where the input VAT on them is not recoverable** | The app takes the purchase price as entered and cannot tell what it contains. The user must enter it on this basis |
 | Art 41(4) | Zero rating of medical products (as specified by Cabinet decision) | A choice of VAT category by the user |
 | Art 46(2) | A person is "outside the State" if present for under 30 days and not effectively connected with the supply | Bears on the place of supply of services; the user's judgement |
 | Art 53 (employee benefits, sub-clauses 34 and 35) | Tighter tests for recovering input VAT on goods and services provided to employees, such as accommodation | The user ticks **Input VAT Not Recoverable**; nothing is derived |
-| Art 54(3), new | Input VAT is **not recoverable** on a supply whose value exceeds an amount set by a decision of the Minister, where it is paid or intended to be paid **in cash** | **The Ministerial Decision with the amount had not been published** in any source found (about 10 days after the effective date). Nothing can be enforced without it; do not assume a figure. The wording refers to the value of the supply, not the cash part |
+| Art 54(3), new | Input VAT is **not recoverable** on a supply whose value exceeds an amount set by a decision of the Minister, where it is paid or intended to be paid **in cash** | **The Ministerial Decision with the amount had not been published** in any source found (about 10 days after the effective date). Built as a setting (UAE Compliance Settings, off until set): cash paid on the invoice, by a Payment Entry, or marked intended, on a supply above the limit. The wording refers to the value of the supply, not the cash part |
 | Art 57 | Capital asset defined as a "business asset" of AED 5M or more | No change to the scheme as built |
 | Art 60(1)(a) | The credit note must show the words "Tax Credit Note" | The print format already does |
 
@@ -151,5 +151,5 @@ Source: the FTA's consolidated Executive Regulation of September 2026, which foo
 - The app's partial exemption (rounded percentage of taxable over taxable plus exempt supplies) is close to this already. The exclusion of capital asset supplies and reverse charge receipts from the percentage, and the government and charity method, are not built.
 
 **Open points**
-- The Ministerial Decision on the cash payment amount: watch the Ministry of Finance and FTA sites. Once it exists, a configurable amount in UAE Compliance Settings and a check on cash-paid purchases could be built (the payment may come after the invoice, so recoverability can change later).
-- Confirm with an adviser how the composite supply rule should be applied to a bundle (software licence, support and hosting).
+- The Ministerial Decision on the cash payment amount: watch the Ministry of Finance and FTA sites and enter the amount in UAE Compliance Settings when it is published. The rule counts the supply's value, not the cash part, and a payment intended in cash is marked by the user; confirm the reading with an adviser.
+- Confirm with an adviser how the composite supply rule applies to a given bundle (software licence, support and hosting) and which component is principal.
