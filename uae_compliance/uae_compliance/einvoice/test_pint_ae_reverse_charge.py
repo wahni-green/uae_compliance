@@ -111,6 +111,19 @@ class TestReverseChargeSale(ReverseChargeTestCase):
 				taxes=[],
 			)
 
+	def test_an_actual_charge_on_the_vat_account_is_refused(self):
+		with self.assertRaises(frappe.ValidationError):
+			self.rc_invoice(
+				taxes=[
+					{
+						"charge_type": "Actual",
+						"account_head": self.output,
+						"description": "VAT",
+						"tax_amount": 75,
+					}
+				]
+			)
+
 	def test_it_is_never_a_simplified_invoice(self):
 		doc = self.rc_invoice()
 
@@ -231,6 +244,30 @@ class TestReverseChargeDocument(ReverseChargeTestCase):
 
 	def test_metal_scrap_cannot_be_sent(self):
 		self.assertRaises(EInvoiceNotSupportedError, build_xml, self.rc_invoice("Metal Scrap"))
+
+	def test_a_mistyped_barcode_is_not_taken_for_a_gtin(self):
+		from uae_compliance.uae_compliance.einvoice.pint_ae_builder import is_valid_gtin
+
+		self.assertTrue(is_valid_gtin(GTIN))
+		self.assertFalse(is_valid_gtin("6291041500214"))
+		self.assertFalse(is_valid_gtin("629104150021"))
+		self.assertFalse(is_valid_gtin("not a gtin"))
+		self.assertTrue(is_valid_gtin("96385074"))
+
+		# The first barcode is mistyped, the second is right: the second is used.
+		item = frappe.get_doc("Item", "_Test EInv RC Goods")
+		item.barcodes = []
+		item.append("barcodes", {"barcode": "6291041500214"})
+		item.append("barcodes", {"barcode": GTIN})
+		item.save()
+		self.assertEqual(_text(self.xml(self.rc_invoice()), "//cac:StandardItemIdentification/cbc:ID"), GTIN)
+
+		# With only the mistyped one the item has no GTIN.
+		item.reload()
+		item.barcodes = []
+		item.append("barcodes", {"barcode": "6291041500214"})
+		item.save()
+		self.assertTrue(any("GTIN" in e for e in validate_xml(build_xml(self.rc_invoice())[0])))
 
 	def test_an_item_without_a_gtin_is_invalid(self):
 		frappe.db.delete("Item Barcode", {"parent": "_Test EInv RC Goods"})

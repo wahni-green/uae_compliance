@@ -774,7 +774,7 @@ class PintAEBuilder:
 				"Item Barcode", filters={"parent": row.item_code}, pluck="barcode", order_by="idx asc"
 			):
 				digits = (barcode or "").strip()
-				if digits.isdigit() and len(digits) in GTIN_LENGTHS:
+				if is_valid_gtin(digits):
 					cache[row.item_code] = digits
 					break
 
@@ -811,6 +811,17 @@ class PintAEBuilder:
 			return explicit
 
 		return "Goods" if frappe.db.get_value("Item", row.item_code, "is_stock_item") else "Services"
+
+
+def is_valid_gtin(value: str) -> bool:
+	"""A GTIN of 8, 12, 13 or 14 digits whose last digit is the GS1 check digit: the other digits,
+	weighted 3 and 1 from the right, sum to a multiple of ten with it."""
+	if not value.isdigit() or len(value) not in GTIN_LENGTHS:
+		return False
+
+	body, check = value[:-1], int(value[-1])
+	total = sum(int(digit) * (3 if index % 2 == 0 else 1) for index, digit in enumerate(reversed(body)))
+	return (10 - total % 10) % 10 == check
 
 
 def _q_root(name: str) -> str:

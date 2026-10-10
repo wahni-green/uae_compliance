@@ -78,8 +78,15 @@ def validate_reverse_charge_supply(doc) -> None:
 			title=_("Reverse Charge"),
 		)
 
+	# Both the rates and the amounts: an Actual charge on the Output VAT account has a tax amount but no
+	# item-wise rate.
 	charged = get_item_wise_vat_rates(doc.get("taxes") or [], doc.get("company"), is_output_vat_account)
-	if any(charged.values()):
+	charged_amount = sum(
+		abs(flt(tax.get("tax_amount")))
+		for tax in doc.get("taxes") or []
+		if is_output_vat_account(tax.get("account_head"), doc.get("company"))
+	)
+	if any(charged.values()) or charged_amount:
 		frappe.throw(
 			_("A reverse charge supply carries no VAT: remove the Output VAT from the taxes."),
 			title=_("Reverse Charge"),

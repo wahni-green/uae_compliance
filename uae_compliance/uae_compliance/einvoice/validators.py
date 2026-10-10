@@ -262,7 +262,7 @@ def _check_reverse_charge_line(line, number: str) -> list[str]:
 	if not gtin:
 		errors.append(
 			_(
-				"Line {0}: a reverse charge line needs the item's GTIN: add a barcode of 8, 12, 13 or 14 digits to the Item."
+				"Line {0}: a reverse charge line needs the item's GTIN: add a barcode of 8, 12, 13 or 14 digits with a correct check digit to the Item."
 			).format(number)
 		)
 
