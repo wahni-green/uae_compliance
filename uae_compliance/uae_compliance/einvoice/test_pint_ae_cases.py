@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import patch
 
 import frappe
@@ -8,6 +9,7 @@ from uae_compliance.uae_compliance.einvoice.exceptions import EInvoiceNotSupport
 from uae_compliance.uae_compliance.einvoice.pint_ae_builder import NAMESPACES, build_document, build_xml
 from uae_compliance.uae_compliance.einvoice.test_pint_ae import (
 	PINT_RULES_DIR,
+	UBL_XSD_DIR,
 	EInvoiceTestCase,
 	TestAgainstTheOfficialSchematron,
 )
@@ -167,7 +169,7 @@ class TestCasesAgainstTheOfficialRules(CasesTestCase):
 		except ImportError:
 			self.skipTest("saxonche is not installed")
 
-		if not PINT_RULES_DIR:
+		if not PINT_RULES_DIR or not Path(PINT_RULES_DIR, "trn-invoice").exists():
 			self.skipTest("PINT_AE_RESOURCES_DIR is not set")
 
 	def failures(self, doc, folder="trn-invoice"):
@@ -202,3 +204,48 @@ class TestCasesAgainstTheOfficialRules(CasesTestCase):
 
 	def test_ecommerce_supply(self):
 		self.assertEqual(self.failures(self.invoice(uae_is_ecommerce_supply=1)), [])
+
+
+class TestCasesAgainstTheUBLSchema(CasesTestCase):
+	"""The new elements (BuyerCustomerParty, Delivery) and the 480/81 types must also be valid UBL, in
+	the right order."""
+
+	def setUp(self):
+		super().setUp()
+		if not UBL_XSD_DIR or not Path(UBL_XSD_DIR, "maindoc", "UBL-Invoice-2.1.xsd").exists():
+			self.skipTest("UBL_XSD_DIR is not set")
+
+	def assert_valid(self, doc, name="Invoice"):
+		schema = etree.XMLSchema(etree.parse(str(Path(UBL_XSD_DIR, "maindoc", f"UBL-{name}-2.1.xsd"))))
+		schema.assertValid(etree.fromstring(build_xml(doc)[0]))
+
+	def test_out_of_scope_and_exempt_only_documents(self):
+		self.assert_valid(
+			self.invoice(
+				[
+					{"item_code": "_Test EInv Service", "rate": 1000},
+					{"item_code": "_Test EInv OOS", "rate": 200, "vat_rate": 0},
+				]
+			)
+		)
+		self.assert_valid(self.invoice([{"item_code": "_Test EInv Exempt", "rate": 300, "vat_rate": 0}]))
+
+	def test_credit_note_of_an_exempt_only_invoice(self):
+		original = self.invoice(
+			[{"item_code": "_Test EInv Exempt", "rate": 300, "qty": 2, "vat_rate": 0}], submit=True
+		)
+		self.assert_valid(self.credit_note_of(original), "CreditNote")
+
+	def test_free_trade_zone_deemed_and_ecommerce_supplies(self):
+		self.assert_valid(
+			self.invoice(uae_is_free_zone_supply=1, uae_free_zone_beneficiary_id="189098765401003")
+		)
+		self.assert_valid(self.invoice(uae_is_deemed_supply=1))
+		self.assert_valid(self.invoice(uae_is_ecommerce_supply=1))
+		self.assert_valid(
+			self.invoice(
+				uae_is_free_zone_supply=1,
+				uae_free_zone_beneficiary_id="189098765401003",
+				uae_is_ecommerce_supply=1,
+			)
+		)
