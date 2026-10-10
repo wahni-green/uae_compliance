@@ -322,3 +322,39 @@ class TestMicrovista(EInvoiceTestCase):
 
 		self.assertEqual(payload["invoice"]["invoiceNumber"], model["number"])
 		json.dumps(payload)
+
+	def test_a_credit_note_names_its_original_in_the_nested_list(self):
+		from erpnext.controllers.sales_and_purchase_return import make_return_doc
+
+		original = self.invoice(submit=True)
+		credit = make_return_doc("Sales Invoice", original.name)
+		credit.uae_emirate = "Dubai"
+		credit.uae_credit_note_reason = "Returned"
+		credit.uae_credit_note_reason_code = "DL8.61.1.D"
+		credit.items[0].qty = -1
+		credit.insert()
+
+		payload = to_payload(build_document(credit)[2])
+
+		invoice = payload["invoice"]
+		self.assertEqual(invoice["invoiceTypeCode"], "381")
+		self.assertEqual(invoice["creditNoteReasonCode"], "DL8.61.1.D")
+		self.assertEqual(
+			invoice["precedingInvoices"],
+			[
+				{
+					"precedingInvoiceReference": original.name,
+					"precedingInvoiceIssueDate": str(frappe.utils.getdate(original.posting_date)),
+				}
+			],
+		)
+		self.assertNotIn("precedingInvoiceReference", invoice)
+		self.assertNotIn("precedingInvoiceIssueDate", invoice)
+		# Amounts are positive, as the provider requires.
+		self.assertGreater(payload["items"][0]["invoicedQuantity"], 0)
+		self.assertGreater(payload["invoiceDetail"]["invoiceTotalAmountWithTax"], 0)
+
+	def test_an_invoice_has_no_preceding_invoices(self):
+		_xml, _summary, model = build_document(self.invoice(submit=True))
+
+		self.assertEqual(to_payload(model)["invoice"].get("precedingInvoices", []), [])
