@@ -11,7 +11,7 @@
 
 ## From verification (see ../UAE_VERIFICATION.md)
 - [x] Tax invoice shows AED amounts (per line and in total) and the exchange rate; a company whose own currency is not AED gets a visible warning instead
-- [ ] Reverse-charge statement with the Decree-Law reference on sales invoices (ER Art 59(1)(l)): needs a flag for supplies the recipient accounts for, and a verified VAT 201 treatment for the supplier (Phase 5)
+- [x] Reverse-charge statement on sales invoices (ER Art 59(1)): printed for a Sales Invoice flagged as a reverse charge supply (PR 6g). The statement cites the Decree-Law's reverse charge provisions without an article number; confirm the exact citation. Where the VAT 201 reports the supplier's value is an open point (Phase 7)
 - [x] Tax Credit Note content per ER Art 60(1) (original, corrected, difference, reason, reference)
 - [x] No QR on e-invoice (PINT AE) print path; QR only for non-e-invoice formats
 

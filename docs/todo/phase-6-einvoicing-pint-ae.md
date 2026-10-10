@@ -1,6 +1,6 @@
 # Phase 6 – E-invoicing (PINT AE)
 
-- [ ] Confirm official PINT AE spec, XSD, Schematron and FTA/MoF timelines
+- [x] Official PINT AE spec, XSD and Schematron confirmed and used in the tests; FTA/MoF timelines are in UAE_VERIFICATION.md
 - [x] DocTypes: UAE E-Invoice Settings (provider, credentials, environment), UAE E-Invoice Log
 - [x] Status lifecycle on Sales Invoice (Draft -> ... -> FTA Cleared)
 - [x] `einvoice/pint_ae_builder.py`: UBL 2.1, CustomizationID `urn:peppol:pint:billing-1@ae-1`, tax category mapping S/Z/E
@@ -18,14 +18,18 @@
 - [x] Tests with sample documents (and the official Schematron/XSD when supplied)
 
 ## From verification (see ../UAE_VERIFICATION.md)
-- [ ] Pin PINT-AE v1.0.4; load code lists and Schematron from resources.zip; XSD from OASIS UBL 2.1
-- [ ] Tax category codes S, E, O, AE, Z, N (N for margin; check Greek vs Latin N); no `G`
-- [ ] Transaction-type flags in ProfileExecutionID (FTZ, deemed, margin, summary, continuous, agent, e-commerce, export)
-- [ ] Invoice types 380/480, credit notes 381/81; TaxCurrencyCode AED + `aedtotal-incl-vat` document reference
-- [ ] Participant ID `0235:<TIN>` with predefined endpoints 9900000097/98/99; legal registration ID type (TL/EID/PAS/CD)
-- [ ] Support self-billing CustomizationID
-- [ ] No QR code; retain XML 5 years (7 real estate)
-- [ ] Exclusions: B2C, exempt financial services, imports under RCM, etc.
+- [x] Pin PINT-AE v1.0.4; code lists and Schematron from resources.zip, XSD from OASIS UBL 2.1 (supplied to the tests through environment variables, not bundled)
+- [x] Tax category codes S, E, O, AE, Z (no `G`)
+- [ ] Tax category N for the margin scheme (check Greek vs Latin N; the specification's list uses the Greek letter)
+- [x] Transaction-type flags: free trade zone, deemed supply, e-commerce, export, and margin (flag only, margin invoices are refused)
+- [ ] Transaction-type flags: summary, continuous and agent billing
+- [x] Invoice types 380/480, credit notes 381/81; TaxCurrencyCode AED + `aedtotal-incl-vat` document reference
+- [x] Participant ID `0235:<TIN>` with predefined endpoints 9900000097/98/99; legal registration ID type (TL/EID/PAS/CD), with the issuing country for a passport
+- [ ] Self-billing (the buyer issues the invoice: types 389 and 261, a different CustomizationID, Purchase Invoices producing PINT documents, and provider support for sending as the buyer)
+- [x] No QR code; XML retained 5 years
+- [ ] 7-year retention for real estate is not applied (every log is kept 5 years)
+- [x] Exclusions: B2C (customers that are individuals) are not e-invoiced; imports under the reverse charge are purchases and never produce a sales document
+- [ ] Other exclusions in the specification (exempt financial services, airline e-tickets, sovereign activity) are not detected: such invoices are sent unless the company excludes them
 
 ## PR 6a: PINT AE XML builder and validators
 - [x] Pin PINT-AE v1.0.4: builder follows the official samples; checked against the official Schematron and the OASIS UBL 2.1 schema (not bundled; see the architecture doc)
@@ -36,7 +40,8 @@
 - [x] No QR code on the e-invoice
 - [x] `UAE VAT` TRN default pattern now follows the specification (15 digits, starting with 1 and ending with 03)
 - [x] Deemed supply, free trade zone beneficiary, e-commerce and out of scope documents (verified against the official rules and the Microvista sandbox)
-- [ ] Margin scheme (category N), summary, continuous, agent billing, self-billing and reverse charge documents
+- [x] Reverse charge documents for oil, natural gas, pure hydrocarbons, electronic devices and precious metals and stones (PR 6g)
+- [ ] Margin scheme (category N), summary, continuous, agent billing and self-billing documents
 
 ## PR 6b: provider framework and sending pipeline
 - **UAE E-Invoice Settings** (one row per company: provider, environment, "E-Invoice From" date, endpoint, client ID, client secret as a Password, extra JSON configuration) and **UAE E-Invoice Log** (one per document: status, provider reference, idempotency key, attempts, next attempt, the XML, the provider's response, errors, retention date).
@@ -52,5 +57,7 @@
 - Not built: turning a received invoice into a Purchase Invoice (it needs a mapping of the sender's lines to items and accounts), acknowledging or disputing a received document, and validating the sender's document against the specification.
 
 ## Providers
-- [x] Microvista adapter (PR 6d), verified against its sandbox: submit, duplicate recovery, polling to Cleared. Credit notes and inbound listing not yet exercised live.
-- [ ] Credit-note payload shape and the inbound listing against the sandbox, then production
+- [x] Microvista adapter (PR 6d), verified against its sandbox: submit, duplicate recovery, polling to Cleared, a credit note, the inbound listing (14 received documents), and every case of PRs 6f and 6g (480, out of scope, free trade zone, deemed, e-commerce, reverse charge)
+- [ ] Production run with the live account (only the sandbox has been used)
+- [ ] Inbound: create Purchase Invoices from received documents (needs a mapping of the sender's lines to items and accounts)
+- [ ] Inbound: acknowledge or dispute a received document, and validate it against the specification

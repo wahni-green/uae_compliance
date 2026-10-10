@@ -2,18 +2,20 @@
 
 - [x] Profit margin scheme (invoice flag, return section; e-invoice flag in Phase 6) (PR 5b)
 - [x] Partial exemption: input apportionment and annual adjustment (PR 5a)
-- [ ] Capital asset scheme (10-year adjustment, assets >= AED 5M) - confirm rules
-- [ ] Bad-debt relief
+- [x] Capital asset scheme (5 years, 10 for buildings; assets >= AED 5M; rules confirmed in UAE_VERIFICATION.md) (PR 5a)
+- [x] Bad-debt relief and repayment (PR 5a)
 - [x] Tourist refund (box 2): validations (PR 5b)
 - [x] Excise tax: rates, item categories and a check on invoices; the excise return itself is not built (PR 5b)
 - [x] Tax groups (PR 5c)
-- [ ] Tests for each scheme
+- [x] Tests for each scheme
 
 ## From verification (see ../UAE_VERIFICATION.md)
 - [x] Capital assets: 5 years non-buildings, 10 years buildings, AED 5M threshold (PR 5a)
-- [ ] Excise per CD 197/2025: volumetric sweetened drinks (AED 1.09 / 0.79 per litre), 100% tobacco/e-liquids/energy drinks
-- [ ] CD 149/2026: composite supply (Art 4(6)), margin scheme purchase price rules, apportionment changes (from tax year after 1 Oct 2027)
-- [ ] Tourist refund: 90 days, min AED 250, cap AED 35,000 per 24 h
+- [x] Excise rates per CD 197/2025 (volumetric sweetened drinks AED 1.09 / 0.79 per litre, 100% tobacco, e-liquids and energy drinks), item categories and an invoice check (PR 5b)
+- [ ] Excise return and excise on purchases (not built; only needed if the company files excise through this app)
+- [ ] **CD 149/2026 (in force since 1 Oct 2026, so already applicable): not implemented.** (a) Margin scheme: the purchase price includes costs only where the related input tax is not recoverable; the app takes the purchase price as entered, so it neither checks nor derives it. (b) Composite supply (ER Art 4(6)): interconnected components are one supply, which matters for licence, support and hosting bundles; nothing in the app identifies or treats them. (c) Input tax and apportionment changes, including the government/charity method from the first tax year starting after 1 Oct 2027. Read the Cabinet Decision text before building
+- [x] Tourist refund: minimum purchase AED 250, cap AED 35,000, refund not above the VAT charged, standard rated only (PR 5b)
+- [ ] Tourist refund: the 90-day limit and the AED 35,000 cap per 24 hours across invoices are not validated (only a single invoice is checked)
 
 ## PR 5a: adjustments, partial exemption, capital assets
 - **UAE VAT Adjustment** (submittable): Bad Debt Relief (box 1 adjustment column, per emirate, negative; more than six months after the supply, customer notified, never more than the VAT charged), Bad Debt Repayment (box 9 adjustment, negative; more than six months after the supplier's notice), Annual Apportionment and Capital Assets Scheme (box 9 adjustment, signed), Import Adjustment (box 7 amount and VAT).

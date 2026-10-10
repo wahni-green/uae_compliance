@@ -5,7 +5,7 @@
 - [x] Purchase Invoice: RCM requires Output + Input rows; GCC/import/zone-supplier flags; postponed import VAT; blocked/non-recoverable input tax
 - [x] `overrides/item_tax_template.py` validation
 - [x] Tax credit note: 14-day warning (Art. 61/70)
-- [ ] Tax group handling (moved to Phase 5 with the other schemes)
+- [x] Tax group handling (built in Phase 5, PR 5c)
 - [x] Verify ERPNext regional hooks (`update_itemised_tax_data`, RCM grand-total) don't double-handle RCM
 - [x] `utils/tax_account.py` (item_wise_tax_detail parsing per company VAT accounts)
 - [x] Tests (sales, purchase, item tax template, non-UAE company unaffected)
