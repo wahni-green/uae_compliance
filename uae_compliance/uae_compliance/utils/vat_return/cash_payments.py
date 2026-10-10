@@ -15,14 +15,33 @@ def get_cash_modes_of_payment() -> set[str]:
 	return set(frappe.get_all("Mode of Payment", filters={"type": "Cash"}, pluck="name"))
 
 
-def exceeds_cash_limit(invoice, limit: float | None = None) -> bool:
+def get_value_in_limit_currency(invoice, company: str | None = None) -> float:
+	"""The invoice's total in the currency of the limit (AED), from the company currency."""
+	amount = abs(flt(invoice.get("base_grand_total")))
+	company = company or invoice.get("company")
+	settings_currency = frappe.db.get_single_value("UAE Compliance Settings", "settings_currency") or "AED"
+	company_currency = frappe.get_cached_value("Company", company, "default_currency") if company else None
+	if not company_currency or company_currency == settings_currency:
+		return amount
+
+	from erpnext.setup.utils import get_exchange_rate
+
+	return amount * flt(
+		get_exchange_rate(company_currency, settings_currency, invoice.get("posting_date")) or 1
+	)
+
+
+def exceeds_cash_limit(invoice, limit: float | None = None, company: str | None = None) -> bool:
 	"""Whether a Purchase Invoice's value is above the limit. The value of the supply counts, not
-	the cash part: the regulation refers to the supply's value."""
+	the cash part: the regulation refers to the supply's value. Compared in the limit's currency."""
 	limit = get_cash_payment_limit() if limit is None else limit
-	return bool(limit) and not invoice.get("is_return") and abs(flt(invoice.get("base_grand_total"))) > limit
+	if not limit or invoice.get("is_return"):
+		return False
+
+	return get_value_in_limit_currency(invoice, company) > limit
 
 
-def get_invoices_paid_in_cash_over_limit(invoices: dict) -> set[str]:
+def get_invoices_paid_in_cash_over_limit(invoices: dict, company: str | None = None) -> set[str]:
 	"""The names of the Purchase Invoices that are paid in cash, on the invoice itself or by a submitted
 	Payment Entry, or are marked as intended to be paid in cash, and whose value is above the limit.
 	Empty while no limit is set."""
@@ -30,7 +49,41 @@ def get_invoices_paid_in_cash_over_limit(invoices: dict) -> set[str]:
 	if not limit or not invoices:
 		return set()
 
-	candidates = {name for name, invoice in invoices.items() if exceeds_cash_limit(invoice, limit)}
+	# A credit note takes the cash status of the invoice it credits: the input VAT the original left
+	# out must not be given back by the return.
+	originals = {
+		invoice.get("return_against") for invoice in invoices.values() if invoice.get("is_return")
+	} - set(invoices)
+	originals.discard(None)
+	known = dict(invoices)
+	if originals:
+		for original in frappe.get_all(
+			"Purchase Invoice",
+			filters={"name": ["in", list(originals)]},
+			fields=[
+				"name",
+				"is_return",
+				"is_paid",
+				"mode_of_payment",
+				"uae_cash_payment_intended",
+				"base_grand_total",
+				"posting_date",
+			],
+		):
+			known[original.name] = original
+
+	blocked = _cash_blocked(known, limit, company)
+	return {
+		name
+		for name, invoice in invoices.items()
+		if (name in blocked and not invoice.get("is_return"))
+		or (invoice.get("is_return") and invoice.get("return_against") in blocked)
+	}
+
+
+def _cash_blocked(invoices: dict, limit: float, company: str | None) -> set[str]:
+	"""The invoices, returns apart, paid in cash or intended for it and above the limit."""
+	candidates = {name for name, invoice in invoices.items() if exceeds_cash_limit(invoice, limit, company)}
 	if not candidates:
 		return set()
 

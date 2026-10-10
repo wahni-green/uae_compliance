@@ -29,6 +29,8 @@ _PARENT_FIELDS = {
 		"is_paid",
 		"mode_of_payment",
 		"uae_cash_payment_intended",
+		"return_against",
+		"posting_date",
 		"base_grand_total",
 		"uae_is_reverse_charge",
 		"uae_is_gcc_supplier",
@@ -113,7 +115,9 @@ def get_invoice_rows(doctype: str, company: str, from_date, to_date) -> list:
 	# Input VAT on a large payment in cash is not recoverable (ER Art 54(3)); empty while the Minister's
 	# amount is not configured.
 	cash_paid = (
-		get_invoices_paid_in_cash_over_limit(invoices_by_name) if doctype == "Purchase Invoice" else set()
+		get_invoices_paid_in_cash_over_limit(invoices_by_name, company)
+		if doctype == "Purchase Invoice"
+		else set()
 	)
 
 	resolver = CategoryResolver()

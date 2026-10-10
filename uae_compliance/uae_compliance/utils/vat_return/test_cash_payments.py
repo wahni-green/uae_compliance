@@ -135,3 +135,48 @@ class TestCashPaymentLimit(VATReturnTestCase):
 			self.purchase(is_paid=1, mode_of_payment="Cash", cash_bank_account=self.cash_account)
 
 		self.assertFalse(any("cash payment limit" in str(call) for call in msgprint.call_args_list))
+
+	def test_a_credit_note_keeps_the_original_s_input_vat_out(self):
+		from erpnext.controllers.sales_and_purchase_return import make_return_doc
+
+		self.set_limit(1000)
+		invoice = self.purchase()
+		self.pay_in_cash(invoice)
+		credit = make_return_doc("Purchase Invoice", invoice.name)
+		credit.posting_date = self.date
+		credit.set_posting_time = 1
+		credit.insert()
+		credit.submit()
+
+		# Neither the purchase nor its return counts: the return must not give back VAT never claimed.
+		self.assertEqual(self.recovered(self.generate()), 0)
+
+	def test_a_credit_note_of_a_purchase_that_was_not_blocked_is_unchanged(self):
+		from erpnext.controllers.sales_and_purchase_return import make_return_doc
+
+		self.set_limit(10000)
+		invoice = self.purchase()
+		self.pay_in_cash(invoice)
+		credit = make_return_doc("Purchase Invoice", invoice.name)
+		credit.posting_date = self.date
+		credit.set_posting_time = 1
+		credit.insert()
+		credit.submit()
+
+		self.assertEqual(self.recovered(self.generate()), 0)
+
+	def test_the_value_is_compared_in_the_currency_of_the_limit(self):
+		from unittest.mock import patch
+
+		from uae_compliance.uae_compliance.utils.vat_return.cash_payments import exceeds_cash_limit
+
+		invoice = {"base_grand_total": 5000, "company": self.company, "posting_date": self.date}
+		with (
+			patch("frappe.get_cached_value", return_value="USD"),
+			patch("erpnext.setup.utils.get_exchange_rate", return_value=3.6725),
+		):
+			# USD 5,000 is AED 18,362.5.
+			self.assertTrue(exceeds_cash_limit(invoice, 10000, self.company))
+			self.assertFalse(exceeds_cash_limit(invoice, 20000, self.company))
+
+		self.assertFalse(exceeds_cash_limit(invoice, 10000, self.company))
