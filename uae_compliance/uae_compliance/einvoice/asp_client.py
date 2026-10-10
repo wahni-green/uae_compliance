@@ -52,10 +52,14 @@ class StatusResult:
 
 @dataclass
 class InboundDocument:
-	"""An e-invoice received for the company, as delivered by the provider."""
+	"""An e-invoice received for the company, as delivered by the provider: a PINT AE XML document,
+	or for providers that hand over the invoice's fields instead, a model with the keys of
+	`inbound.parse_document` (kind, type_code, number, uuid, issue_date, currency, seller_*, buyer_*,
+	tax_total, payable, lines)."""
 
 	provider_reference: str
-	xml: bytes
+	xml: bytes | None = None
+	model: dict | None = None
 
 
 class ASPClient(ABC):
@@ -79,8 +83,10 @@ class ASPClient(ABC):
 	def get_status(self, provider_reference: str) -> StatusResult:
 		"""The current normalized status of a submitted document."""
 
-	def fetch_inbound(self) -> list[InboundDocument]:
-		"""Documents received for the company since the last call. Not every provider supports it."""
+	def fetch_inbound(self, known_references: set[str] | None = None) -> list[InboundDocument]:
+		"""Documents received for the company. `known_references` are the provider references already
+		logged, which an adapter can skip instead of fetching their details again. Not every provider
+		supports receiving."""
 		return []
 
 	def validate_credentials(self) -> None:

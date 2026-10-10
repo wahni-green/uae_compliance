@@ -47,6 +47,13 @@
   "reference_doctype",
   "reference_name",
   "document_number",
+  "document_type",
+  "document_date",
+  "party_name",
+  "party_tin",
+  "supplier",
+  "currency",
+  "total_amount",
   "section_break_provider",
   "provider",
   "environment",
@@ -119,6 +126,51 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Document Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "document_type",
+   "fieldtype": "Data",
+   "label": "Document Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "document_date",
+   "fieldtype": "Date",
+   "label": "Document Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "party_name",
+   "fieldtype": "Data",
+   "label": "Sender",
+   "read_only": 1
+  },
+  {
+   "fieldname": "party_tin",
+   "fieldtype": "Data",
+   "label": "Sender TIN",
+   "read_only": 1
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier",
+   "read_only": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "read_only": 1,
+   "options": "Currency"
+  },
+  {
+   "fieldname": "total_amount",
+   "fieldtype": "Currency",
+   "label": "Total",
+   "options": "currency",
    "read_only": 1
   },
   {

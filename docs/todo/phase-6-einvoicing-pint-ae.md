@@ -11,7 +11,7 @@
 - [x] Mock/sandbox adapter (`asp_clients/mock.py`) used for tests; real adapters added later per provider, no schema changes
 - [x] Retries and correlation IDs handled in the shared layer, not in adapters
 - [x] Scheduler status polling (`scheduler_events`)
-- [ ] Inbound handling for Purchase Invoices
+- [x] Inbound handling: documents received through the provider are logged (PR 6c); creating Purchase Invoices from them is not built
 - [x] XML retention and permissions
 - [ ] Tests with sample documents
 
@@ -43,3 +43,7 @@
 - **Scope:** companies with e-invoicing enabled, invoices dated on or after "E-Invoice From", and customers that are not individuals (B2C is out of scope).
 - **A sent e-invoice cannot be cancelled**; a credit note corrects it. The log cannot be deleted before its retention date (five years from the invoice date, extended to five years from clearance).
 - Still open: inbound handling (PR 6c), `UAE VAT` reconciliation of e-invoice status in reports.
+
+## PR 6c: inbound documents
+- The scheduler fetches what each enabled company's provider holds for it (`ASPClient.fetch_inbound`) and logs each new document (by provider reference) as an Inbound UAE E-Invoice Log: number, UUID, type, date, sender name and TIN, currency, total, and the XML, kept for five years. The sender is matched to a Supplier by TIN, then by TRN. A document that cannot be read, or that is addressed to another TIN or TRN, is logged as Invalid with the reason.
+- Not built: turning a received invoice into a Purchase Invoice (it needs a mapping of the sender's lines to items and accounts), acknowledging or disputing a received document, and validating the sender's document against the specification.

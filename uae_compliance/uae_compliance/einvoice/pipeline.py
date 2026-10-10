@@ -395,6 +395,12 @@ def process_pending() -> None:
 	):
 		_run(poll_log, name)
 
+	from uae_compliance.uae_compliance.einvoice.inbound import receive
+
+	settings = frappe.get_cached_doc("UAE E-Invoice Settings")
+	for company in [row.company for row in settings.companies if row.enabled]:
+		_run(receive, company)
+
 
 def _run(function, name: str) -> None:
 	"""One document's failure must not stop the others."""

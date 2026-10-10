@@ -66,7 +66,7 @@ class MockASP(ASPClient):
 		status = STATUS_DELIVERED if entry["checks"] == 1 else STATUS_CLEARED
 		return StatusResult(status=status, detail=f"Check {entry['checks']}")
 
-	def fetch_inbound(self) -> list[InboundDocument]:
+	def fetch_inbound(self, known_references: set[str] | None = None) -> list[InboundDocument]:
 		return [
 			InboundDocument(provider_reference=reference, xml=xml.encode())
 			for reference, xml in self.config.extra.get("inbound", {}).items()
