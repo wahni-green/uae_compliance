@@ -386,6 +386,20 @@ class MicrovistaASP(ASPClient):
 # ---------------------------------------------------------------------- mapping
 
 
+def _delivery(details: dict | None) -> dict:
+	if not details:
+		return {}
+
+	return {
+		"actualDeliveryDate": f"{details['date']}T00:00:00.000Z",
+		"deliverToAddressLine1": details["street"],
+		"deliverToCity": details["city"],
+		"deliverToCountrySubdivision": details["subdivision"],
+		"uaeStateCodes": details["subdivision"],
+		"deliverToCountryCode": details["country"],
+	}
+
+
 def _tin(value) -> str:
 	"""A TIN from an electronic id. The list gives the Peppol scheme alone ("0235") where the buyer's
 	id is not held, and may prefix the TIN with it, so only what is a 10 digit TIN is kept; an empty
@@ -496,6 +510,7 @@ def _build_payload(model: dict) -> dict:
 			"countrySubdivision": buyer["address"].get("subdivision"),
 			"uaeStateCodes": buyer["address"].get("subdivision"),
 			"countryCode": buyer["address"].get("country") or "AE",
+			"beneficiaryID": model.get("beneficiary_id"),
 		},
 		"invoiceDetail": {
 			"sumOfInvoiceLineNetAmount": totals["line_total"],
@@ -512,7 +527,7 @@ def _build_payload(model: dict) -> dict:
 			"taxableExempt": taxable("E"),
 			"taxAmountExempt": tax("E"),
 		},
-		"delivery": {},
+		"delivery": _delivery(model.get("delivery")),
 		"payment": {
 			"paymentMeansTypeCode": model.get("payment_means_code"),
 			"paymentDueDate": model.get("due_date"),
@@ -534,10 +549,12 @@ def _build_payload(model: dict) -> dict:
 				"invoicedQuantityUnitOfMeasureCode": line["unit_code"],
 				"invoiceLineNetAmount": line["net_amount"],
 				"invoicedItemTaxCategoryCode": line["category_code"],
-				"invoicedItemTaxRate": line["rate"] if line["category_code"] != "E" else None,
+				# An exempt or out of scope line has no rate.
+				"invoicedItemTaxRate": line["rate"] if line["category_code"] not in ("E", "O") else None,
 				"invoiceLineAmountInAED": line["amount_aed"],
-				"vatLineAmountInAED": line["vat_amount_aed"],
-				"vatLineAmount": line["vat_amount"] if line["category_code"] != "E" else None,
+				# Its API wants a VAT amount on every line, 0 for an exempt one.
+				"vatLineAmountInAED": line["vat_amount_aed"] or 0.0,
+				"vatLineAmount": line["vat_amount"] if line["category_code"] != "E" else 0.0,
 				"taxExemptionReasonCode": line["exemption_reason_code"],
 			}
 			for line in model["lines"]

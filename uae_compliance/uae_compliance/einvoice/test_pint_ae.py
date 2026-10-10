@@ -218,15 +218,6 @@ class TestBuilder(EInvoiceTestCase):
 
 		self.assertRaises(EInvoiceNotSupportedError, build_xml, doc)
 
-	def test_out_of_scope_rows_are_refused(self):
-		from uae_compliance.tests import make_item
-
-		make_item("_Test EInv Out", "Out of Scope")
-		doc = self.invoice([{"item_code": "_Test EInv Out", "rate": 100, "vat_rate": 0}])
-		with self.assertRaises(EInvoiceNotSupportedError) as ctx:
-			build_xml(doc)
-		self.assertIn("Out of Scope", str(ctx.exception))
-
 	def test_margin_scheme_invoices_are_refused(self):
 		doc = self.invoice()
 		doc.uae_is_margin_scheme = 1

@@ -13,10 +13,15 @@ ENDPOINT_EXPORT = "9900000099"
 
 INVOICE_TYPE_CODE = "380"
 CREDIT_NOTE_TYPE_CODE = "381"
+# A document whose lines are all exempt or out of scope is an "out of scope" invoice (rule ibr-151-ae
+# keeps such lines off 380/381, and ibr-122-ae keeps 480/81 to E, O and Z).
+OUT_OF_SCOPE_INVOICE_TYPE_CODE = "480"
+OUT_OF_SCOPE_CREDIT_NOTE_TYPE_CODE = "81"
+NO_VAT_CATEGORY_CODES = ("E", "O")
 
 # Tax category codes (IBT-151). There is no code for exports: those are flagged in the transaction
 # type (ProfileExecutionID).
-CATEGORY_CODES = {"Standard Rated": "S", "Zero Rated": "Z", "Exempt": "E"}
+CATEGORY_CODES = {"Standard Rated": "S", "Zero Rated": "Z", "Exempt": "E", "Out of Scope": "O"}
 SUPPORTED_CATEGORIES = tuple(CATEGORY_CODES)
 
 # ProfileExecutionID: eight 0/1 flags (BTAE-02).

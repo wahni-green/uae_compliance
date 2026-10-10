@@ -358,3 +358,43 @@ class TestMicrovista(EInvoiceTestCase):
 		_xml, _summary, model = build_document(self.invoice(submit=True))
 
 		self.assertEqual(to_payload(model)["invoice"].get("precedingInvoices", []), [])
+
+	def test_the_payload_follows_the_provider_s_rules_for_each_case(self):
+		from uae_compliance.tests import make_einvoice_item
+
+		make_einvoice_item("_Test EInv OOS", "Out of Scope")
+		out_of_scope = to_payload(
+			build_document(
+				self.invoice(
+					[
+						{"item_code": "_Test EInv Service", "rate": 100},
+						{"item_code": "_Test EInv OOS", "rate": 50, "vat_rate": 0},
+					]
+				)
+			)[2]
+		)
+		line = out_of_scope["items"][1]
+		self.assertEqual(line["invoicedItemTaxCategoryCode"], "O")
+		self.assertNotIn("invoicedItemTaxRate", line)
+
+		exempt = to_payload(
+			build_document(self.invoice([{"item_code": "_Test EInv Exempt", "rate": 300, "vat_rate": 0}]))[2]
+		)
+		self.assertEqual(exempt["invoice"]["invoiceTypeCode"], "480")
+		self.assertEqual(exempt["items"][0]["vatLineAmount"], 0.0)
+		self.assertEqual(exempt["items"][0]["vatLineAmountInAED"], 0.0)
+
+		zone = to_payload(
+			build_document(
+				self.invoice(uae_is_free_zone_supply=1, uae_free_zone_beneficiary_id="189098765401003")
+			)[2]
+		)
+		self.assertEqual(zone["buyer"]["beneficiaryID"], "189098765401003")
+		self.assertEqual(zone["invoice"]["invoiceTransactionTypeCode"], "10000000")
+
+		deemed = to_payload(build_document(self.invoice(uae_is_deemed_supply=1))[2])
+		self.assertEqual(deemed["payment"], {})
+
+		ecommerce = to_payload(build_document(self.invoice(uae_is_ecommerce_supply=1))[2])
+		self.assertEqual(ecommerce["delivery"]["deliverToCountrySubdivision"], "AUH")
+		self.assertTrue(ecommerce["delivery"]["deliverToAddressLine1"])

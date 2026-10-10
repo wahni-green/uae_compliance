@@ -20,6 +20,9 @@ from uae_compliance.uae_compliance.constants.pint_ae import (
 	ENDPOINT_BUYER_NOT_ON_NETWORK,
 	ENDPOINT_EXPORT,
 	INVOICE_TYPE_CODE,
+	NO_VAT_CATEGORY_CODES,
+	OUT_OF_SCOPE_CREDIT_NOTE_TYPE_CODE,
+	OUT_OF_SCOPE_INVOICE_TYPE_CODE,
 	PINT_TIN_PATTERN,
 	PINT_TRN_PATTERN,
 	PROFILE_ID,
@@ -85,8 +88,19 @@ def _check_header(xml, is_credit_note: bool) -> list[str]:
 		if not _text(xml, f"cbc:{tag}"):
 			errors.append(_("The {0} is missing.").format(label))
 
+	# A document whose lines are all exempt or out of scope is an out of scope invoice or credit note
+	# (480/81); any other is 380/381 (rules ibr-151-ae and ibr-122-ae).
+	line_tag = "CreditNoteLine" if is_credit_note else "InvoiceLine"
+	categories = {
+		_text(line, "cac:Item/cac:ClassifiedTaxCategory/cbc:ID") for line in _x(xml, f"cac:{line_tag}")
+	}
+	only_no_vat = bool(categories) and categories <= set(NO_VAT_CATEGORY_CODES)
+	if is_credit_note:
+		expected = OUT_OF_SCOPE_CREDIT_NOTE_TYPE_CODE if only_no_vat else CREDIT_NOTE_TYPE_CODE
+	else:
+		expected = OUT_OF_SCOPE_INVOICE_TYPE_CODE if only_no_vat else INVOICE_TYPE_CODE
+
 	type_tag = "CreditNoteTypeCode" if is_credit_note else "InvoiceTypeCode"
-	expected = CREDIT_NOTE_TYPE_CODE if is_credit_note else INVOICE_TYPE_CODE
 	if _text(xml, f"cbc:{type_tag}") != expected:
 		errors.append(_("The document type code must be {0}.").format(expected))
 
@@ -186,6 +200,8 @@ def _check_lines(xml, line_tag: str, is_credit_note: bool) -> list[str]:
 			line, "cac:Item/cac:ClassifiedTaxCategory/cbc:TaxExemptionReasonCode"
 		):
 			errors.append(_("Line {0}: an exempt line needs a VAT exemption reason code.").format(number))
+		if category == "O" and rate:
+			errors.append(_("Line {0}: an out of scope line must not carry a rate.").format(number))
 		if category == "S" and not flt(rate):
 			errors.append(_("Line {0}: a standard rated line needs a rate above 0%.").format(number))
 
@@ -334,11 +350,26 @@ def _check_conditional(xml, is_credit_note: bool, line_tag: str) -> list[str]:
 				_("A credit note needs a reason code from the list ({0}).").format(", ".join(CREDIT_REASONS))
 			)
 	else:
+		# A deemed supply has no consideration, so it needs neither a due date nor payment means
+		# (rules ibr-127-ae and ibr-191-ae).
+		is_deemed = _text(xml, "cbc:ProfileExecutionID")[1:2] == "1"
 		payable = flt(_text(xml, "cac:LegalMonetaryTotal/cbc:PayableAmount"))
-		if payable > 0 and not _text(xml, "cbc:DueDate"):
+		if payable > 0 and not _text(xml, "cbc:DueDate") and not is_deemed:
 			errors.append(_("An invoice with an amount due needs a due date."))
-		if not _x(xml, "cac:PaymentMeans/cbc:PaymentMeansCode"):
+		if not _x(xml, "cac:PaymentMeans/cbc:PaymentMeansCode") and not is_deemed:
 			errors.append(_("The payment means are required."))
+
+	flags = _text(xml, "cbc:ProfileExecutionID")
+	if flags[:1] == "1" and not _text(xml, "cac:BuyerCustomerParty/cac:Party/cac:PartyIdentification/cbc:ID"):
+		errors.append(_("A free trade zone supply needs the beneficiary ID."))
+	if flags[6:7] == "1":
+		for tag, what in (
+			("StreetName", _("address line")),
+			("CityName", _("city")),
+			("CountrySubentity", _("emirate")),
+		):
+			if not _text(xml, f"cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:{tag}"):
+				errors.append(_("An e-commerce supply needs the delivery {0}.").format(what))
 
 	tax_point = _text(xml, "cbc:TaxPointDate")
 	if tax_point and tax_point >= _text(xml, "cbc:IssueDate"):
