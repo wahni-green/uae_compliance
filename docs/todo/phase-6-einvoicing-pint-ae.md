@@ -20,8 +20,8 @@
 ## From verification (see ../UAE_VERIFICATION.md)
 - [x] Pin PINT-AE v1.0.4; code lists and Schematron from resources.zip, XSD from OASIS UBL 2.1 (supplied to the tests through environment variables, not bundled)
 - [x] Tax category codes S, E, O, AE, Z (no `G`)
-- [ ] Tax category N for the margin scheme (check Greek vs Latin N; the specification's list uses the Greek letter)
-- [x] Transaction-type flags: free trade zone, deemed supply, e-commerce, export, and margin (flag only, margin invoices are refused)
+- [x] Tax category N for the margin scheme (PR 6h). The code list file spells N with a Greek capital nu, but the Schematron rules and the official sample use the Latin letter, which is what is sent
+- [x] Transaction-type flags: free trade zone, deemed supply, e-commerce, export and margin scheme
 - [ ] Transaction-type flags: summary, continuous and agent billing
 - [x] Invoice types 380/480, credit notes 381/81; TaxCurrencyCode AED + `aedtotal-incl-vat` document reference
 - [x] Participant ID `0235:<TIN>` with predefined endpoints 9900000097/98/99; legal registration ID type (TL/EID/PAS/CD), with the issuing country for a passport
@@ -41,7 +41,8 @@
 - [x] `UAE VAT` TRN default pattern now follows the specification (15 digits, starting with 1 and ending with 03)
 - [x] Deemed supply, free trade zone beneficiary, e-commerce and out of scope documents (verified against the official rules and the Microvista sandbox)
 - [x] Reverse charge documents for oil, natural gas, pure hydrocarbons, electronic devices and precious metals and stones (PR 6g)
-- [ ] Margin scheme (category N), summary, continuous, agent billing and self-billing documents
+- [x] Margin scheme documents, invoices and credit notes (PR 6h), verified against the official rules and the Microvista sandbox
+- [ ] Summary, continuous, agent billing and self-billing documents
 
 ## PR 6b: provider framework and sending pipeline
 - **UAE E-Invoice Settings** (one row per company: provider, environment, "E-Invoice From" date, endpoint, client ID, client secret as a Password, extra JSON configuration) and **UAE E-Invoice Log** (one per document: status, provider reference, idempotency key, attempts, next attempt, the XML, the provider's response, errors, retention date).

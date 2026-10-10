@@ -206,6 +206,8 @@ def _check_lines(xml, line_tag: str, is_credit_note: bool) -> list[str]:
 			errors.append(_("Line {0}: an out of scope line must not carry a rate.").format(number))
 		if category == "AE":
 			errors += _check_reverse_charge_line(line, number)
+		if category == "N" and not flt(rate):
+			errors.append(_("Line {0}: a margin scheme line needs a rate above 0%.").format(number))
 		if category == "S" and not flt(rate):
 			errors.append(_("Line {0}: a standard rated line needs a rate above 0%.").format(number))
 
@@ -230,7 +232,7 @@ def _check_lines(xml, line_tag: str, is_credit_note: bool) -> list[str]:
 			else:
 				# The builder rounds the VAT in the document currency before converting it.
 				# A reverse charge line states the rate but charges no VAT.
-				vat = 0.0 if category == "AE" else flt(net * flt(rate) / 100, 2)
+				vat = 0.0 if category in ("AE", "N") else flt(net * flt(rate) / 100, 2)
 				if (
 					abs(flt(extension_tax) - vat * rate_to_aed) > AED_TOLERANCE
 					or abs(flt(extension_amount) - (net + vat) * rate_to_aed) > AED_TOLERANCE
@@ -306,7 +308,7 @@ def _check_totals(xml, line_tag: str) -> list[str]:
 		tax = flt(_text(subtotal, "cbc:TaxAmount"))
 		if abs(taxable - by_category.get(key, 0)) > TOLERANCE:
 			errors.append(_("The taxable amount of category {0} is not the sum of its lines.").format(key[0]))
-		expected_tax = 0 if key[0] == "AE" else taxable * key[1] / 100
+		expected_tax = 0 if key[0] in ("AE", "N") else taxable * key[1] / 100
 		if abs(tax - expected_tax) > TOLERANCE:
 			errors.append(_("A VAT breakdown amount does not equal its taxable amount times its rate."))
 
@@ -395,6 +397,14 @@ def _check_conditional(xml, is_credit_note: bool, line_tag: str) -> list[str]:
 		errors.append(_("A reverse charge supply needs the buyer's TRN."))
 
 	flags = _text(xml, "cbc:ProfileExecutionID")
+	line_categories = {
+		_text(line, "cac:Item/cac:ClassifiedTaxCategory/cbc:ID")
+		for line in _x(xml, "cac:InvoiceLine | cac:CreditNoteLine")
+	}
+	if flags[2:3] == "1" and line_categories != {"N"}:
+		errors.append(_("Every line of a margin scheme invoice must be in the margin scheme category."))
+	if "N" in line_categories and flags[2:3] != "1":
+		errors.append(_("The margin scheme category can only be used on a margin scheme invoice."))
 	if flags[:1] == "1" and not _text(xml, "cac:BuyerCustomerParty/cac:Party/cac:PartyIdentification/cbc:ID"):
 		errors.append(_("A free trade zone supply needs the beneficiary ID."))
 	if flags[6:7] == "1":

@@ -36,6 +36,9 @@ GTIN_LENGTHS = (8, 12, 13, 14)
 # type (ProfileExecutionID).
 CATEGORY_CODES = {"Standard Rated": "S", "Zero Rated": "Z", "Exempt": "E", "Out of Scope": "O"}
 REVERSE_CHARGE_CODE = "AE"
+# "Standard rate additional VAT": the code of a profit margin scheme line (a Latin N; the code list file
+# spells it with a Greek capital nu, but the rules and the official sample use the Latin letter).
+MARGIN_SCHEME_CODE = "N"
 SUPPORTED_CATEGORIES = tuple(CATEGORY_CODES)
 
 # ProfileExecutionID: eight 0/1 flags (BTAE-02).

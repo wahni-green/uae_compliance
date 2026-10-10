@@ -34,6 +34,7 @@ from uae_compliance.uae_compliance.constants.pint_ae import (
 	INVOICE_TYPE_CODE,
 	ITEM_TYPE_CODES,
 	LEGAL_REGISTRATION_TYPES,
+	MARGIN_SCHEME_CODE,
 	NO_VAT_CATEGORY_CODES,
 	OUT_OF_SCOPE_CREDIT_NOTE_TYPE_CODE,
 	OUT_OF_SCOPE_INVOICE_TYPE_CODE,
@@ -46,6 +47,7 @@ from uae_compliance.uae_compliance.constants.pint_ae import (
 	UTC_OFFSET,
 )
 from uae_compliance.uae_compliance.einvoice.exceptions import EInvoiceNotSupportedError
+from uae_compliance.uae_compliance.utils.print_data import get_output_vat_amount
 from uae_compliance.uae_compliance.utils.tax_account import (
 	get_item_wise_vat_rates,
 	is_output_vat_account,
@@ -161,13 +163,6 @@ class PintAEBuilder:
 				).format(_(doc.get("uae_reverse_charge_type") or ""))
 			)
 
-		if doc.get("uae_is_margin_scheme"):
-			# The specification reports a margin scheme invoice under the "standard rate additional
-			# VAT" category (rule ibr-116-ae), which this builder does not produce yet.
-			raise EInvoiceNotSupportedError(
-				_("Profit margin scheme invoices cannot be sent as e-invoices yet.")
-			)
-
 	def _refuse_flags_the_type_cannot_carry(self):
 		"""An out of scope invoice or credit note (480/81) cannot be a deemed supply, summary invoice or
 		margin scheme invoice (rule ibr-157-ae)."""
@@ -188,7 +183,18 @@ class PintAEBuilder:
 		for row in self.doc.items:
 			category = resolver.resolve(row)
 			code = CATEGORY_CODES.get(category)
-			if self._is_reverse_charge and code == "S":
+			if self._is_margin_scheme:
+				if code != "S":
+					raise EInvoiceNotSupportedError(
+						_(
+							"Row #{0}: a profit margin scheme invoice can only have standard rated rows."
+						).format(row.idx)
+					)
+
+				# Reported under "standard rate additional VAT" (N): the price already contains the VAT on
+				# the margin, so the line is the price and no VAT is stated (rules ibr-116-ae, ibr-108-ae).
+				code = MARGIN_SCHEME_CODE
+			elif self._is_reverse_charge and code == "S":
 				# The recipient accounts for the VAT: the line is reported at the standard rate with no
 				# VAT charged (rules aligned-ibrp-ae-05 and ibr-162-ae).
 				code = REVERSE_CHARGE_CODE
@@ -208,12 +214,14 @@ class PintAEBuilder:
 					)
 
 				vat_rate = flt(rates.get(row.item_code)) or STANDARD_VAT_RATE
-			elif code == REVERSE_CHARGE_CODE:
+			elif code in (REVERSE_CHARGE_CODE, MARGIN_SCHEME_CODE):
 				vat_rate = STANDARD_VAT_RATE
 			else:
 				vat_rate = 0.0
 
-			net = flt(row.net_amount * self.sign, 2)
+			# A margin scheme line is the price: the net amount plus the VAT on the margin.
+			margin_vat = self._margin_vat_of(row) if code == MARGIN_SCHEME_CODE else 0.0
+			net = flt((row.net_amount + margin_vat) * self.sign, 2)
 			vat = flt(net * vat_rate / 100, 2) if code == "S" else 0.0
 			qty = flt(row.qty * self.sign) or 1
 			net_price = flt(net / qty, 6)
@@ -610,6 +618,38 @@ class PintAEBuilder:
 		self._delivery(root)
 
 	@property
+	def _is_margin_scheme(self) -> bool:
+		return bool(self.doc.get("uae_is_margin_scheme"))
+
+	def _margin_vat_of(self, row) -> float:
+		"""The VAT on the margin that is part of a row's price. An invoice's rows carry the VAT due on
+		their margin (net amount less purchase price, never below zero), which the invoice validation
+		makes equal to the VAT charged; a credit note takes its VAT in proportion to its rows."""
+		if "_margin_vat" not in self.__dict__:
+			doc = self.doc
+			if doc.get("is_return"):
+				total = flt(get_output_vat_amount(doc))
+				weight = sum(abs(flt(r.net_amount)) for r in doc.items) or 1
+				shares = [total * abs(flt(r.net_amount)) / weight for r in doc.items]
+			else:
+				shares = [
+					max(0.0, flt(r.net_amount) - flt(r.get("uae_margin_purchase_price")))
+					* STANDARD_VAT_RATE
+					/ 100
+					for r in doc.items
+				]
+
+			shares = [flt(share, 2) for share in shares]
+			# What was charged is what is reported: the rounding difference goes to the last row.
+			charged = flt(get_output_vat_amount(doc))
+			if shares and abs(sum(shares) - charged) <= 0.05:
+				shares[-1] = flt(shares[-1] + charged - sum(shares), 2)
+
+			self._margin_vat = {r.name: share for r, share in zip(doc.items, shares, strict=True)}
+
+		return self._margin_vat[row.name]
+
+	@property
 	def _is_reverse_charge(self) -> bool:
 		return bool(self.doc.get("uae_is_reverse_charge"))
 
@@ -724,6 +764,8 @@ class PintAEBuilder:
 
 		element = _add(root, "cac", tag)
 		_add(element, "cbc", "ID", row.idx)
+		if line["code"] == MARGIN_SCHEME_CODE:
+			_add(element, "cbc", "Note", "Margin scheme goods")
 		_add(element, "cbc", quantity_tag, _decimal(line["qty"], 6), unitCode=unit)
 		_add(element, "cbc", "LineExtensionAmount", _amount(line["net"]), currencyID=self.currency)
 
