@@ -47,7 +47,7 @@ Make a return against the invoice. It needs a **Credit Note Reason Code** for e-
 
 1. Create a **UAE VAT Return** for the company and period. Use the period the FTA assigned you. The app warns if it differs from your configured filing frequency, but allows custom periods, such as a first period starting on the registration date. The due date is the 28th day after the period ends, moved to Monday if it falls on a weekend; public holidays are not considered.
 2. Choose **Generate Return**. It fills Boxes 1a to 1g (by emirate), 2 to 11, and the net figures in Boxes 12 to 14. Tick **Request a Refund** for Box 15.
-3. Check the figures against the **UAE VAT Sales Register** and **UAE VAT Purchase Register**, which list the invoices behind each box. Invoices submitted or changed after you generate are **not** noticed: generate the return again just before filing, and again after any change to the period's transactions. (A return is flagged stale only when its company, group membership or period dates change.)
+3. Check the figures against the **UAE VAT Sales Register** and **UAE VAT Purchase Register**, which list the invoices behind each box. If invoices or adjustments of the period are submitted, cancelled or changed after you generate, the return warns you and **cannot be filed** until you generate it again.
 4. File on EmaraTax, then choose **Mark as Filed**. A filed return cannot be changed.
 5. **Download FAF** produces the FTA Audit File for the period.
 
@@ -78,4 +78,4 @@ Invoices with reverse charge or out of scope supplies, margin scheme invoices, c
 | A purchase is missing from Box 9 | It is blocked input VAT, attributed to exempt supplies, or not Standard Rated. |
 | E-invoice stays Generated | The provider was unreachable; it retries on its own. Check **Status Detail** on the log. |
 | Log says provider settings changed | The log was created under another provider or environment. Restore the settings, then use **Retry**. |
-| Return figures are out of date | The return does not notice invoices submitted after it was generated. Generate it again before filing. |
+| "Return Out of Date" when filing | Documents of the period changed after the return was generated. Generate it again. |
