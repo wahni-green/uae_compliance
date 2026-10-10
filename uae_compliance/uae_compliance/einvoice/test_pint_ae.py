@@ -285,6 +285,12 @@ class TestDocumentModel(EInvoiceTestCase):
 		self.assertEqual(model["credit_note"]["preceding_number"], original.name)
 		self.assertIsNone(model["payment_means_code"])
 
+		# ERPNext holds a return as negatives; a PINT AE credit note carries positive figures.
+		self.assertEqual(model["lines"][0]["quantity"], 1)
+		self.assertGreater(model["lines"][0]["net_amount"], 0)
+		self.assertGreater(model["totals"]["payable"], 0)
+		self.assertGreater(model["totals"]["tax_total"], 0)
+
 
 class TestWhatTheInvoiceMustCarry(EInvoiceTestCase):
 	def test_a_charge_outside_the_item_rows_is_refused(self):
