@@ -283,6 +283,80 @@ class TestVATReturnLifecycle(VATReturnTestCase):
 		self.assertRaises(frappe.ValidationError, doc.save)
 		self.assertRaises(frappe.ValidationError, doc.delete)
 
+	def test_an_invoice_submitted_after_generating_blocks_filing(self):
+		self.sale(rate=1000)
+		doc = self.new_return()
+		doc.generate_return()
+
+		self.sale(rate=500)
+
+		self.assertRaises(frappe.ValidationError, doc.mark_as_filed)
+		self.assertEqual(frappe.db.get_value("UAE VAT Return", doc.name, "status"), "Draft")
+
+		# Regenerating takes the new invoice in, and the return can then be filed.
+		doc.generate_return()
+		self.assertEqual(_boxes(doc)["1b"].amount, 1500)
+		doc.mark_as_filed()
+		self.assertEqual(frappe.db.get_value("UAE VAT Return", doc.name, "status"), "Filed")
+
+	def test_a_cancelled_invoice_blocks_filing(self):
+		invoice = self.sale(rate=1000)
+		self.sale(rate=500)
+		doc = self.new_return()
+		doc.generate_return()
+
+		invoice.reload()
+		invoice.cancel()
+
+		self.assertRaises(frappe.ValidationError, doc.mark_as_filed)
+
+	def test_a_new_adjustment_blocks_filing(self):
+		self.sale(rate=1000)
+		doc = self.new_return()
+		doc.generate_return()
+
+		frappe.get_doc(
+			{
+				"doctype": "UAE VAT Adjustment",
+				"company": self.company,
+				"adjustment_type": "Import Adjustment",
+				"posting_date": self.date,
+				"amount": 100,
+				"vat_amount": 5,
+			}
+		).insert().submit()
+
+		self.assertRaises(frappe.ValidationError, doc.mark_as_filed)
+
+	def test_a_changed_category_of_an_old_invoice_blocks_filing(self):
+		# An invoice from before the app has no category on its rows and takes it from its item.
+		invoice = self.sale(item="_Test Print Item", rate=1000)
+		frappe.db.set_value("Sales Invoice Item", {"parent": invoice.name}, "uae_vat_category", None)
+		doc = self.new_return()
+		doc.generate_return()
+
+		item_category = frappe.db.get_value("Item", "_Test Print Item", "uae_vat_category")
+		self.addCleanup(frappe.db.set_value, "Item", "_Test Print Item", "uae_vat_category", item_category)
+		frappe.db.set_value("Item", "_Test Print Item", "uae_vat_category", "Exempt")
+
+		self.assertRaises(frappe.ValidationError, doc.mark_as_filed)
+
+	def test_unrelated_documents_do_not_block_filing(self):
+		self.sale(rate=1000)
+		doc = self.new_return()
+		doc.generate_return()
+
+		other_date = frappe.utils.add_days(self.date, 40)
+		create_submitted_sales_invoice(
+			[{"item_code": "_Test Print Item", "rate": 200, "qty": 1}],
+			emirate="Dubai",
+			posting_date=other_date,
+			customer="_Test UAE Customer",
+		)
+
+		doc.mark_as_filed()
+		self.assertEqual(frappe.db.get_value("UAE VAT Return", doc.name, "status"), "Filed")
+
 	def test_changing_the_period_clears_stale_boxes_and_blocks_filing(self):
 		self.sale(rate=1000)
 		doc = self.new_return()
