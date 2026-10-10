@@ -2,7 +2,7 @@
 
 For the people who set up and use UAE VAT in ERPNext. Settings are described in [UAE_COMPLIANCE_CONFIGURATION.md](UAE_COMPLIANCE_CONFIGURATION.md); how the app is built is in [UAE_COMPLIANCE_ARCHITECTURE.md](UAE_COMPLIANCE_ARCHITECTURE.md).
 
-The app works for companies whose country is United Arab Emirates. Other companies on the same site are not affected. It replaces ERPNext's built-in UAE fields and report: those fields are hidden, and you report with the **UAE VAT Return** instead.
+The app works for companies whose country is United Arab Emirates. Its invoice checks apply only to UAE companies, but hiding ERPNext's built-in UAE fields affects the whole site (existing field data is kept). For UAE companies, report with the **UAE VAT Return** instead of ERPNext's UAE VAT report.
 
 ## 1. Set up once
 
@@ -16,38 +16,38 @@ Data from ERPNext's own UAE VAT setup (item flags, VAT accounts, TRNs) is migrat
 
 ## 2. Sales
 
-- **Standard rated sales** need a **VAT Emirate** on the invoice: Box 1 of the return is reported by emirate. It defaults from the customer's address.
+- **Standard rated sales** need a **VAT Emirate** on the invoice: Box 1 of the return is reported by emirate. It defaults from the company's address.
 - **Zero rated and exempt rows** must carry no VAT. The app refuses a row whose category and VAT disagree, and refuses an explicit 0% rate on a standard rated row; mark it Zero Rated or Exempt instead.
-- **Exports** are ticked **Export** and are zero rated.
+- **Exports:** **Export** is set for you when the shipping (or customer) address is in a country other than the company's. You cannot tick it yourself. Choose Zero Rated for the rows.
 - **Designated zones** are never zero rated automatically. Whether a supply is zero rated depends on the goods and the customs conditions, so you choose the category.
-- **Simplified tax invoices** (under AED 10,000, customer details optional) are ticked **Simplified Tax Invoice**. Companies that send e-invoices do not use them.
+- **Simplified tax invoices** (under AED 10,000, customer details optional) are flagged **Simplified Tax Invoice** automatically: only for customers without a TRN, up to the threshold in UAE Compliance Settings, and never for companies that send e-invoices.
 - **Foreign currency:** the invoice shows the VAT in AED as well.
-- **Tourist refunds** are entered as **Tax Refund provided to Tourists** (minimum AED 250 of VAT in a supply, up to AED 35,000) and appear in Box 2.
+- **Tourist refunds** are entered as **Tax Refund provided to Tourists** (minimum purchase total of AED 250, refund up to AED 35,000) and appear in Box 2.
 - **Profit margin scheme:** tick **Profit Margin Scheme** and enter the **Margin Scheme Purchase Price**; VAT is charged on the margin only.
 - **Print:** use the print formats **UAE Tax Invoice**, **UAE Simplified Tax Invoice** and **UAE Tax Credit Note**.
 
 ### Credit notes
-Make a return against the invoice. It needs a **Credit Note Reason Code** for e-invoicing. A tax credit note should be issued within 14 days of the event that changes the supply; the app warns when it is later. Credit notes reduce the amount and VAT of the period they are issued in, in the same box as the original.
+Make a return against the invoice. It needs a **Credit Note Reason Code** for e-invoicing. A tax credit note should be issued within 14 days of the event that changes the supply; track this deadline yourself, as the app does not warn about late credit notes. Credit notes reduce the amount and VAT of the period they are issued in, in the same box as the original.
 
 ## 3. Purchases
 
 - Standard rated purchases from UAE suppliers are recoverable when the VAT is posted to the Input VAT account. Tick **Input VAT Not Recoverable** for blocked input VAT such as some entertainment.
-- **Reverse charge:** tick **Reverse Charge Applicable** and choose the **Reverse Charge Type** (imports of services or goods, hydrocarbons, electronic devices, precious metals and stones, metal scrap, other). Add both the Output and Input VAT rows; the VAT is declared in Box 3 and recovered in Box 10. Purchases from a GCC supplier are ticked **GCC Supplier**.
-- **Imports of goods:** tick **Import of Goods**, with the **Import Permit Number**. If VAT is postponed through the customs account, tick **Postponed Import VAT**: it is declared in Box 6 and recovered in Box 10. VAT paid at the border is an ordinary purchase.
+- **Reverse charge:** tick **Reverse Charge Applicable** and choose the **Reverse Charge Type** (imports of services or goods, hydrocarbons, electronic devices, precious metals and stones, metal scrap, other). Add both the Output and Input VAT rows. Purchases other than goods imports are declared in Box 3, with the recoverable VAT in Box 10. For goods imports, see the next bullet. **GCC Supplier** is set for you from the supplier address's country.
+- **Imports of goods:** **Import of Goods** is set for you when the Dispatch Address is in another country, or when you choose the **Import of Goods** reverse charge type; entering an **Import Permit Number** alone does not set it. If VAT is postponed through the customs account, tick **Postponed Import VAT**: it is declared in Box 6 and recovered in Box 10. VAT paid at the border is an ordinary purchase.
 - **Partial exemption:** if you make both taxable and exempt supplies, mark each purchase's **Input VAT Attribution** as Taxable Supplies, Exempt Supplies or Residual. Exempt VAT is not recovered; residual VAT is recovered at the period's recovery ratio, and the annual apportionment corrects it afterwards.
 
 ## 4. Adjustments and schemes
 
 - **UAE VAT Adjustment:** bad debt relief (more than six months after the supply, with the customer notified), its repayment, the annual apportionment and other adjustments. These appear in the adjustment column of the return. Credit notes do not.
-- **UAE Capital Asset:** record an asset of AED 5,000,000 or more bought with input VAT; the app calculates the yearly adjustments (5 years, 10 for buildings).
+- **UAE Capital Asset:** record an asset of AED 5,000,000 or more bought with input VAT; the app calculates the yearly adjustments (5 years, 10 for buildings). For each year, enter the recovery percentage and adjustment date, create the draft **UAE VAT Adjustment**, then review and submit it: the return includes only submitted adjustments.
 - **UAE Excise Rate** holds excise rates by category; give an excisable item its **Excise Category**.
 - **UAE Tax Group:** list the member companies and the representative. The representative files one return for the group, and supplies between members are left out.
 
 ## 5. VAT 201 return
 
-1. Create a **UAE VAT Return** for the company and period. The period must match your filing frequency; the due date is the 28th day after the period ends.
+1. Create a **UAE VAT Return** for the company and period. Use the period the FTA assigned you. The app warns if it differs from your configured filing frequency, but allows custom periods, such as a first period starting on the registration date. The due date is the 28th day after the period ends, moved to Monday if it falls on a weekend; public holidays are not considered.
 2. Choose **Generate Return**. It fills Boxes 1a to 1g (by emirate), 2 to 11, and the net figures in Boxes 12 to 14. Tick **Request a Refund** for Box 15.
-3. Check the figures against the **UAE VAT Sales Register** and **UAE VAT Purchase Register**, which list the invoices behind each box. If anything changes after you generate, the return is marked stale: generate it again.
+3. Check the figures against the **UAE VAT Sales Register** and **UAE VAT Purchase Register**, which list the invoices behind each box. Invoices submitted or changed after you generate are **not** noticed: generate the return again just before filing, and again after any change to the period's transactions. (A return is flagged stale only when its company, group membership or period dates change.)
 4. File on EmaraTax, then choose **Mark as Filed**. A filed return cannot be changed.
 5. **Download FAF** produces the FTA Audit File for the period.
 
@@ -66,7 +66,7 @@ Only companies enabled in **UAE E-Invoice Settings** send e-invoices (see the co
 Received invoices appear as **inbound** logs, matched to your suppliers by TIN or TRN. One that cannot be read or is addressed to someone else is marked Invalid with the reason. Entering them as Purchase Invoices is still done by hand.
 
 ### What cannot be sent yet
-Invoices with reverse charge or out of scope supplies, margin scheme invoices, charges or discounts outside the item rows, VAT that differs from the rows, and self-billing, summary, continuous, agent or deemed supply invoices are refused or logged as Invalid with a clear message. Issue them outside the app and keep to your provider's process until support is added. A company whose own currency is not AED cannot send e-invoices.
+Invoices with reverse charge or out of scope supplies, margin scheme invoices, charges or discounts outside the item rows, and VAT that differs from the rows are refused or logged as Invalid with a clear message. Self-billing, summary, continuous, agent and deemed supply invoices are also unsupported, but the app does not detect or reject them: identify these yourself and issue all unsupported invoices outside the app, following your provider's process until support is added. A company whose own currency is not AED cannot send e-invoices.
 
 ## 7. When something looks wrong
 
@@ -78,4 +78,4 @@ Invoices with reverse charge or out of scope supplies, margin scheme invoices, c
 | A purchase is missing from Box 9 | It is blocked input VAT, attributed to exempt supplies, or not Standard Rated. |
 | E-invoice stays Generated | The provider was unreachable; it retries on its own. Check **Status Detail** on the log. |
 | Log says provider settings changed | The log was created under another provider or environment. Restore the settings, then use **Retry**. |
-| Return is stale | Invoices changed after generation. Generate it again. |
+| Return figures are out of date | The return does not notice invoices submitted after it was generated. Generate it again before filing. |
