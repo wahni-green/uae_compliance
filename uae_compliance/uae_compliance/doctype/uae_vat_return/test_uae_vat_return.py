@@ -328,6 +328,19 @@ class TestVATReturnLifecycle(VATReturnTestCase):
 
 		self.assertRaises(frappe.ValidationError, doc.mark_as_filed)
 
+	def test_a_changed_category_of_an_old_invoice_blocks_filing(self):
+		# An invoice from before the app has no category on its rows and takes it from its item.
+		invoice = self.sale(item="_Test Print Item", rate=1000)
+		frappe.db.set_value("Sales Invoice Item", {"parent": invoice.name}, "uae_vat_category", None)
+		doc = self.new_return()
+		doc.generate_return()
+
+		item_category = frappe.db.get_value("Item", "_Test Print Item", "uae_vat_category")
+		self.addCleanup(frappe.db.set_value, "Item", "_Test Print Item", "uae_vat_category", item_category)
+		frappe.db.set_value("Item", "_Test Print Item", "uae_vat_category", "Exempt")
+
+		self.assertRaises(frappe.ValidationError, doc.mark_as_filed)
+
 	def test_unrelated_documents_do_not_block_filing(self):
 		self.sale(rate=1000)
 		doc = self.new_return()

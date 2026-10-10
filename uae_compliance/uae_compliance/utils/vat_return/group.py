@@ -2,6 +2,7 @@ import hashlib
 
 import frappe
 from frappe import _
+from frappe.utils import flt
 
 from uae_compliance.uae_compliance.utils.tax_account import (
 	get_input_vat_account,
@@ -138,5 +139,27 @@ def get_data_fingerprint(company: str, from_date, to_date) -> str:
 			as_list=True,
 		)
 		parts.append(f"{doctype}:{rows}")
+
+	# The rows the boxes are built from, with their resolved category and VAT: an invoice from before
+	# the app takes its category from its Item Tax Template or Item, so changing those moves it
+	# between boxes without touching the invoice.
+	for doctype in ("Sales Invoice", "Purchase Invoice"):
+		for name in companies:
+			rows = get_invoice_rows(doctype, name, from_date, to_date)
+			parts.append(
+				f"{doctype}:{name}:"
+				+ repr(
+					sorted(
+						(
+							row.name,
+							row.category,
+							round(flt(row.base_net_amount), 2),
+							round(flt(row.output_vat_amount), 2),
+							round(flt(row.input_vat_amount), 2),
+						)
+						for row in rows
+					)
+				)
+			)
 
 	return hashlib.sha256("|".join(parts).encode()).hexdigest()
