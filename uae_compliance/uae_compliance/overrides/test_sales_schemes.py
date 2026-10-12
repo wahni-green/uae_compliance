@@ -1,6 +1,8 @@
+import itertools
 from unittest.mock import patch
 
 import frappe
+from frappe.utils import add_days
 
 from uae_compliance.tests import create_submitted_sales_invoice, make_item, make_sales_invoice
 from uae_compliance.uae_compliance.doctype.uae_vat_return.test_uae_vat_return import (
@@ -230,6 +232,9 @@ class TestMarginScheme(VATReturnTestCase):
 		self.assertNotIn("VAT %", html)
 
 
+_passports = itertools.count(1000)
+
+
 class TestTouristRefund(VATReturnTestCase):
 	def _invoice(self, rate=1000, refund=20, item="_Test Print Item", **kwargs):
 		row = {"item_code": item, "rate": rate}
@@ -239,9 +244,13 @@ class TestTouristRefund(VATReturnTestCase):
 		return make_sales_invoice(
 			[row],
 			customer="_Test UAE Customer",
-			posting_date=self.date,
 			uae_tourist_refund=refund,
-			**kwargs,
+			**{
+				"posting_date": self.date,
+				"uae_tourist_passport": f"P{next(_passports)}",
+				"uae_tourist_departure_date": add_days(self.date, 10),
+				**kwargs,
+			},
 		)
 
 	def test_valid_refund(self):
@@ -262,6 +271,77 @@ class TestTouristRefund(VATReturnTestCase):
 
 	def test_negative_refund_is_rejected(self):
 		self.assertRaises(frappe.ValidationError, self._invoice(refund=-5).insert)
+
+	def test_goods_must_leave_within_90_days(self):
+		last_day = add_days(self.date, 90)
+		self._invoice(uae_tourist_departure_date=last_day).insert()
+		self.assertRaises(
+			frappe.ValidationError,
+			self._invoice(uae_tourist_departure_date=add_days(last_day, 1)).insert,
+		)
+
+	def test_departure_cannot_precede_the_supply(self):
+		self.assertRaises(
+			frappe.ValidationError,
+			self._invoice(uae_tourist_departure_date=add_days(self.date, -1)).insert,
+		)
+
+	def test_passport_and_departure_are_needed(self):
+		self.assertRaises(frappe.ValidationError, self._invoice(uae_tourist_passport="").insert)
+		self.assertRaises(frappe.ValidationError, self._invoice(uae_tourist_departure_date=None).insert)
+
+	def _submitted(self, passport="PCAP", posting_date=None, **kwargs):
+		doc = self._invoice(
+			rate=1_000_000,
+			posting_date=posting_date or self.date,
+			uae_tourist_passport=passport,
+			uae_emirate="Dubai",
+			**kwargs,
+		)
+		doc.insert()
+		doc.submit()
+		return doc
+
+	def test_refunds_of_one_tourist_are_capped_per_24_hours(self):
+		self._submitted(refund=20_000, posting_time="09:00:00")
+		self.assertRaises(frappe.ValidationError, self._submitted, refund=16_000, posting_time="20:00:00")
+		self._submitted(refund=15_000, posting_time="20:00:00")
+
+		# Another tourist, or more than 24 hours later, is not counted together.
+		self._submitted(passport="POTHER", refund=16_000, posting_time="20:00:00")
+		self._submitted(refund=20_000, posting_time="09:00:00", posting_date=add_days(self.date, 1))
+
+	def test_distant_refunds_are_not_added_together(self):
+		# 18,000 at 10:00 the day before and at 09:00 the day after, with 18,000 between them, are
+		# never inside one 24-hour window with both ends.
+		self._submitted(
+			passport="PSLIDE", refund=18_000, posting_time="10:00:00", posting_date=add_days(self.date, -1)
+		)
+		self._submitted(
+			passport="PSLIDE", refund=18_000, posting_time="09:00:00", posting_date=add_days(self.date, 1)
+		)
+		# 15,000 between them makes 33,000 with either neighbour, never 51,000 in one window.
+		self._invoice(
+			rate=1_000_000, refund=15_000, posting_time="09:30:00", uae_tourist_passport="PSLIDE"
+		).insert()
+		# 18,000 makes 36,000 with the earlier one.
+		too_much = self._invoice(
+			rate=1_000_000, refund=18_000, posting_time="09:30:00", uae_tourist_passport="PSLIDE"
+		)
+		self.assertRaises(frappe.ValidationError, too_much.insert)
+
+	def test_drafts_do_not_count(self):
+		self._invoice(
+			rate=1_000_000, refund=30_000, posting_time="09:00:00", uae_tourist_passport="PDRAFT"
+		).insert()
+		self._submitted(passport="PDRAFT", refund=30_000, posting_time="10:00:00")
+
+	def test_passport_is_kept_upper_case_and_trimmed(self):
+		first = self._submitted(passport=" pnorm ", refund=20_000, posting_time="09:00:00")
+		self.assertEqual(first.uae_tourist_passport, "PNORM")
+		self.assertRaises(
+			frappe.ValidationError, self._submitted, passport="PNORM", refund=16_000, posting_time="10:00:00"
+		)
 
 
 class TestExcise(VATReturnTestCase):

@@ -1,9 +1,12 @@
+from datetime import timedelta
+
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, nowdate
+from frappe.utils import add_days, flt, format_date, get_datetime, getdate, nowdate
 
 from uae_compliance.uae_compliance.constants import (
 	STANDARD_VAT_RATE,
+	TOURIST_EXPORT_DAYS,
 	TOURIST_MIN_PURCHASE,
 	TOURIST_REFUND_CAP,
 )
@@ -87,14 +90,14 @@ def validate_tourist_refund(doc) -> None:
 			_("A tourist refund needs at least one standard rated row."), title=_("Invalid Tourist Refund")
 		)
 
-	rate = flt(doc.get("conversion_rate")) or 1
 	if flt(doc.get("base_grand_total")) < TOURIST_MIN_PURCHASE:
 		frappe.throw(
 			_("The purchase must be at least AED {0} for a tourist refund.").format(TOURIST_MIN_PURCHASE),
 			title=_("Invalid Tourist Refund"),
 		)
 
-	if refund * rate > TOURIST_REFUND_CAP:
+	refund_in_aed = get_refund_in_aed(refund, doc.get("conversion_rate"), doc.company, doc.posting_date)
+	if refund_in_aed > TOURIST_REFUND_CAP:
 		frappe.throw(
 			_("A tourist refund cannot exceed AED {0}.").format(TOURIST_REFUND_CAP),
 			title=_("Invalid Tourist Refund"),
@@ -108,6 +111,121 @@ def validate_tourist_refund(doc) -> None:
 			),
 			title=_("Invalid Tourist Refund"),
 		)
+
+	if not (doc.get("uae_tourist_passport") and doc.get("uae_tourist_departure_date")):
+		frappe.throw(
+			_("A tourist refund needs the tourist's passport number and departure date."),
+			title=_("Invalid Tourist Refund"),
+		)
+
+	validate_tourist_departure(doc)
+	validate_tourist_daily_cap(doc, refund_in_aed)
+
+
+def validate_tourist_departure(doc) -> None:
+	"""The goods must leave the UAE with the tourist within 90 days of the supply."""
+	supply = getdate(doc.get("uae_supply_date") or doc.get("posting_date") or nowdate())
+	departure = getdate(doc.get("uae_tourist_departure_date"))
+	if departure < supply:
+		frappe.throw(
+			_("The tourist cannot depart before the supply date, {0}.").format(format_date(supply)),
+			title=_("Invalid Tourist Refund"),
+		)
+
+	if departure > add_days(supply, TOURIST_EXPORT_DAYS):
+		frappe.throw(
+			_("The goods must leave the UAE within {0} days of the supply. The last day was {1}.").format(
+				TOURIST_EXPORT_DAYS, format_date(add_days(supply, TOURIST_EXPORT_DAYS))
+			),
+			title=_("Invalid Tourist Refund"),
+		)
+
+
+def get_refund_in_aed(refund, conversion_rate, company: str, on) -> float:
+	"""A refund in invoice currency, in AED: through the invoice's conversion rate to the company
+	currency, then to AED when the company does not keep its books in AED."""
+	amount = flt(refund) * (flt(conversion_rate) or 1)
+	currency = frappe.get_cached_value("Company", company, "default_currency")
+	if not currency or currency == "AED":
+		return amount
+
+	from erpnext.setup.utils import get_exchange_rate
+
+	return amount * flt(get_exchange_rate(currency, "AED", on) or 1)
+
+
+def validate_tourist_daily_cap(doc, refund: float) -> None:
+	"""A tourist is refunded at most AED 35,000 in 24 hours, across invoices. The tourist is known by
+	the passport number (kept upper case and trimmed). Submitted invoices of every company count; this
+	one is checked against every 24-hour window it falls in, so a refund 23 hours before and another 23
+	hours after are not added together. A lock per passport makes simultaneous saves wait for each
+	other."""
+	passport = (doc.get("uae_tourist_passport") or "").strip().upper()
+	doc.uae_tourist_passport = passport
+	posted = get_datetime(f"{getdate(doc.posting_date)} {doc.get('posting_time') or '00:00:00'}")
+	day = timedelta(hours=24)
+
+	lock_passport(passport)
+	# A locking read sees the latest committed rows, not the snapshot this transaction started with,
+	# so the refund the other request has just committed is counted.
+	invoice = frappe.qb.DocType("Sales Invoice")
+	others = (
+		frappe.qb.from_(invoice)
+		.select(
+			invoice.posting_date,
+			invoice.posting_time,
+			invoice.uae_tourist_refund,
+			invoice.conversion_rate,
+			invoice.company,
+		)
+		.where(
+			(invoice.uae_tourist_passport == passport)
+			& (invoice.uae_tourist_refund != 0)
+			& (invoice.docstatus == 1)
+			& (invoice.name != (doc.name or ""))
+			& invoice.posting_date.between(add_days(posted.date(), -1), add_days(posted.date(), 1))
+		)
+		.for_update()
+		.run(as_dict=True)
+	)
+	events = [(posted, refund)]
+	for other in others:
+		at = get_datetime(f"{other.posting_date} {other.posting_time}")
+		if abs(at - posted) < day:
+			events.append(
+				(
+					at,
+					get_refund_in_aed(
+						other.uae_tourist_refund, other.conversion_rate, other.company, other.posting_date
+					),
+				)
+			)
+
+	# The busiest 24 hours that begin at one of the refunds and include this one.
+	total = max(
+		sum(amount for at, amount in events if start <= at < start + day)
+		for start, _amount in events
+		if start <= posted < start + day
+	)
+	if total > TOURIST_REFUND_CAP + TOLERANCE:
+		frappe.throw(
+			_(
+				"This tourist is refunded AED {0} within 24 hours with this invoice. The limit is AED {1}."
+			).format(flt(total, 2), TOURIST_REFUND_CAP),
+			title=_("Invalid Tourist Refund"),
+		)
+
+
+def lock_passport(passport: str) -> None:
+	"""Held until the transaction ends, so two invoices for one passport are checked one after the
+	other and the second sees the first."""
+	name = f"uae_tourist_{passport}"[:64]
+	if frappe.db.sql("select get_lock(%s, 10)", name)[0][0] != 1:
+		frappe.throw(_("Another refund for this passport is being saved. Try again."))
+
+	release = lambda: frappe.db.sql("select release_lock(%s)", name)  # noqa: E731
+	frappe.db.after_commit.add(release)
+	frappe.db.after_rollback.add(release)
 
 
 def get_expected_excise(doc) -> float:

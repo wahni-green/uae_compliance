@@ -93,3 +93,4 @@ STANDARD_VAT_RATE = 5
 # Tax refunds for tourists (FTA Decision 2 of 2018 as amended).
 TOURIST_MIN_PURCHASE = 250
 TOURIST_REFUND_CAP = 35_000
+TOURIST_EXPORT_DAYS = 90

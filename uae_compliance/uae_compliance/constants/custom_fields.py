@@ -349,5 +349,21 @@ CUSTOM_FIELDS = {
 			"uae_emirate",
 			options="currency",
 		),
+		_field(
+			"uae_tourist_passport",
+			"Tourist Passport No",
+			"Data",
+			"uae_tourist_refund",
+			depends_on="uae_tourist_refund",
+			mandatory_depends_on="uae_tourist_refund",
+		),
+		_field(
+			"uae_tourist_departure_date",
+			"Tourist Departure Date",
+			"Date",
+			"uae_tourist_passport",
+			depends_on="uae_tourist_refund",
+			mandatory_depends_on="uae_tourist_refund",
+		),
 	],
 }

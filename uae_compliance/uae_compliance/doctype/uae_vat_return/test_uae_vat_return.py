@@ -168,7 +168,12 @@ class TestVATReturnGeneration(VATReturnTestCase):
 		self.assertAlmostEqual(get_tourist_refund(rows), 20 * 3.6725 + 10)
 
 	def test_tourist_refund_reduces_output_vat(self):
-		self.sale(rate=1000, uae_tourist_refund=20)
+		self.sale(
+			rate=1000,
+			uae_tourist_refund=20,
+			uae_tourist_passport="P1234567",
+			uae_tourist_departure_date=self.date,
+		)
 		doc = self.new_return()
 		doc.generate_return()
 
