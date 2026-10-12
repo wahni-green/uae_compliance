@@ -119,9 +119,14 @@ class TestScope(PipelineTestCase):
 		doc.uae_billing_frequency = "Daily"
 		self.assertRaises(frappe.ValidationError, doc.save)
 
-		# A rejected invoice was refused before it was accepted, so it can be corrected; a cleared or
-		# failed one (which the provider may hold) cannot.
-		for status, allowed in (("Rejected", True), ("Cleared", False), ("Failed", False)):
+		# A rejected invoice was refused before it was accepted, so it can be corrected; one waiting to
+		# be sent, cleared or failed (which the provider may hold) cannot.
+		for status, allowed in (
+			("Rejected", True),
+			("Generated", False),
+			("Cleared", False),
+			("Failed", False),
+		):
 			frappe.db.set_value(
 				"Sales Invoice", doc.name, {"uae_billing_frequency": "", "uae_einvoice_status": status}
 			)
