@@ -106,13 +106,23 @@ class TestScope(PipelineTestCase):
 			uae_invoice_period_end="2026-09-30",
 			uae_billing_frequency="Monthly",
 		)
-		frappe.db.set_value("Sales Invoice", doc.name, "uae_billing_frequency", "")
+		frappe.db.set_value(
+			"Sales Invoice", doc.name, {"uae_billing_frequency": "", "uae_einvoice_status": "Invalid"}
+		)
 		doc.reload()
 
 		doc.uae_billing_frequency = "Quarterly"
 		doc.save()
 		self.assertEqual(doc.uae_billing_frequency, "Quarterly")
 
+		doc.reload()
+		doc.uae_billing_frequency = "Daily"
+		self.assertRaises(frappe.ValidationError, doc.save)
+
+		# Once the invoice has been attempted, a blank frequency cannot be filled either.
+		frappe.db.set_value(
+			"Sales Invoice", doc.name, {"uae_billing_frequency": "", "uae_einvoice_status": "Rejected"}
+		)
 		doc.reload()
 		doc.uae_billing_frequency = "Daily"
 		self.assertRaises(frappe.ValidationError, doc.save)

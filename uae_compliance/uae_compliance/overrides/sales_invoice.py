@@ -3,7 +3,7 @@ from frappe import _
 from frappe.utils import date_diff, flt, getdate
 
 from uae_compliance.uae_compliance.constants import TAX_INVOICE_ISSUE_DAYS
-from uae_compliance.uae_compliance.constants.einvoice import SENT_STATUSES
+from uae_compliance.uae_compliance.constants.einvoice import STATUS_INVALID
 from uae_compliance.uae_compliance.overrides.sales_schemes import (
 	validate_margin_scheme,
 	validate_tourist_refund,
@@ -77,9 +77,15 @@ def validate_billing_frequency_after_submit(doc) -> None:
 	if not before or before.get("uae_billing_frequency") == doc.get("uae_billing_frequency"):
 		return
 
-	if before.get("uae_billing_frequency") or doc.get("uae_einvoice_status") in SENT_STATUSES:
+	if before.get("uae_billing_frequency") or doc.get("uae_einvoice_status") not in (
+		None,
+		"",
+		STATUS_INVALID,
+	):
 		frappe.throw(
-			_("The Frequency of Billing cannot be changed once it is set or the e-invoice has been sent."),
+			_(
+				"The Frequency of Billing can only be filled in while it is blank and the e-invoice has not been sent or attempted."
+			),
 			title=_("Frequency of Billing"),
 		)
 
