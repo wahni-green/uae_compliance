@@ -119,13 +119,18 @@ class TestScope(PipelineTestCase):
 		doc.uae_billing_frequency = "Daily"
 		self.assertRaises(frappe.ValidationError, doc.save)
 
-		# Once the invoice has been attempted, a blank frequency cannot be filled either.
-		frappe.db.set_value(
-			"Sales Invoice", doc.name, {"uae_billing_frequency": "", "uae_einvoice_status": "Rejected"}
-		)
-		doc.reload()
-		doc.uae_billing_frequency = "Daily"
-		self.assertRaises(frappe.ValidationError, doc.save)
+		# A rejected invoice was refused before it was accepted, so it can be corrected; a cleared or
+		# failed one (which the provider may hold) cannot.
+		for status, allowed in (("Rejected", True), ("Cleared", False), ("Failed", False)):
+			frappe.db.set_value(
+				"Sales Invoice", doc.name, {"uae_billing_frequency": "", "uae_einvoice_status": status}
+			)
+			doc.reload()
+			doc.uae_billing_frequency = "Daily"
+			if allowed:
+				doc.save()
+			else:
+				self.assertRaises(frappe.ValidationError, doc.save)
 
 	def test_a_mix_of_excluded_and_other_items_is_sent(self):
 		item = make_einvoice_item("_Test EInv Ticket 2")

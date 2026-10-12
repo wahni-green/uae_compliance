@@ -3,7 +3,7 @@ from frappe import _
 from frappe.utils import date_diff, flt, getdate
 
 from uae_compliance.uae_compliance.constants import TAX_INVOICE_ISSUE_DAYS
-from uae_compliance.uae_compliance.constants.einvoice import STATUS_INVALID
+from uae_compliance.uae_compliance.constants.einvoice import SENT_STATUSES, STATUS_FAILED
 from uae_compliance.uae_compliance.overrides.sales_schemes import (
 	validate_margin_scheme,
 	validate_tourist_refund,
@@ -62,6 +62,10 @@ def set_einvoice_exclusion(doc) -> None:
 	doc.uae_einvoice_exclusion_from_items = 1 if reason else 0
 
 
+# A failed send may have reached the provider, so the invoice stays as it was sent.
+BLOCKING_STATUSES = (*SENT_STATUSES, STATUS_FAILED)
+
+
 def before_update_after_submit(doc, method=None):
 	if is_uae_company(doc.get("company")):
 		validate_billing_frequency_after_submit(doc)
@@ -77,14 +81,10 @@ def validate_billing_frequency_after_submit(doc) -> None:
 	if not before or before.get("uae_billing_frequency") == doc.get("uae_billing_frequency"):
 		return
 
-	if before.get("uae_billing_frequency") or doc.get("uae_einvoice_status") not in (
-		None,
-		"",
-		STATUS_INVALID,
-	):
+	if before.get("uae_billing_frequency") or doc.get("uae_einvoice_status") in BLOCKING_STATUSES:
 		frappe.throw(
 			_(
-				"The Frequency of Billing can only be filled in while it is blank and the e-invoice has not been sent or attempted."
+				"The Frequency of Billing can only be filled in while it is blank and the e-invoice has not been sent."
 			),
 			title=_("Frequency of Billing"),
 		)
