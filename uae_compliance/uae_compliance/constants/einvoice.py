@@ -36,6 +36,10 @@ ENVIRONMENTS = ["Sandbox", "Production"]
 DEFAULT_RETRY_LIMIT = 5
 BACKOFF_MINUTES = 1
 
+# Supplies the e-invoicing system leaves out (MoF Guidelines section 3): such an invoice is not sent.
+EXCLUSION_REASONS = ["Exempt Financial Service", "Airline E-Ticket", "Sovereign Activity"]
+EXCLUSION_SELECT_OPTIONS = "\n" + "\n".join(EXCLUSION_REASONS)
+
 # E-invoices are kept for five years (MoF Guidelines section 5.4); the log may not be deleted before.
 RETENTION_YEARS = 5
 # Records of real estate are kept for seven years.

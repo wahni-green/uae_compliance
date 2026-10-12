@@ -37,7 +37,28 @@ def validate(doc, method=None):
 	validate_reverse_charge_supply(doc)
 	validate_tourist_refund(doc)
 	validate_billing_types(doc)
+	set_einvoice_exclusion(doc)
 	warn_if_excise_missing(doc)
+
+
+def set_einvoice_exclusion(doc) -> None:
+	"""An invoice whose rows all carry the same E-Invoice Exclusion on their Items is left out of
+	e-invoicing. A reason copied from the Items follows the rows when they change; a reason chosen on
+	the invoice is kept."""
+	reason = doc.get("uae_einvoice_exclusion")
+	if reason and doc.get("uae_einvoice_exclusion_from_items"):
+		# Another reason than the saved one, copied from the Items, was chosen by the user.
+		before = doc.get_doc_before_save()
+		if before and before.get("uae_einvoice_exclusion") != reason:
+			doc.uae_einvoice_exclusion_from_items = 0
+
+	if reason and not doc.get("uae_einvoice_exclusion_from_items"):
+		return
+
+	reasons = {frappe.get_cached_value("Item", row.item_code, "uae_einvoice_exclusion") for row in doc.items}
+	reason = reasons.pop() if len(reasons) == 1 else None
+	doc.uae_einvoice_exclusion = reason or ""
+	doc.uae_einvoice_exclusion_from_items = 1 if reason else 0
 
 
 def validate_billing_types(doc) -> None:

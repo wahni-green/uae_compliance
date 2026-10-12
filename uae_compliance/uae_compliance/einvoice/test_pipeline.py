@@ -60,6 +60,57 @@ class TestScope(PipelineTestCase):
 		self.assertIsNone(self.log_of(doc))
 		enqueue.assert_not_called()
 
+	def test_an_item_with_an_exclusion_keeps_its_invoices_out(self):
+		item = make_einvoice_item("_Test EInv Ticket")
+		frappe.db.set_value("Item", item.name, "uae_einvoice_exclusion", "Airline E-Ticket")
+		doc, enqueue = self.submit(rows=[{"item_code": item.name, "rate": 500, "qty": 1}])
+
+		self.assertEqual(doc.uae_einvoice_exclusion, "Airline E-Ticket")
+		self.assertIsNone(self.log_of(doc))
+		enqueue.assert_not_called()
+
+	def test_an_exclusion_chosen_on_the_invoice_is_kept(self):
+		doc, enqueue = self.submit(uae_einvoice_exclusion="Sovereign Activity")
+
+		self.assertIsNone(self.log_of(doc))
+		enqueue.assert_not_called()
+
+	def test_an_exclusion_copied_from_items_follows_the_rows(self):
+		item = make_einvoice_item("_Test EInv Ticket 3")
+		frappe.db.set_value("Item", item.name, "uae_einvoice_exclusion", "Airline E-Ticket")
+		doc = self.invoice(rows=[{"item_code": item.name, "rate": 500, "qty": 1}])
+		self.assertEqual(doc.uae_einvoice_exclusion, "Airline E-Ticket")
+
+		doc.append("items", {"item_code": "_Test EInv Service", "qty": 1, "rate": 100})
+		doc.save()
+		self.assertFalse(doc.uae_einvoice_exclusion)
+
+		doc.items = doc.items[:1]
+		doc.save()
+		self.assertEqual(doc.uae_einvoice_exclusion, "Airline E-Ticket")
+
+	def test_a_reason_chosen_over_a_copied_one_is_kept(self):
+		item = make_einvoice_item("_Test EInv Ticket 4")
+		frappe.db.set_value("Item", item.name, "uae_einvoice_exclusion", "Airline E-Ticket")
+		doc = self.invoice(rows=[{"item_code": item.name, "rate": 500, "qty": 1}])
+
+		doc.uae_einvoice_exclusion = "Sovereign Activity"
+		doc.append("items", {"item_code": "_Test EInv Service", "qty": 1, "rate": 100})
+		doc.save()
+		self.assertEqual(doc.uae_einvoice_exclusion, "Sovereign Activity")
+
+	def test_a_mix_of_excluded_and_other_items_is_sent(self):
+		item = make_einvoice_item("_Test EInv Ticket 2")
+		frappe.db.set_value("Item", item.name, "uae_einvoice_exclusion", "Airline E-Ticket")
+		rows = [
+			{"item_code": item.name, "rate": 500, "qty": 1},
+			{"item_code": "_Test EInv Service", "rate": 100, "qty": 1},
+		]
+		doc, _enqueue = self.submit(rows=rows)
+
+		self.assertFalse(doc.uae_einvoice_exclusion)
+		self.assertIsNotNone(self.log_of(doc))
+
 	def test_invoices_before_the_start_date_are_left_alone(self):
 		enable_einvoicing(self.company, mandatory_from=frappe.utils.add_days(self.date, 10))
 		doc, _enqueue = self.submit()

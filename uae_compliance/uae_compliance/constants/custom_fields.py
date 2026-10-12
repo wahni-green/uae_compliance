@@ -5,6 +5,7 @@ from uae_compliance.uae_compliance.constants import (
 	SALES_REVERSE_CHARGE_TYPE_SELECT_OPTIONS,
 	VAT_CATEGORY_SELECT_OPTIONS,
 )
+from uae_compliance.uae_compliance.constants.einvoice import EXCLUSION_SELECT_OPTIONS
 from uae_compliance.uae_compliance.constants.emirates import EMIRATE_SELECT_OPTIONS
 from uae_compliance.uae_compliance.constants.pint_ae import (
 	CREDIT_REASON_SELECT_OPTIONS,
@@ -140,6 +141,13 @@ CUSTOM_FIELDS = {
 			options=EXEMPTION_REASON_SELECT_OPTIONS,
 		),
 		_field("uae_is_real_estate", "Real Estate", "Check", "uae_exemption_reason_code"),
+		_field(
+			"uae_einvoice_exclusion",
+			"E-Invoice Exclusion",
+			"Select",
+			"uae_is_real_estate",
+			options=EXCLUSION_SELECT_OPTIONS,
+		),
 	],
 	_ITEM_ROW_DOCTYPES: [
 		_field(
@@ -253,6 +261,22 @@ CUSTOM_FIELDS = {
 	],
 	"Sales Invoice": [
 		_field("uae_supply_date", "Supply Date", "Date", "posting_date"),
+		_field(
+			"uae_einvoice_exclusion",
+			"E-Invoice Exclusion",
+			"Select",
+			"uae_supply_date",
+			options=EXCLUSION_SELECT_OPTIONS,
+		),
+		_field(
+			"uae_einvoice_exclusion_from_items",
+			"E-Invoice Exclusion from Items",
+			"Check",
+			"uae_einvoice_exclusion",
+			hidden=1,
+			read_only=1,
+			no_copy=1,
+		),
 		_field("uae_einvoice_uuid", "E-Invoice UUID", "Data", "amended_from", read_only=1, no_copy=1),
 		_field(
 			"uae_einvoice_status",
