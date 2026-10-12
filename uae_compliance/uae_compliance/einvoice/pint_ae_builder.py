@@ -136,6 +136,7 @@ class PintAEBuilder:
 		self._refuse_unsupported()
 		self._compute_lines()
 		self._refuse_flags_the_type_cannot_carry()
+		self._refuse_summary_without_frequency()
 		self._compute_totals()
 
 		root = etree.Element(_q_root(self.root_name), nsmap={None: ROOTS[self.root_name], **NAMESPACES})
@@ -165,6 +166,14 @@ class PintAEBuilder:
 				_(
 					"A {0} supply under the reverse charge cannot be sent as an e-invoice: the specification has no type of goods for it."
 				).format(_(doc.get("uae_reverse_charge_type") or ""))
+			)
+
+	def _refuse_summary_without_frequency(self):
+		"""Invoices saved before the frequency of billing existed lack it: fill it on the invoice (it can
+		be changed after submission), then retry."""
+		if self.doc.get("uae_is_summary_invoice") and not self.doc.get("uae_billing_frequency"):
+			raise EInvoiceNotSupportedError(
+				_("A summary invoice needs the Frequency of Billing. Enter it on the invoice and retry.")
 			)
 
 	def _refuse_flags_the_type_cannot_carry(self):

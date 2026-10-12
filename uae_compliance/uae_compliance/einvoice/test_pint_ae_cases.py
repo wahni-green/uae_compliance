@@ -175,6 +175,16 @@ class TestTransactionFlags(CasesTestCase):
 		self.assertEqual(_text(xml, "cac:InvoicePeriod/cbc:DescriptionCode"), "MTH")
 		self.assertEqual(validate_xml(etree.tostring(xml)), [])
 
+	def test_a_summary_invoice_without_a_frequency_is_refused_by_the_builder(self):
+		doc = self.invoice(
+			uae_is_summary_invoice=1,
+			uae_invoice_period_start="2026-09-01",
+			uae_invoice_period_end="2026-09-30",
+			uae_billing_frequency="Monthly",
+		)
+		doc.uae_billing_frequency = ""
+		self.assertRaises(EInvoiceNotSupportedError, build_xml, doc)
+
 	def test_a_continuous_supply_is_flagged(self):
 		doc = self.invoice(uae_is_continuous_supply=1)
 		self.assertEqual(_text(self.xml(doc), "cbc:ProfileExecutionID"), "00001000")

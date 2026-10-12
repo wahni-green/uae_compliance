@@ -374,6 +374,7 @@ CUSTOM_FIELDS = {
 			"Select",
 			"uae_invoice_period_end",
 			options=BILLING_FREQUENCY_SELECT_OPTIONS,
+			allow_on_submit=1,
 			depends_on="eval:doc.uae_is_summary_invoice || doc.uae_is_continuous_supply",
 			mandatory_depends_on="uae_is_summary_invoice",
 		),
