@@ -439,7 +439,10 @@ def _check_conditional(xml, is_credit_note: bool, line_tag: str) -> list[str]:
 		):
 			if not _text(xml, f"{address}/cbc:{tag}"):
 				errors.append(_("An export needs the delivery {0}.").format(what))
-		if _text(xml, f"{address}/cac:Country/cbc:IdentificationCode") == "AE":
+		country = _text(xml, f"{address}/cac:Country/cbc:IdentificationCode")
+		if not country:
+			errors.append(_("An export needs the delivery country."))
+		elif country == "AE":
 			errors.append(_("An export must be delivered outside the UAE."))
 
 	tax_point = _text(xml, "cbc:TaxPointDate")

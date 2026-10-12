@@ -490,6 +490,24 @@ class TestValidators(EInvoiceTestCase):
 
 		self.assertIn("An export must be delivered outside the UAE.", validate_xml(etree.tostring(xml)))
 
+	def test_an_export_without_a_delivery_country_is_invalid(self):
+		from uae_compliance.tests import make_address
+
+		abroad = make_address(
+			"_Test Export No Country", "India", customer="_Test UAE Customer", state="Maharashtra"
+		)
+		frappe.db.set_value("Customer", "_Test UAE Customer", {"uae_tin": "", "uae_trn": ""})
+		doc = self.invoice(
+			[{"item_code": "_Test EInv Zero", "rate": 500, "vat_rate": 0}],
+			customer_address=abroad.name,
+			shipping_address_name=abroad.name,
+		)
+		xml = etree.fromstring(build_xml(doc)[0])
+		country = _find(xml, "cac:Delivery/cac:DeliveryLocation/cac:Address/cac:Country")[0]
+		country.getparent().remove(country)
+
+		self.assertIn("An export needs the delivery country.", validate_xml(etree.tostring(xml)))
+
 	def test_a_domestic_buyer_needs_an_emirate(self):
 		def mutate(xml):
 			subdivision = _find(

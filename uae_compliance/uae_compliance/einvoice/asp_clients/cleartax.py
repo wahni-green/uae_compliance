@@ -394,6 +394,16 @@ class ClearTaxASP(ASPClient):
 			return node
 
 		supplier = value("accountingSupplierParty", "party") or {}
+		# The invoice is found by its number, which two suppliers may both use, so it is checked to be
+		# the listed supplier's before it is logged under that row's reference.
+		sender = (supplier.get("endPointID") or {}).get("value")
+		if not sender or str(sender) != str(row.get("SellerTaxIdentifier") or ""):
+			raise ServiceProviderError(
+				_("ClearTax gave an invoice {0} that is not from the supplier of the listed document").format(
+					row.get("DocumentNumber")
+				)
+			)
+
 		credit = str(value("invoiceTypeCode", "value") or "") in ("381", "81")
 		tax_schemes = supplier.get("partyTaxScheme") or [{}]
 		totals = invoice.get("legalMonetaryTotal") or {}
@@ -418,7 +428,7 @@ class ClearTaxASP(ASPClient):
 			].get("companyID")
 			or "",
 			"tax_total": amount(taxes[0].get("taxAmount")),
-			"payable": amount(totals.get("taxInclusiveAmount")),
+			"payable": amount(totals.get("payableAmount")),
 			"taxable": amount(totals.get("taxExclusiveAmount")),
 			"lines": len(invoice.get("invoiceLine") or []),
 		}
@@ -548,9 +558,10 @@ def _line(line: dict, currency: str) -> dict:
 def _clean(value):
 	"""Drop empty values, so the document carries only what the invoice has."""
 	if isinstance(value, dict):
-		return {k: _clean(v) for k, v in value.items() if v not in (None, "", [], {})}
+		cleaned = {k: _clean(v) for k, v in value.items()}
+		return {k: v for k, v in cleaned.items() if v not in (None, "", [], {})}
 	if isinstance(value, list):
-		return [_clean(v) for v in value]
+		return [v for v in (_clean(v) for v in value) if v not in (None, "", [], {})]
 
 	return value
 

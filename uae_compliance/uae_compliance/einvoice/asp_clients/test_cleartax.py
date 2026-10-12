@@ -386,6 +386,7 @@ class TestClearTax(EInvoiceTestCase):
 			"documentCurrencyCode": "AED",
 			"accountingSupplierParty": {
 				"party": {
+					"endPointID": {"schemeID": "0235", "value": "1555555555"},
 					"partyTaxScheme": [{"companyID": "155555555500003"}],
 					"partyLegalEntity": {"registrationName": "Seller LLC"},
 				}
@@ -395,6 +396,8 @@ class TestClearTax(EInvoiceTestCase):
 			"legalMonetaryTotal": {
 				"taxExclusiveAmount": {"value": 100.0},
 				"taxInclusiveAmount": {"value": 105.0},
+				"payableRoundingAmount": {"value": 0.0},
+				"payableAmount": {"value": 100.0},
 			},
 			"invoiceLine": [{"id": "1"}, {"id": "2"}],
 		}
@@ -436,11 +439,32 @@ class TestClearTax(EInvoiceTestCase):
 		self.assertEqual(model["seller_name"], "Seller LLC")
 		self.assertEqual(model["buyer_tin"], "1234567890")
 		self.assertEqual(model["buyer_trn"], "123456789000003")
-		self.assertEqual((model["taxable"], model["tax_total"], model["payable"]), (100, 5, 105))
+		# The amount due is the payable amount, which differs from the total with VAT when part was paid.
+		self.assertEqual((model["taxable"], model["tax_total"], model["payable"]), (100, 5, 100))
 		self.assertEqual(model["lines"], 2)
 		self.assertEqual(
 			request.call_args.kwargs["params"], {"einvoice-type": "PURCHASE", "document-number": "INV-1"}
 		)
+
+	def test_an_invoice_of_another_supplier_with_the_same_number_is_not_logged_under_the_row(self):
+		frappe.cache().set_value(self.provider._token_key(), "tok")
+		self.inbound_window()
+		other = self.received("INV-1")
+		other["accountingSupplierParty"]["party"]["endPointID"]["value"] = "1999999999"
+		listing = {"Success": "true", "Documents": [self.listed("INV-1", "new-1")]}
+		with patch(REQUEST, side_effect=[reply(listing), reply(other)]):
+			documents = self.provider.fetch_inbound()
+
+		self.assertEqual(documents, [])
+
+	def test_an_invoice_without_a_sender_cannot_be_matched_to_the_row(self):
+		frappe.cache().set_value(self.provider._token_key(), "tok")
+		self.inbound_window()
+		anonymous = self.received("INV-1")
+		del anonymous["accountingSupplierParty"]["party"]["endPointID"]
+		listing = {"Success": "true", "Documents": [self.listed("INV-1", "new-1")]}
+		with patch(REQUEST, side_effect=[reply(listing), reply(anonymous)]):
+			self.assertEqual(self.provider.fetch_inbound(), [])
 
 	def test_a_received_credit_note_is_a_credit_note(self):
 		frappe.cache().set_value(self.provider._token_key(), "tok")
@@ -587,6 +611,14 @@ class TestClearTax(EInvoiceTestCase):
 		self.assertEqual(
 			payload["buyerCustomerParty"]["party"]["partyIdentification"],
 			[{"id": {"value": "100111222300003"}}],
+		)
+
+	def test_a_container_that_becomes_empty_is_dropped(self):
+		from uae_compliance.uae_compliance.einvoice.asp_clients.cleartax import _clean
+
+		self.assertEqual(
+			_clean({"a": {"b": None, "c": {"d": ""}}, "e": [{}, {"f": None}], "g": [{"h": 0}], "i": 0}),
+			{"g": [{"h": 0}], "i": 0},
 		)
 
 	def test_empty_values_are_dropped_but_zero_is_kept(self):
