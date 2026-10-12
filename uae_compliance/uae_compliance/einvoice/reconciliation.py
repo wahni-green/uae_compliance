@@ -276,7 +276,7 @@ def _check_company(company: str) -> None:
 
 
 @frappe.whitelist()
-def run_matching(company: str, from_date, to_date) -> dict:
+def run_matching(company: str, from_date: str, to_date: str) -> dict:
 	"""Match what is not matched yet (exact and suggested matches are stored as links). Books are taken
 	from a window around the period, so that an invoice posted a few days before or after its
 	e-invoice is still found."""
@@ -328,7 +328,7 @@ def link_documents(log: str, invoice: str) -> None:
 
 
 @frappe.whitelist()
-def unlink_documents(logs) -> None:
+def unlink_documents(logs: str | list) -> None:
 	"""Release the received e-invoices from their Purchase Invoices; both go back to unmatched and
 	are matched again by the next run."""
 	logs = frappe.parse_json(logs) if isinstance(logs, str) else logs
@@ -341,7 +341,7 @@ def unlink_documents(logs) -> None:
 
 
 @frappe.whitelist()
-def ignore_documents(logs=None, invoices=None) -> None:
+def ignore_documents(logs: str | list | None = None, invoices: str | list | None = None) -> None:
 	"""Leave received e-invoices or Purchase Invoices out of matching. A linked one has to be unlinked
 	first."""
 	logs = frappe.parse_json(logs) if isinstance(logs, str) else logs or []
@@ -363,7 +363,7 @@ def ignore_documents(logs=None, invoices=None) -> None:
 
 
 @frappe.whitelist()
-def restore_documents(logs=None, invoices=None) -> None:
+def restore_documents(logs: str | list | None = None, invoices: str | list | None = None) -> None:
 	"""Take ignored documents back into matching."""
 	logs = frappe.parse_json(logs) if isinstance(logs, str) else logs or []
 	invoices = frappe.parse_json(invoices) if isinstance(invoices, str) else invoices or []
