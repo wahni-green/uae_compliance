@@ -29,7 +29,7 @@
 - [x] No QR code; XML retained 5 years
 - [x] 7-year retention for real estate: tick **Real Estate** on the Item and its invoices are kept 7 years (inbound documents are kept 5). The period is stored on the log; ticking the item later extends the logs already issued for it
 - [x] Exclusions: B2C (customers that are individuals) are not e-invoiced; imports under the reverse charge are purchases and never produce a sales document
-- [ ] Other exclusions in the specification (exempt financial services, airline e-tickets, sovereign activity) are not detected: such invoices are sent unless the company excludes them
+- [x] Other exclusions in the specification (exempt financial services, airline e-tickets, sovereign activity): the **E-Invoice Exclusion** on an Item is copied to an invoice whose rows all carry it, or is chosen on the invoice, and such an invoice is not sent. The app cannot tell these supplies apart by itself
 
 ## PR 6a: PINT AE XML builder and validators
 - [x] Pin PINT-AE v1.0.4: builder follows the official samples; checked against the official Schematron and the OASIS UBL 2.1 schema (not bundled; see the architecture doc)

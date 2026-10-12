@@ -43,7 +43,9 @@ LOG = "UAE E-Invoice Log"
 
 def get_setting_if_required(doc):
 	"""The company's e-invoicing setting when this invoice has to be sent, else None. B2C sales, to
-	an individual, are out of scope, as are invoices dated before the company's start date."""
+	an individual, are out of scope, as are invoices dated before the company's start date and
+	invoices marked with an E-Invoice Exclusion (exempt financial services, airline e-tickets and
+	sovereign activity)."""
 	if not is_uae_company(doc.get("company")):
 		return None
 
@@ -52,6 +54,9 @@ def get_setting_if_required(doc):
 		return None
 
 	if row.mandatory_from and getdate(doc.posting_date) < getdate(row.mandatory_from):
+		return None
+
+	if doc.get("uae_einvoice_exclusion"):
 		return None
 
 	if frappe.db.get_value("Customer", doc.customer, "customer_type") == "Individual":
