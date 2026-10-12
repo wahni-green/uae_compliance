@@ -43,7 +43,7 @@
 - [x] Reverse charge documents for oil, natural gas, pure hydrocarbons, electronic devices and precious metals and stones (PR 6g)
 - [x] Margin scheme documents, invoices and credit notes (PR 6h), verified against the official rules and the Microvista sandbox
 - [x] Summary, continuous and agent billing documents
-- [ ] Self-billing documents
+- [ ] Self-billing documents (Microvista's code lists include 389 and 261 for `generate-invoice`, but its documentation says nothing more about how a buyer sends one)
 
 ## PR 6b: provider framework and sending pipeline
 - **UAE E-Invoice Settings** (one row per company: provider, environment, "E-Invoice From" date, endpoint, client ID, client secret as a Password, extra JSON configuration) and **UAE E-Invoice Log** (one per document: status, provider reference, idempotency key, attempts, next attempt, the XML, the provider's response, errors, retention date).
@@ -64,4 +64,4 @@
 - [ ] Inbound: create Purchase Invoices from received documents (needs a mapping of the sender's lines to items and accounts)
 - [x] Inbound: a received document's XML goes through the app's own PINT AE checks (the same ones used before sending: not the full Schematron) and is flagged Invalid with the problems; a document delivered as a model, without XML, is not checked. An unknown currency no longer stops the run
 - [ ] Inbound: full validation of received documents against the official Schematron rules (not bundled; the checks run so far are a subset, so a Delivered document has not passed every rule)
-- [ ] Inbound: acknowledge or dispute a received document (needs the provider's API for it)
+- [ ] Inbound: acknowledge or dispute a received document. Microvista's API (v2.0 documentation and Postman collection) has no endpoint for it, only `get-purchase-invoice-details`; another provider may
