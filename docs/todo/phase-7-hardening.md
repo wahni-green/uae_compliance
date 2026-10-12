@@ -2,7 +2,7 @@
 
 - [x] Test suites beside every module (435 tests; the official Schematron and UBL schema tests run when `PINT_AE_RESOURCES_DIR` and `UBL_XSD_DIR` are set)
 - [x] Idempotent patches; `bench migrate` twice runs cleanly
-- [ ] Non-UAE company unaffected on shared bench: tested for Sales Invoice validation and the company check only; add tests for the other hooks (purchase, items, parties, the e-invoice pipeline and the VAT return)
+- [x] Non-UAE company unaffected on shared bench: every hook is tested against a real non-UAE company (purchase, sales documents, item tax templates, parties, the e-invoice pipeline and the VAT return)
 - [x] Documentation: architecture and configuration cover every phase
 - [x] User guide (docs/UAE_COMPLIANCE_USER_GUIDE.md)
 - [x] CI linter and dependency check green on every merged PR; Semgrep with the Frappe rules clean locally
