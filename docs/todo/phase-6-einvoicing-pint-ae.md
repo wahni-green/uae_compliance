@@ -22,7 +22,7 @@
 - [x] Tax category codes S, E, O, AE, Z (no `G`)
 - [x] Tax category N for the margin scheme (PR 6h). The code list file spells N with a Greek capital nu, but the Schematron rules and the official sample use the Latin letter, which is what is sent
 - [x] Transaction-type flags: free trade zone, deemed supply, e-commerce, export and margin scheme
-- [x] Transaction-type flags: summary (with its invoice period), continuous and disclosed agent billing (with the principal's TRN), checked against the official rules and the UBL schema. The Microvista adapter refuses a document with a period or a principal: its fields are unverified
+- [x] Transaction-type flags: summary (with its invoice period), continuous and disclosed agent billing (with the principal's TRN), checked against the official rules and the UBL schema. Microvista receives the period, frequency of billing and principal from its documentation's field names (not yet run against the sandbox)
 - [x] Invoice types 380/480, credit notes 381/81; TaxCurrencyCode AED + `aedtotal-incl-vat` document reference
 - [x] Participant ID `0235:<TIN>` with predefined endpoints 9900000097/98/99; legal registration ID type (TL/EID/PAS/CD), with the issuing country for a passport
 - [ ] Self-billing (the buyer issues the invoice: types 389 and 261, a different CustomizationID, Purchase Invoices producing PINT documents, and provider support for sending as the buyer)

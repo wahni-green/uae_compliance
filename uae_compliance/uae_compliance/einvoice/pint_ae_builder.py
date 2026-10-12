@@ -16,6 +16,7 @@ from lxml import etree
 
 from uae_compliance.uae_compliance.constants import STANDARD_VAT_RATE
 from uae_compliance.uae_compliance.constants.pint_ae import (
+	BILLING_FREQUENCIES,
 	CATEGORY_CODES,
 	CREDIT_NOTE_TYPE_CODE,
 	CUSTOMIZATION_ID,
@@ -483,8 +484,12 @@ class PintAEBuilder:
 		period = self._invoice_period
 		if period:
 			element = _add(root, "cac", "InvoicePeriod")
-			_add(element, "cbc", "StartDate", period["start"])
-			_add(element, "cbc", "EndDate", period["end"])
+			if period["start"]:
+				_add(element, "cbc", "StartDate", period["start"])
+			if period["end"]:
+				_add(element, "cbc", "EndDate", period["end"])
+			if period["frequency"]:
+				_add(element, "cbc", "DescriptionCode", period["frequency"])
 
 		if self.is_credit_note:
 			response = _add(root, "cac", "DiscrepancyResponse")
@@ -686,10 +691,15 @@ class PintAEBuilder:
 	def _invoice_period(self) -> dict | None:
 		"""The period a summary invoice or a continuous supply covers (IBG-14)."""
 		start, end = self.doc.get("uae_invoice_period_start"), self.doc.get("uae_invoice_period_end")
-		if not (start and end):
+		frequency = BILLING_FREQUENCIES.get(self.doc.get("uae_billing_frequency"))
+		if not (start or end or frequency):
 			return None
 
-		return {"start": getdate(start).isoformat(), "end": getdate(end).isoformat()}
+		return {
+			"start": getdate(start).isoformat() if start else None,
+			"end": getdate(end).isoformat() if end else None,
+			"frequency": frequency,
+		}
 
 	@property
 	def _principal_id(self) -> str | None:

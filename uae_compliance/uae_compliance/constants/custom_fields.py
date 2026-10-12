@@ -8,6 +8,7 @@ from uae_compliance.uae_compliance.constants import (
 from uae_compliance.uae_compliance.constants.einvoice import EXCLUSION_SELECT_OPTIONS
 from uae_compliance.uae_compliance.constants.emirates import EMIRATE_SELECT_OPTIONS
 from uae_compliance.uae_compliance.constants.pint_ae import (
+	BILLING_FREQUENCY_SELECT_OPTIONS,
 	CREDIT_REASON_SELECT_OPTIONS,
 	EXEMPTION_REASON_SELECT_OPTIONS,
 	ITEM_TYPE_SELECT_OPTIONS,
@@ -367,7 +368,16 @@ CUSTOM_FIELDS = {
 			depends_on="eval:doc.uae_is_summary_invoice || doc.uae_is_continuous_supply",
 			mandatory_depends_on="uae_is_summary_invoice",
 		),
-		_field("uae_is_agent_billing", "Disclosed Agent Billing", "Check", "uae_invoice_period_end"),
+		_field(
+			"uae_billing_frequency",
+			"Frequency of Billing",
+			"Select",
+			"uae_invoice_period_end",
+			options=BILLING_FREQUENCY_SELECT_OPTIONS,
+			depends_on="eval:doc.uae_is_summary_invoice || doc.uae_is_continuous_supply",
+			mandatory_depends_on="uae_is_summary_invoice",
+		),
+		_field("uae_is_agent_billing", "Disclosed Agent Billing", "Check", "uae_billing_frequency"),
 		_field(
 			"uae_principal_trn",
 			"Principal TRN",

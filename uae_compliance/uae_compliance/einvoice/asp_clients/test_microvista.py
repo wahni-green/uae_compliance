@@ -128,17 +128,19 @@ class TestMicrovista(EInvoiceTestCase):
 		with patch(POST, side_effect=[reply(TOKEN), reply({"success": True, "statusCode": 1})]):
 			self.assertRaises(ServiceProviderError, self.provider.submit, self.document(), "key")
 
-	def test_a_principal_or_period_is_refused_without_a_call(self):
-		for key, value in (
-			("principal_id", "100987654300003"),
-			("invoice_period", {"start": "a", "end": "b"}),
-		):
-			document = self.document()
-			document.model[key] = value
-			with patch(POST) as post:
-				self.assertRaises(ProviderRejectedError, self.provider.submit, document, "key")
+	def test_the_period_and_the_principal_are_sent(self):
+		document = self.document()
+		document.model["invoice_period"] = {"start": "2026-09-01", "end": "2026-09-30", "frequency": "MTH"}
+		document.model["principal_id"] = "100987654300003"
+		ok = {"success": True, "statusCode": 1, "data": "inv-2"}
+		with patch(POST, side_effect=[reply(TOKEN), reply(ok)]) as post:
+			self.provider.submit(document, "key")
 
-			post.assert_not_called()
+		sent = post.call_args.kwargs["json"]["invoice"]
+		self.assertEqual(sent["invoicingPeriodStartDate"], "2026-09-01")
+		self.assertEqual(sent["invoicingPeriodEndDate"], "2026-09-30")
+		self.assertEqual(sent["frequencyOfBilling"], "MTH")
+		self.assertEqual(sent["principleID"], "100987654300003")
 
 	def test_a_duplicate_number_is_recovered(self):
 		document = self.document()

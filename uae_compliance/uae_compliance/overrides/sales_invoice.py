@@ -67,9 +67,10 @@ def validate_billing_types(doc) -> None:
 	for a principal with another TRN than its own (rules ibr-137-ae and ibr-176-ae)."""
 	start, end = doc.get("uae_invoice_period_start"), doc.get("uae_invoice_period_end")
 	if doc.get("uae_is_summary_invoice"):
-		if not (start and end):
+		if not (start and end and doc.get("uae_billing_frequency")):
 			frappe.throw(
-				_("A summary invoice needs the Invoice Period Start and End."), title=_("Summary Invoice")
+				_("A summary invoice needs the Invoice Period Start and End and the Frequency of Billing."),
+				title=_("Summary Invoice"),
 			)
 
 		if all(row.get("uae_vat_category") in ("Exempt", "Out of Scope") for row in doc.items):
@@ -78,7 +79,8 @@ def validate_billing_types(doc) -> None:
 				title=_("Summary Invoice"),
 			)
 
-	if (start or end) and not (doc.get("uae_is_summary_invoice") or doc.get("uae_is_continuous_supply")):
+	has_period = start or end or doc.get("uae_billing_frequency")
+	if has_period and not (doc.get("uae_is_summary_invoice") or doc.get("uae_is_continuous_supply")):
 		frappe.throw(
 			_("The invoice period belongs to a summary invoice or a continuous supply: tick one of them."),
 			title=_("Invoice Period"),
