@@ -56,10 +56,12 @@
 
 ## PR 6c: inbound documents
 - The scheduler fetches what each enabled company's provider holds for it (`ASPClient.fetch_inbound`) and logs each new document (by provider reference) as an Inbound UAE E-Invoice Log: number, UUID, type, date, sender name and TIN, currency, total, and the XML, kept for five years. The sender is matched to a Supplier by TIN, then by TRN. A document that cannot be read, or that is addressed to another TIN or TRN, is logged as Invalid with the reason.
-- Not built: turning a received invoice into a Purchase Invoice (it needs a mapping of the sender's lines to items and accounts), acknowledging or disputing a received document, and validating the sender's document against the specification.
+- Not built: turning a received invoice into a Purchase Invoice (it needs a mapping of the sender's lines to items and accounts), acknowledging or disputing a received document, and the provider's acknowledgement.
 
 ## Providers
 - [x] Microvista adapter (PR 6d), verified against its sandbox: submit, duplicate recovery, polling to Cleared, a credit note, the inbound listing (14 received documents), and every case of PRs 6f and 6g (480, out of scope, free trade zone, deemed, e-commerce, reverse charge)
 - [ ] Production run with the live account (only the sandbox has been used)
 - [ ] Inbound: create Purchase Invoices from received documents (needs a mapping of the sender's lines to items and accounts)
-- [ ] Inbound: acknowledge or dispute a received document, and validate it against the specification
+- [x] Inbound: a received document's XML goes through the app's own PINT AE checks (the same ones used before sending: not the full Schematron) and is flagged Invalid with the problems; a document delivered as a model, without XML, is not checked. An unknown currency no longer stops the run
+- [ ] Inbound: full validation of received documents against the official Schematron rules (not bundled; the checks run so far are a subset, so a Delivered document has not passed every rule)
+- [ ] Inbound: acknowledge or dispute a received document (needs the provider's API for it)
