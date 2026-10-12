@@ -166,16 +166,27 @@ def validate_tourist_daily_cap(doc, refund: float) -> None:
 	day = timedelta(hours=24)
 
 	lock_passport(passport)
-	others = frappe.get_all(
-		"Sales Invoice",
-		filters={
-			"uae_tourist_passport": passport,
-			"uae_tourist_refund": ("!=", 0),
-			"docstatus": 1,
-			"name": ("!=", doc.name or ""),
-			"posting_date": ("between", [add_days(posted.date(), -1), add_days(posted.date(), 1)]),
-		},
-		fields=["posting_date", "posting_time", "uae_tourist_refund", "conversion_rate", "company"],
+	# A locking read sees the latest committed rows, not the snapshot this transaction started with,
+	# so the refund the other request has just committed is counted.
+	invoice = frappe.qb.DocType("Sales Invoice")
+	others = (
+		frappe.qb.from_(invoice)
+		.select(
+			invoice.posting_date,
+			invoice.posting_time,
+			invoice.uae_tourist_refund,
+			invoice.conversion_rate,
+			invoice.company,
+		)
+		.where(
+			(invoice.uae_tourist_passport == passport)
+			& (invoice.uae_tourist_refund != 0)
+			& (invoice.docstatus == 1)
+			& (invoice.name != (doc.name or ""))
+			& invoice.posting_date.between(add_days(posted.date(), -1), add_days(posted.date(), 1))
+		)
+		.for_update()
+		.run(as_dict=True)
 	)
 	events = [(posted, refund)]
 	for other in others:
