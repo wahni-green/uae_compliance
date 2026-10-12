@@ -12,7 +12,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, getdate
 
-from uae_compliance.uae_compliance.constants.einvoice import DIRECTION_INBOUND
+from uae_compliance.uae_compliance.constants.einvoice import DIRECTION_INBOUND, STATUS_INVALID
 from uae_compliance.uae_compliance.utils.company import is_uae_company
 from uae_compliance.uae_compliance.utils.tax_account import is_input_vat_account
 
@@ -157,6 +157,9 @@ def get_received(company: str, from_date, to_date, matched: bool | None = False)
 	if matched is False:
 		filters["link_name"] = ("is", "not set")
 		filters["recon_action"] = ("is", "not set")
+		# A document that failed the checks (not addressed to the company, or breaking the
+		# specification) is never matched by itself; the report still lists it.
+		filters["status"] = ("!=", STATUS_INVALID)
 	elif matched is True:
 		filters["link_name"] = ("is", "set")
 
@@ -347,6 +350,9 @@ def ignore_documents(logs: str | list | None = None, invoices: str | list | None
 	logs = frappe.parse_json(logs) if isinstance(logs, str) else logs or []
 	invoices = frappe.parse_json(invoices) if isinstance(invoices, str) else invoices or []
 	frappe.has_permission(LOG, "write", throw=True)
+	if invoices:
+		frappe.has_permission(INVOICE, "write", throw=True)
+
 	for log in logs:
 		if frappe.db.get_value(LOG, log, "link_name"):
 			frappe.throw(_("{0} is linked. Unlink it before ignoring it.").format(log))
@@ -368,6 +374,9 @@ def restore_documents(logs: str | list | None = None, invoices: str | list | Non
 	logs = frappe.parse_json(logs) if isinstance(logs, str) else logs or []
 	invoices = frappe.parse_json(invoices) if isinstance(invoices, str) else invoices or []
 	frappe.has_permission(LOG, "write", throw=True)
+	if invoices:
+		frappe.has_permission(INVOICE, "write", throw=True)
+
 	for log in logs:
 		frappe.db.set_value(LOG, log, "recon_action", "", update_modified=False)
 
@@ -380,6 +389,8 @@ def release_cancelled_invoice(doc, method=None) -> None:
 	"""A cancelled Purchase Invoice is no longer what an e-invoice was matched to."""
 	for log in frappe.get_all(LOG, filters={"link_name": doc.name}, pluck="name"):
 		frappe.db.set_value(LOG, log, {"link_name": "", "match_status": ""}, update_modified=False)
+
+	frappe.db.set_value(INVOICE, doc.name, "uae_reconciliation_status", "", update_modified=False)
 
 
 def get_differences(received: dict, book: dict) -> str:

@@ -151,6 +151,13 @@ class TestMatching(ReconciliationTestCase):
 		linked = [self.log_of(first).link_name, self.log_of(second).link_name]
 		self.assertEqual(len([name for name in linked if name]), 1)
 
+	def test_an_invalid_e_invoice_is_not_matched_by_itself(self):
+		self.invoice()
+		log = self.received(status="Invalid", errors="Not addressed to this company")
+		self.run_matching()
+
+		self.assertFalse(self.log_of(log).link_name)
+
 	def test_another_supplier_is_not_matched(self):
 		self.invoice()
 		other = frappe.get_doc({"doctype": "Supplier", "supplier_name": f"{self.supplier} Other"}).insert()
@@ -214,6 +221,7 @@ class TestActions(ReconciliationTestCase):
 		book.cancel()
 
 		self.assertFalse(self.log_of(log).link_name)
+		self.assertFalse(frappe.db.get_value("Purchase Invoice", book.name, "uae_reconciliation_status"))
 
 	def test_an_ignored_e_invoice_is_not_matched(self):
 		self.invoice()

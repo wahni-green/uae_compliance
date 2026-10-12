@@ -107,6 +107,10 @@ def get_data(filters) -> list[dict]:
 	else:
 		rows = [r for r in rows if r["status"] != IGNORED]
 
+	# Filtered on the English names; translated only for display.
+	for row in rows:
+		row["status"] = _(row["status"])
+
 	return rows
 
 
@@ -121,7 +125,7 @@ def _book(name: str, company: str):
 
 
 def _row(status: str, received: dict | None, book: dict | None) -> dict:
-	row = {"status": _(status)}
+	row = {"status": status}
 	if received:
 		row.update(
 			supplier=received["party_name"],
