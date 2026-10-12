@@ -99,6 +99,24 @@ class TestScope(PipelineTestCase):
 		doc.save()
 		self.assertEqual(doc.uae_einvoice_exclusion, "Sovereign Activity")
 
+	def test_the_frequency_can_be_filled_in_once_after_submission(self):
+		doc, _enqueue = self.submit(
+			uae_is_summary_invoice=1,
+			uae_invoice_period_start="2026-09-01",
+			uae_invoice_period_end="2026-09-30",
+			uae_billing_frequency="Monthly",
+		)
+		frappe.db.set_value("Sales Invoice", doc.name, "uae_billing_frequency", "")
+		doc.reload()
+
+		doc.uae_billing_frequency = "Quarterly"
+		doc.save()
+		self.assertEqual(doc.uae_billing_frequency, "Quarterly")
+
+		doc.reload()
+		doc.uae_billing_frequency = "Daily"
+		self.assertRaises(frappe.ValidationError, doc.save)
+
 	def test_a_mix_of_excluded_and_other_items_is_sent(self):
 		item = make_einvoice_item("_Test EInv Ticket 2")
 		frappe.db.set_value("Item", item.name, "uae_einvoice_exclusion", "Airline E-Ticket")

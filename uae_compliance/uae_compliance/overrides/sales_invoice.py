@@ -3,6 +3,7 @@ from frappe import _
 from frappe.utils import date_diff, flt, getdate
 
 from uae_compliance.uae_compliance.constants import TAX_INVOICE_ISSUE_DAYS
+from uae_compliance.uae_compliance.constants.einvoice import SENT_STATUSES
 from uae_compliance.uae_compliance.overrides.sales_schemes import (
 	validate_margin_scheme,
 	validate_tourist_refund,
@@ -59,6 +60,28 @@ def set_einvoice_exclusion(doc) -> None:
 	reason = reasons.pop() if len(reasons) == 1 else None
 	doc.uae_einvoice_exclusion = reason or ""
 	doc.uae_einvoice_exclusion_from_items = 1 if reason else 0
+
+
+def before_update_after_submit(doc, method=None):
+	if is_uae_company(doc.get("company")):
+		validate_billing_frequency_after_submit(doc)
+
+
+def validate_billing_frequency_after_submit(doc) -> None:
+	"""The frequency can be filled in on a submitted summary invoice that lacks it, so that it can be
+	sent, but never changed once it has a value or the invoice has been sent."""
+	if doc.docstatus != 1:
+		return
+
+	before = doc.get_doc_before_save()
+	if not before or before.get("uae_billing_frequency") == doc.get("uae_billing_frequency"):
+		return
+
+	if before.get("uae_billing_frequency") or doc.get("uae_einvoice_status") in SENT_STATUSES:
+		frappe.throw(
+			_("The Frequency of Billing cannot be changed once it is set or the e-invoice has been sent."),
+			title=_("Frequency of Billing"),
+		)
 
 
 def validate_billing_types(doc) -> None:
