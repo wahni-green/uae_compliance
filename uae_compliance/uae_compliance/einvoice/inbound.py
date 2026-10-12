@@ -13,6 +13,7 @@ from uae_compliance.uae_compliance.constants.einvoice import (
 )
 from uae_compliance.uae_compliance.einvoice.pint_ae_builder import NAMESPACES, ROOTS
 from uae_compliance.uae_compliance.einvoice.registry import get_client, get_company_setting
+from uae_compliance.uae_compliance.einvoice.validators import validate_xml
 
 LOG = "UAE E-Invoice Log"
 _NS = {"cac": NAMESPACES["cac"], "cbc": NAMESPACES["cbc"]}
@@ -153,10 +154,14 @@ def _log_document(company: str, document) -> None:
 		log.document_date = issued
 		log.party_name = details["seller_name"]
 		log.party_tin = details["seller_tin"]
-		log.currency = details["currency"]
+		if frappe.db.exists("Currency", details["currency"]):
+			log.currency = details["currency"]
+		else:
+			problems.append(_("The currency {0} is not known.").format(details["currency"]))
 		log.total_amount = details["payable"]
 		log.supplier = _find_supplier(details)
 		problems += _check_addressee(company, details)
+		problems += _check_specification(document)
 		if issued:
 			log.retain_until = max(log.retain_until, add_years(issued, RETENTION_YEARS))
 		else:
@@ -167,6 +172,15 @@ def _log_document(company: str, document) -> None:
 	log.status_detail = _("Received from the provider")
 	log.flags.ignore_permissions = True
 	log.insert()
+
+
+def _check_specification(document) -> list[str]:
+	"""What the sender's XML breaks of the specification. A document delivered as a model, without
+	XML, cannot be checked."""
+	if not document.xml:
+		return []
+
+	return [_("Specification: {0}").format(error) for error in validate_xml(document.xml)]
 
 
 def _issue_date(value):

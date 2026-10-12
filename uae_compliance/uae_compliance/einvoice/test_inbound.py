@@ -130,6 +130,17 @@ class TestInbound(PipelineTestCase):
 		self.assertEqual(log.errors, "")
 		self.assertIn("<Invoice", log.xml)
 
+	def test_a_document_that_breaks_the_specification_is_flagged(self):
+		xml = self._received_xml().replace("<cbc:DocumentCurrencyCode>AED<", "<cbc:DocumentCurrencyCode>x<")
+		self._enable(**{"REF-SPEC": xml})
+		inbound.receive(self.company)
+
+		log = frappe.get_doc("UAE E-Invoice Log", {"provider_reference": "REF-SPEC"})
+		self.assertEqual(log.status, "Invalid")
+		self.assertIn("Specification: ", log.errors)
+		self.assertIn("currency", log.errors)
+		self.assertIn("is not known", log.errors)
+
 	def test_the_same_document_is_not_logged_twice(self):
 		self._enable(**{"REF-2": self._received_xml()})
 
