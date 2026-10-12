@@ -116,6 +116,21 @@ DEFAULT_UNIT_CODE = "H87"
 ITEM_TYPE_CODES = {"Goods": "G", "Services": "S", "Both": "B"}
 ITEM_TYPE_SELECT_OPTIONS = "\n" + "\n".join(ITEM_TYPE_CODES)
 
+# Frequency of billing (BTAE-06, rule ibr-005-ae). "Others" (OTH) needs an invoice note, which the
+# builder does not write, so it is not offered.
+BILLING_FREQUENCIES = {
+	"Daily": "DLY",
+	"Weekly": "WKY",
+	"Once in 15 days": "Q15",
+	"Monthly": "MTH",
+	"Once in 45 days": "Q45",
+	"Once in 60 days": "Q60",
+	"Quarterly": "QTR",
+	"Yearly": "YRL",
+	"Half-Yearly": "HYR",
+}
+BILLING_FREQUENCY_SELECT_OPTIONS = "\n" + "\n".join(BILLING_FREQUENCIES)
+
 # UAE standard time. The e-invoice IssueTime carries an offset.
 UTC_OFFSET = "+04:00"
 

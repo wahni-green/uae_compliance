@@ -3,6 +3,7 @@ from frappe import _
 from frappe.utils import date_diff, flt, getdate
 
 from uae_compliance.uae_compliance.constants import TAX_INVOICE_ISSUE_DAYS
+from uae_compliance.uae_compliance.constants.einvoice import STATUS_INVALID, STATUS_REJECTED
 from uae_compliance.uae_compliance.overrides.sales_schemes import (
 	validate_margin_scheme,
 	validate_tourist_refund,
@@ -61,15 +62,45 @@ def set_einvoice_exclusion(doc) -> None:
 	doc.uae_einvoice_exclusion_from_items = 1 if reason else 0
 
 
+# Only an invoice that is not logged, or whose retry rebuilds the document (Invalid, Rejected), can still
+# take the frequency: one waiting to be sent, sent, or failed (which the provider may hold) cannot.
+EDITABLE_STATUSES = (None, "", STATUS_INVALID, STATUS_REJECTED)
+
+
+def before_update_after_submit(doc, method=None):
+	if is_uae_company(doc.get("company")):
+		validate_billing_frequency_after_submit(doc)
+
+
+def validate_billing_frequency_after_submit(doc) -> None:
+	"""The frequency can be filled in on a submitted summary invoice that lacks it, so that it can be
+	sent, but never changed once it has a value or the invoice has been sent."""
+	if doc.docstatus != 1:
+		return
+
+	before = doc.get_doc_before_save()
+	if not before or before.get("uae_billing_frequency") == doc.get("uae_billing_frequency"):
+		return
+
+	if before.get("uae_billing_frequency") or doc.get("uae_einvoice_status") not in EDITABLE_STATUSES:
+		frappe.throw(
+			_(
+				"The Frequency of Billing can only be filled in while it is blank and the e-invoice has not been sent or is waiting to be sent."
+			),
+			title=_("Frequency of Billing"),
+		)
+
+
 def validate_billing_types(doc) -> None:
 	"""The summary invoice, continuous supply and disclosed agent billing transaction types of the
 	e-invoice. A summary invoice needs the period it covers (rule ibr-138-ae), a disclosed agent bills
 	for a principal with another TRN than its own (rules ibr-137-ae and ibr-176-ae)."""
 	start, end = doc.get("uae_invoice_period_start"), doc.get("uae_invoice_period_end")
 	if doc.get("uae_is_summary_invoice"):
-		if not (start and end):
+		if not (start and end and doc.get("uae_billing_frequency")):
 			frappe.throw(
-				_("A summary invoice needs the Invoice Period Start and End."), title=_("Summary Invoice")
+				_("A summary invoice needs the Invoice Period Start and End and the Frequency of Billing."),
+				title=_("Summary Invoice"),
 			)
 
 		if all(row.get("uae_vat_category") in ("Exempt", "Out of Scope") for row in doc.items):
@@ -78,7 +109,8 @@ def validate_billing_types(doc) -> None:
 				title=_("Summary Invoice"),
 			)
 
-	if (start or end) and not (doc.get("uae_is_summary_invoice") or doc.get("uae_is_continuous_supply")):
+	has_period = start or end or doc.get("uae_billing_frequency")
+	if has_period and not (doc.get("uae_is_summary_invoice") or doc.get("uae_is_continuous_supply")):
 		frappe.throw(
 			_("The invoice period belongs to a summary invoice or a continuous supply: tick one of them."),
 			title=_("Invoice Period"),

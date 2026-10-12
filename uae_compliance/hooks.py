@@ -274,6 +274,7 @@ doc_events = {
 	},
 	"Sales Invoice": {
 		"validate": "uae_compliance.uae_compliance.overrides.sales_invoice.validate",
+		"before_update_after_submit": "uae_compliance.uae_compliance.overrides.sales_invoice.before_update_after_submit",
 		"before_submit": [
 			"uae_compliance.uae_compliance.overrides.sales_invoice.before_submit",
 			"uae_compliance.uae_compliance.einvoice.pipeline.validate_before_submit",

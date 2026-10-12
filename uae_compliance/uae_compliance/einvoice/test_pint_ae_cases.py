@@ -165,13 +165,25 @@ class TestTransactionFlags(CasesTestCase):
 			uae_is_summary_invoice=1,
 			uae_invoice_period_start="2026-09-01",
 			uae_invoice_period_end="2026-09-30",
+			uae_billing_frequency="Monthly",
 		)
 		xml = self.xml(doc)
 
 		self.assertEqual(_text(xml, "cbc:ProfileExecutionID"), "00010000")
 		self.assertEqual(_text(xml, "cac:InvoicePeriod/cbc:StartDate"), "2026-09-01")
 		self.assertEqual(_text(xml, "cac:InvoicePeriod/cbc:EndDate"), "2026-09-30")
+		self.assertEqual(_text(xml, "cac:InvoicePeriod/cbc:DescriptionCode"), "MTH")
 		self.assertEqual(validate_xml(etree.tostring(xml)), [])
+
+	def test_a_summary_invoice_without_a_frequency_is_refused_by_the_builder(self):
+		doc = self.invoice(
+			uae_is_summary_invoice=1,
+			uae_invoice_period_start="2026-09-01",
+			uae_invoice_period_end="2026-09-30",
+			uae_billing_frequency="Monthly",
+		)
+		doc.uae_billing_frequency = ""
+		self.assertRaises(EInvoiceNotSupportedError, build_xml, doc)
 
 	def test_a_continuous_supply_is_flagged(self):
 		doc = self.invoice(uae_is_continuous_supply=1)
@@ -197,6 +209,11 @@ class TestTransactionFlags(CasesTestCase):
 	def test_the_flags_are_checked_when_the_invoice_is_saved(self):
 		for values in (
 			{"uae_is_summary_invoice": 1},
+			{
+				"uae_is_summary_invoice": 1,
+				"uae_invoice_period_start": "2026-09-01",
+				"uae_invoice_period_end": "2026-09-30",
+			},
 			{"uae_invoice_period_start": "2026-09-01", "uae_invoice_period_end": "2026-09-30"},
 			{
 				"uae_is_continuous_supply": 1,
@@ -274,7 +291,11 @@ class TestCasesAgainstTheOfficialRules(CasesTestCase):
 		self.assertEqual(self.failures(self.invoice(uae_is_ecommerce_supply=1)), [])
 
 	def test_summary_continuous_and_agent_billing(self):
-		period = {"uae_invoice_period_start": "2026-09-01", "uae_invoice_period_end": "2026-09-30"}
+		period = {
+			"uae_invoice_period_start": "2026-09-01",
+			"uae_invoice_period_end": "2026-09-30",
+			"uae_billing_frequency": "Monthly",
+		}
 		self.assertEqual(self.failures(self.invoice(uae_is_summary_invoice=1, **period)), [])
 		self.assertEqual(self.failures(self.invoice(uae_is_continuous_supply=1, **period)), [])
 		agent = self.invoice(uae_is_agent_billing=1, uae_principal_trn="100987654300003")
@@ -322,6 +343,7 @@ class TestCasesAgainstTheUBLSchema(CasesTestCase):
 				uae_is_summary_invoice=1,
 				uae_invoice_period_start="2026-09-01",
 				uae_invoice_period_end="2026-09-30",
+				uae_billing_frequency="Monthly",
 			)
 		)
 		self.assert_valid(self.invoice(uae_is_agent_billing=1, uae_principal_trn="100987654300003"))

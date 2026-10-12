@@ -16,6 +16,7 @@ from lxml import etree
 
 from uae_compliance.uae_compliance.constants import STANDARD_VAT_RATE
 from uae_compliance.uae_compliance.constants.pint_ae import (
+	BILLING_FREQUENCIES,
 	CATEGORY_CODES,
 	CREDIT_NOTE_TYPE_CODE,
 	CUSTOMIZATION_ID,
@@ -135,6 +136,7 @@ class PintAEBuilder:
 		self._refuse_unsupported()
 		self._compute_lines()
 		self._refuse_flags_the_type_cannot_carry()
+		self._refuse_summary_without_frequency()
 		self._compute_totals()
 
 		root = etree.Element(_q_root(self.root_name), nsmap={None: ROOTS[self.root_name], **NAMESPACES})
@@ -164,6 +166,14 @@ class PintAEBuilder:
 				_(
 					"A {0} supply under the reverse charge cannot be sent as an e-invoice: the specification has no type of goods for it."
 				).format(_(doc.get("uae_reverse_charge_type") or ""))
+			)
+
+	def _refuse_summary_without_frequency(self):
+		"""Invoices saved before the frequency of billing existed lack it: fill it on the invoice (it can
+		be changed after submission), then retry."""
+		if self.doc.get("uae_is_summary_invoice") and not self.doc.get("uae_billing_frequency"):
+			raise EInvoiceNotSupportedError(
+				_("A summary invoice needs the Frequency of Billing. Enter it on the invoice and retry.")
 			)
 
 	def _refuse_flags_the_type_cannot_carry(self):
@@ -483,8 +493,12 @@ class PintAEBuilder:
 		period = self._invoice_period
 		if period:
 			element = _add(root, "cac", "InvoicePeriod")
-			_add(element, "cbc", "StartDate", period["start"])
-			_add(element, "cbc", "EndDate", period["end"])
+			if period["start"]:
+				_add(element, "cbc", "StartDate", period["start"])
+			if period["end"]:
+				_add(element, "cbc", "EndDate", period["end"])
+			if period["frequency"]:
+				_add(element, "cbc", "DescriptionCode", period["frequency"])
 
 		if self.is_credit_note:
 			response = _add(root, "cac", "DiscrepancyResponse")
@@ -686,10 +700,15 @@ class PintAEBuilder:
 	def _invoice_period(self) -> dict | None:
 		"""The period a summary invoice or a continuous supply covers (IBG-14)."""
 		start, end = self.doc.get("uae_invoice_period_start"), self.doc.get("uae_invoice_period_end")
-		if not (start and end):
+		frequency = BILLING_FREQUENCIES.get(self.doc.get("uae_billing_frequency"))
+		if not (start or end or frequency):
 			return None
 
-		return {"start": getdate(start).isoformat(), "end": getdate(end).isoformat()}
+		return {
+			"start": getdate(start).isoformat() if start else None,
+			"end": getdate(end).isoformat() if end else None,
+			"frequency": frequency,
+		}
 
 	@property
 	def _principal_id(self) -> str | None:
