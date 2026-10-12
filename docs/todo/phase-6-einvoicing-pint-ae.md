@@ -62,5 +62,6 @@
 - [x] Microvista adapter (PR 6d), verified against its sandbox: submit, duplicate recovery, polling to Cleared, a credit note, the inbound listing (14 received documents), and every case of PRs 6f and 6g (480, out of scope, free trade zone, deemed, e-commerce, reverse charge)
 - [ ] Production run with the live account (only the sandbox has been used)
 - [ ] Inbound: create Purchase Invoices from received documents (needs a mapping of the sender's lines to items and accounts)
-- [x] Inbound: a received document's XML is validated against the specification and flagged Invalid with the problems (a document delivered as a model, without XML, cannot be checked). An unknown currency no longer stops the run
+- [x] Inbound: a received document's XML goes through the app's own PINT AE checks (the same ones used before sending: not the full Schematron) and is flagged Invalid with the problems; a document delivered as a model, without XML, is not checked. An unknown currency no longer stops the run
+- [ ] Inbound: full validation of received documents against the official Schematron rules (not bundled; the checks run so far are a subset, so a Delivered document has not passed every rule)
 - [ ] Inbound: acknowledge or dispute a received document (needs the provider's API for it)
