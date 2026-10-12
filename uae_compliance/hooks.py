@@ -284,6 +284,7 @@ doc_events = {
 	},
 	"Purchase Invoice": {
 		"validate": "uae_compliance.uae_compliance.overrides.purchase_invoice.validate",
+		"on_cancel": "uae_compliance.uae_compliance.einvoice.reconciliation.release_cancelled_invoice",
 	},
 	("Customer", "Supplier"): {
 		"validate": "uae_compliance.uae_compliance.overrides.party.validate_trn_and_tin",

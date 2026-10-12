@@ -73,6 +73,13 @@ Received invoices appear as **inbound** logs, matched to your suppliers by TIN o
 ### What cannot be sent yet
 Invoices of metal scrap under the reverse charge, charges or discounts outside the item rows, and VAT that differs from the rows are refused or logged as Invalid with a clear message. Supplies the system leaves out (exempt financial services, airline e-tickets, sovereign activity) are not detected by themselves: set the **E-Invoice Exclusion** on their Items (an invoice whose rows all carry the same one is left out) or choose it on the invoice. Self-billing invoices are also unsupported, but the app does not detect or reject them: identify them yourself and issue all unsupported invoices outside the app, following your provider's process until support is added. A company whose own currency is not AED cannot send e-invoices.
 
+### Reconciling purchases with received e-invoices
+Open the report **UAE Purchase Reconciliation**, choose the company and period and press **Run Matching**. Received e-invoices are matched with your Purchase Invoices by supplier, bill number, date and amounts (the taxable amount and VAT may differ by AED 1 in total):
+- **Exact Match** and **Suggested Match** are linked for you. A suggestion differs in how the number is written or in the date.
+- **Mismatch** rows are likely pairs that differ too much: select one and choose **Actions > Link** to accept it.
+- **Only Received** rows are e-invoices with no Purchase Invoice; **Only in Books** rows are Purchase Invoices with no received e-invoice (check the supplier sent one before claiming the input VAT). To link two such rows by hand, select one of each and choose **Link**.
+- **Unlink** frees a pair so that it is matched again; **Ignore** leaves a row out (**Restore Ignored** brings it back). Reverse charge, GCC and import purchases are not expected to have an e-invoice and are not listed.
+
 ## 7. When something looks wrong
 
 | You see | Likely cause |

@@ -54,6 +54,11 @@
   "supplier",
   "currency",
   "total_amount",
+  "taxable_amount",
+  "tax_amount",
+  "match_status",
+  "link_name",
+  "recon_action",
   "section_break_provider",
   "provider",
   "environment",
@@ -173,6 +178,50 @@
    "label": "Total",
    "options": "currency",
    "read_only": 1
+  },
+  {
+   "fieldname": "taxable_amount",
+   "fieldtype": "Currency",
+   "label": "Taxable Amount",
+   "options": "currency",
+   "read_only": 1,
+   "depends_on": "eval:doc.direction=='Inbound'"
+  },
+  {
+   "fieldname": "tax_amount",
+   "fieldtype": "Currency",
+   "label": "VAT Amount",
+   "options": "currency",
+   "read_only": 1,
+   "depends_on": "eval:doc.direction=='Inbound'"
+  },
+  {
+   "fieldname": "match_status",
+   "fieldtype": "Select",
+   "label": "Match Status",
+   "options": "\nExact Match\nSuggested Match\nManual Match",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "depends_on": "eval:doc.direction=='Inbound'",
+   "no_copy": 1
+  },
+  {
+   "fieldname": "link_name",
+   "fieldtype": "Link",
+   "label": "Purchase Invoice",
+   "options": "Purchase Invoice",
+   "read_only": 1,
+   "depends_on": "eval:doc.direction=='Inbound'",
+   "no_copy": 1
+  },
+  {
+   "fieldname": "recon_action",
+   "fieldtype": "Select",
+   "label": "Reconciliation Action",
+   "options": "\nIgnore",
+   "read_only": 1,
+   "depends_on": "eval:doc.direction=='Inbound'",
+   "no_copy": 1
   },
   {
    "fieldname": "section_break_provider",

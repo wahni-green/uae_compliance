@@ -56,6 +56,7 @@ def parse_document(xml: bytes) -> dict:
 		"buyer_tin": _text(root, f"{buyer}/cbc:EndpointID"),
 		"buyer_trn": _text(root, f"{buyer}/cac:PartyTaxScheme/cbc:CompanyID"),
 		"tax_total": flt(_text(root, "cac:TaxTotal/cbc:TaxAmount")),
+		"taxable": flt(_text(root, "cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount")),
 		"payable": flt(_text(root, "cac:LegalMonetaryTotal/cbc:PayableAmount")),
 		"lines": len(root.xpath(f"cac:{line_tag}", namespaces=_NS)),
 	}
@@ -159,6 +160,14 @@ def _log_document(company: str, document) -> None:
 		else:
 			problems.append(_("The currency {0} is not known.").format(details["currency"]))
 		log.total_amount = details["payable"]
+		log.tax_amount = flt(details.get("tax_total"))
+		# A model without the taxable amount (the provider's list gives the total and the VAT) has it
+		# worked out from them.
+		log.taxable_amount = (
+			flt(details["taxable"])
+			if details.get("taxable") is not None
+			else flt(details["payable"]) - flt(details.get("tax_total"))
+		)
 		log.supplier = _find_supplier(details)
 		problems += _check_addressee(company, details)
 		problems += _check_specification(document)

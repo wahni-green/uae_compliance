@@ -127,6 +127,7 @@ class TestInbound(PipelineTestCase):
 		self.assertEqual((log.direction, log.status), ("Inbound", "Delivered"))
 		self.assertEqual((log.document_type, str(log.document_date)), ("Invoice", str(self.date)))
 		self.assertEqual((log.party_tin, log.total_amount, log.currency), ("1555555555", 2100, "AED"))
+		self.assertEqual((log.taxable_amount, log.tax_amount), (2000, 100))
 		self.assertEqual(log.errors, "")
 		self.assertIn("<Invoice", log.xml)
 
