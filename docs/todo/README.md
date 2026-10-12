@@ -21,6 +21,8 @@ Phase checklists for [UAE_COMPLIANCE_PLAN.md](../UAE_COMPLIANCE_PLAN.md). Tick i
 - Inbound e-invoices: create Purchase Invoices from received documents; acknowledge or dispute them (Microvista has no endpoint for it); full Schematron validation ([Phase 6](phase-6-einvoicing-pint-ae.md)).
 - **CD 149/2026** (read; [UAE_VERIFICATION.md](../UAE_VERIFICATION.md) section 9): the apportionment changes from the first tax year after 1 October 2027 ([Phase 5](phase-5-advanced-schemes.md)). The cash payment rule is built; enter the Minister's amount in UAE Compliance Settings once it is published.
 - The excise return ([Phase 5](phase-5-advanced-schemes.md)).
+- Block transactions that would change the VAT 201 figures of a period after it is filed ([Phase 4](phase-4-vat-201-return.md)).
+- Filing the VAT 201 directly from ERPNext (submission to the FTA EmaraTax portal) instead of only marking it as filed ([Phase 4](phase-4-vat-201-return.md)).
 
 **To confirm or run**
 - Where a supplier reports the value of a reverse charge sale on the VAT 201 ([UAE_VERIFICATION.md](../UAE_VERIFICATION.md) sections 7 and 8).
