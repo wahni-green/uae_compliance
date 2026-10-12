@@ -22,7 +22,7 @@
 - [x] Tax category codes S, E, O, AE, Z (no `G`)
 - [x] Tax category N for the margin scheme (PR 6h). The code list file spells N with a Greek capital nu, but the Schematron rules and the official sample use the Latin letter, which is what is sent
 - [x] Transaction-type flags: free trade zone, deemed supply, e-commerce, export and margin scheme
-- [x] Transaction-type flags: summary (with its invoice period), continuous and disclosed agent billing (with the principal's TRN), checked against the official rules and the UBL schema. Microvista receives the period, frequency of billing and principal from its documentation's field names (not yet run against the sandbox)
+- [x] Transaction-type flags: summary (with its invoice period), continuous and disclosed agent billing (with the principal's TRN), checked against the official rules and the UBL schema. Microvista receives the period, frequency of billing and principal from its documentation's field names; summary, continuous and agent billing invoices were sent to its sandbox and Cleared (12 Oct 2026)
 - [x] Invoice types 380/480, credit notes 381/81; TaxCurrencyCode AED + `aedtotal-incl-vat` document reference
 - [x] Participant ID `0235:<TIN>` with predefined endpoints 9900000097/98/99; legal registration ID type (TL/EID/PAS/CD), with the issuing country for a passport
 - [ ] Self-billing (the buyer issues the invoice: types 389 and 261, a different CustomizationID, Purchase Invoices producing PINT documents, and provider support for sending as the buyer)
@@ -43,7 +43,7 @@
 - [x] Reverse charge documents for oil, natural gas, pure hydrocarbons, electronic devices and precious metals and stones (PR 6g)
 - [x] Margin scheme documents, invoices and credit notes (PR 6h), verified against the official rules and the Microvista sandbox
 - [x] Summary, continuous and agent billing documents
-- [ ] Self-billing documents
+- [ ] Self-billing documents. Tried on the Microvista sandbox (12 Oct 2026): `generate-invoice` with type 389 is accepted and Cleared, with the account as the seller or as the buyer, but the stored invoice comes back as type 380 (`get-invoice-details-by-id`), so Microvista issues a standard invoice and does not support self-billing through this API. Needs a provider that does
 
 ## PR 6b: provider framework and sending pipeline
 - **UAE E-Invoice Settings** (one row per company: provider, environment, "E-Invoice From" date, endpoint, client ID, client secret as a Password, extra JSON configuration) and **UAE E-Invoice Log** (one per document: status, provider reference, idempotency key, attempts, next attempt, the XML, the provider's response, errors, retention date).
@@ -64,4 +64,4 @@
 - [ ] Inbound: create Purchase Invoices from received documents (needs a mapping of the sender's lines to items and accounts)
 - [x] Inbound: a received document's XML goes through the app's own PINT AE checks (the same ones used before sending: not the full Schematron) and is flagged Invalid with the problems; a document delivered as a model, without XML, is not checked. An unknown currency no longer stops the run
 - [ ] Inbound: full validation of received documents against the official Schematron rules (not bundled; the checks run so far are a subset, so a Delivered document has not passed every rule)
-- [ ] Inbound: acknowledge or dispute a received document (needs the provider's API for it)
+- [ ] Inbound: acknowledge or dispute a received document. Microvista's API (v2.0 documentation and Postman collection) has no endpoint for it, only `get-purchase-invoice-details`; another provider may
