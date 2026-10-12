@@ -400,11 +400,21 @@ def poll_log(log: str) -> None:
 
 
 def retry_log(log: str) -> None:
-	"""Rebuild the XML from the invoice as it is now and send it again."""
+	"""Rebuild the XML from the invoice as it is now and send it again. Not for a rejected document: its
+	number is not reused."""
 	frappe.db.get_value(LOG, log, "name", for_update=True)
 	doc_log = frappe.get_doc(LOG, log)
 	if doc_log.status in SENT_STATUSES:
 		frappe.throw(_("This e-invoice has already been sent."))
+
+	if doc_log.status == STATUS_REJECTED:
+		# The provider keeps a rejected document and blocks its number, so the number is never sent again.
+		frappe.throw(
+			_(
+				"The provider rejected this e-invoice, and its number cannot be sent again. Cancel the invoice and amend it, which gives it a new number, or issue a credit note if it cannot be cancelled."
+			),
+			title=_("E-Invoice Rejected"),
+		)
 
 	if frappe.db.get_value(doc_log.reference_doctype, doc_log.reference_name, "docstatus") != 1:
 		frappe.throw(_("The invoice is not submitted, so it cannot be sent."))
