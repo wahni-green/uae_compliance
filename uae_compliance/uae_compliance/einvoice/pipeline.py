@@ -150,14 +150,45 @@ def get_log(doc_name: str):
 
 def get_retention_years(invoice: str) -> int:
 	"""Seven years when the invoice has a real estate item, else five."""
-	has_real_estate = frappe.db.exists(
-		"Sales Invoice Item",
-		{
-			"parent": invoice,
-			"item_code": ("in", frappe.get_all("Item", filters={"uae_is_real_estate": 1}, pluck="name")),
-		},
+	row = frappe.qb.DocType("Sales Invoice Item")
+	item = frappe.qb.DocType("Item")
+	found = (
+		frappe.qb.from_(row)
+		.join(item)
+		.on(item.name == row.item_code)
+		.select(row.name)
+		.where((row.parent == invoice) & (item.uae_is_real_estate == 1))
+		.limit(1)
+		.run()
 	)
-	return REAL_ESTATE_RETENTION_YEARS if has_real_estate else RETENTION_YEARS
+	return REAL_ESTATE_RETENTION_YEARS if found else RETENTION_YEARS
+
+
+def extend_retention_for_item(item: str) -> None:
+	"""A real estate item was ticked: the logs of invoices that sold it are kept seven years from the
+	invoice date and from clearance. Retention is only ever extended, never shortened."""
+	invoices = frappe.get_all("Sales Invoice Item", filters={"item_code": item}, pluck="parent")
+	if not invoices:
+		return
+
+	for name in frappe.get_all(
+		LOG,
+		filters={
+			"direction": DIRECTION_OUTBOUND,
+			"reference_doctype": DOCTYPE,
+			"reference_name": ("in", invoices),
+		},
+		pluck="name",
+	):
+		log = frappe.get_doc(LOG, name)
+		dates = [add_years(getdate(frappe.db.get_value(DOCTYPE, log.reference_name, "posting_date")), 7)]
+		if log.cleared_on:
+			dates.append(add_years(getdate(log.cleared_on), 7))
+
+		log.retention_years = REAL_ESTATE_RETENTION_YEARS
+		log.retain_until = max([getdate(log.retain_until), *dates]) if log.retain_until else max(dates)
+		log.flags.ignore_permissions = True
+		log.save()
 
 
 def create_log(doc, row):
@@ -165,6 +196,7 @@ def create_log(doc, row):
 	starts as Generated or Invalid."""
 	log = get_log(doc.name)
 	if not log:
+		years = get_retention_years(doc.name)
 		log = frappe.get_doc(
 			{
 				"doctype": LOG,
@@ -175,7 +207,8 @@ def create_log(doc, row):
 				"document_number": doc.name,
 				"provider": row.provider,
 				"environment": row.environment,
-				"retain_until": add_years(getdate(doc.posting_date), get_retention_years(doc.name)),
+				"retention_years": years,
+				"retain_until": add_years(getdate(doc.posting_date), years),
 			}
 		)
 		log.flags.ignore_permissions = True
@@ -318,7 +351,7 @@ def _apply_result(log, status: str, detail: str | None) -> None:
 		log.cleared_on = log.cleared_on or now_datetime()
 		log.retain_until = max(
 			getdate(log.retain_until or log.cleared_on),
-			add_years(getdate(log.cleared_on), get_retention_years(log.reference_name)),
+			add_years(getdate(log.cleared_on), log.retention_years or RETENTION_YEARS),
 		)
 
 
