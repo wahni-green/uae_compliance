@@ -10,7 +10,5 @@ Modelled on India Compliance's purchase reconciliation: the supplier-side record
 - [x] Link, unlink, ignore and restore; a cancelled Purchase Invoice releases its e-invoice
 - [x] Report **UAE Purchase Reconciliation** with Run Matching and the actions, and an Excel export from the report
 - [x] Tests (matching rules, tolerance, actions, report rows, non-UAE company)
-- [ ] Create a Purchase Invoice from a received document (needs the mapping of lines to items and accounts)
-- [ ] Upload of supplier data before e-invoicing is live
-- [ ] Scheduled matching
-- [ ] Warn or block on the VAT return when input VAT is claimed on unmatched invoices (decided: show only for now)
+- [x] Warning on the UAE VAT Return (when generated and before filing) when Purchase Invoices of the period carry input VAT and have no matching received e-invoice; only for companies that receive e-invoices, and ignored invoices are left out. A warning only, filing is not blocked
+- Skipped for now (decided): creating a Purchase Invoice from a received document, upload of supplier data, scheduled matching
