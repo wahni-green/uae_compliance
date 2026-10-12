@@ -27,7 +27,7 @@
 - [x] Participant ID `0235:<TIN>` with predefined endpoints 9900000097/98/99; legal registration ID type (TL/EID/PAS/CD), with the issuing country for a passport
 - [ ] Self-billing (the buyer issues the invoice: types 389 and 261, a different CustomizationID, Purchase Invoices producing PINT documents, and provider support for sending as the buyer)
 - [x] No QR code; XML retained 5 years
-- [ ] 7-year retention for real estate is not applied (every log is kept 5 years)
+- [x] 7-year retention for real estate: tick **Real Estate** on the Item and its invoices are kept 7 years (inbound documents are kept 5). The period is stored on the log; ticking the item later extends the logs already issued for it
 - [x] Exclusions: B2C (customers that are individuals) are not e-invoiced; imports under the reverse charge are purchases and never produce a sales document
 - [ ] Other exclusions in the specification (exempt financial services, airline e-tickets, sovereign activity) are not detected: such invoices are sent unless the company excludes them
 

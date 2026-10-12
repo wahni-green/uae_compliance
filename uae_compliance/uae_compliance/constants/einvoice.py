@@ -38,3 +38,5 @@ BACKOFF_MINUTES = 1
 
 # E-invoices are kept for five years (MoF Guidelines section 5.4); the log may not be deleted before.
 RETENTION_YEARS = 5
+# Records of real estate are kept for seven years.
+REAL_ESTATE_RETENTION_YEARS = 7

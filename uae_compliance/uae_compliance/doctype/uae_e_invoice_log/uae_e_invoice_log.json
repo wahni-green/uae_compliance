@@ -66,6 +66,7 @@
   "next_attempt_on",
   "cleared_on",
   "retain_until",
+  "retention_years",
   "section_break_details",
   "status_detail",
   "errors",
@@ -241,6 +242,12 @@
    "fieldname": "retain_until",
    "fieldtype": "Date",
    "label": "Retain Until",
+   "read_only": 1
+  },
+  {
+   "fieldname": "retention_years",
+   "fieldtype": "Int",
+   "label": "Retention Years",
    "read_only": 1
   },
   {

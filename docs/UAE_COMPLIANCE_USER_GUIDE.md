@@ -65,7 +65,7 @@ Only companies enabled in **UAE E-Invoice Settings** send e-invoices (see the co
 2. The invoice is sent in the background. Its **E-Invoice Status** shows the progress: Generated, Submitted (accepted by the provider), Delivered (to the buyer) and Cleared (reported to the FTA). Rejected means the provider or the FTA refused it; the reasons are in the **E-Invoice Log**.
 3. A failed send is retried automatically with increasing waits. After the retry limit the log shows Failed. Fix the cause and use **Retry** on the log.
 4. **A sent invoice cannot be cancelled.** Issue a credit note. An invoice whose last send attempt has no known outcome (for example, a timeout) also cannot be cancelled: use **Retry** until the status is settled.
-5. Logs are kept for five years and cannot be deleted before.
+5. Logs are kept for five years, seven for an invoice with an item ticked **Real Estate**, and cannot be deleted before.
 
 Received invoices appear as **inbound** logs, matched to your suppliers by TIN or TRN. One that cannot be read or is addressed to someone else is marked Invalid with the reason. Entering them as Purchase Invoices is still done by hand.
 

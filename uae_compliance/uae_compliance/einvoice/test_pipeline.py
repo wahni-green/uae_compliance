@@ -118,6 +118,52 @@ class TestSubmission(PipelineTestCase):
 		doc, _enqueue = self.submit()
 		self.assertEqual(self.log_of(doc).retain_until, add_years(getdate(doc.posting_date), 5))
 
+	def test_real_estate_is_kept_seven_years(self):
+		item = make_einvoice_item("_Test EInv Property")
+		frappe.db.set_value("Item", item.name, "uae_is_real_estate", 1)
+		doc, _enqueue = self.submit(rows=[{"item_code": item.name, "rate": 1000, "qty": 1}])
+		log = self.log_of(doc)
+		self.assertEqual(log.retain_until, add_years(getdate(doc.posting_date), 7))
+
+		result = SubmitResult(provider_reference="R2", status="Cleared", detail="")
+		with patch(
+			"uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.submit", return_value=result
+		):
+			pipeline.submit_log(log.name)
+
+		log.reload()
+		self.assertGreaterEqual(log.retain_until, add_years(getdate(log.cleared_on), 7))
+
+	def test_the_period_chosen_at_issue_is_kept_at_clearance(self):
+		item = make_einvoice_item("_Test EInv Property 2")
+		frappe.db.set_value("Item", item.name, "uae_is_real_estate", 1)
+		doc, _enqueue = self.submit(rows=[{"item_code": item.name, "rate": 1000, "qty": 1}])
+		log = self.log_of(doc)
+		self.assertEqual(log.retention_years, 7)
+
+		frappe.db.set_value("Item", item.name, "uae_is_real_estate", 0)
+		result = SubmitResult(provider_reference="R3", status="Cleared", detail="")
+		with patch(
+			"uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.submit", return_value=result
+		):
+			pipeline.submit_log(log.name)
+
+		log.reload()
+		self.assertGreaterEqual(log.retain_until, add_years(getdate(log.cleared_on), 7))
+
+	def test_ticking_real_estate_extends_existing_logs(self):
+		item = make_einvoice_item("_Test EInv Property 3")
+		doc, _enqueue = self.submit(rows=[{"item_code": item.name, "rate": 1000, "qty": 1}])
+		self.assertEqual(self.log_of(doc).retain_until, add_years(getdate(doc.posting_date), 5))
+
+		item.reload()
+		item.uae_is_real_estate = 1
+		item.save()
+
+		log = self.log_of(doc)
+		self.assertEqual(log.retention_years, 7)
+		self.assertEqual(log.retain_until, add_years(getdate(doc.posting_date), 7))
+
 
 class TestSendingAndPolling(PipelineTestCase):
 	def test_a_document_goes_through_to_cleared(self):
