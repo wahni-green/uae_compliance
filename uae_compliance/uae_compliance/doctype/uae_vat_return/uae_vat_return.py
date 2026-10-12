@@ -16,6 +16,7 @@ from uae_compliance.uae_compliance.constants.vat_return import (
 	BOX_ZERO_RATED,
 	EMIRATE_BOX_CODES,
 )
+from uae_compliance.uae_compliance.einvoice.reconciliation import get_unreconciled_input_vat
 from uae_compliance.uae_compliance.utils.tax_account import get_output_vat_account
 from uae_compliance.uae_compliance.utils.vat_return.apportionment import (
 	get_period_supplies,
@@ -255,6 +256,30 @@ class UAEVATReturn(Document):
 		self.generated_for_data = fingerprint
 
 		self.save()
+		self.warn_if_input_vat_is_unreconciled()
+
+	def warn_if_input_vat_is_unreconciled(self):
+		"""Input VAT is claimed on Purchase Invoices that no received e-invoice matches: the supplier may
+		not have reported them. A warning only (see the UAE Purchase Reconciliation report)."""
+		count, vat = 0, 0.0
+		for company in get_scope(self.company):
+			found, amount = get_unreconciled_input_vat(company, self.from_date, self.to_date)
+			count, vat = count + found, vat + amount
+
+		if not count:
+			return
+
+		frappe.msgprint(
+			_(
+				"{0} Purchase Invoices of this period with input VAT of {1} have no matching received e-invoice. Check them in the {2} report before filing."
+			).format(
+				count,
+				frappe.format(vat, {"fieldtype": "Currency"}),
+				frappe.utils.get_link_to_form("Report", "UAE Purchase Reconciliation"),
+			),
+			indicator="orange",
+			title=_("Unreconciled Input VAT"),
+		)
 
 	@frappe.whitelist()
 	def mark_as_filed(self):
@@ -272,6 +297,7 @@ class UAEVATReturn(Document):
 			raise
 
 		self.save()
+		self.warn_if_input_vat_is_unreconciled()
 
 	@frappe.whitelist()
 	def download_faf(self):

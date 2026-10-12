@@ -1,4 +1,5 @@
 import itertools
+from unittest.mock import patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -6,7 +7,9 @@ from frappe.tests.utils import FrappeTestCase
 from uae_compliance.tests import (
 	configure_vat_settings,
 	create_submitted_purchase_invoice,
+	enable_einvoicing,
 	get_uae_test_company,
+	get_unique_test_date,
 )
 from uae_compliance.uae_compliance.einvoice import reconciliation as recon
 from uae_compliance.uae_compliance.report.uae_purchase_reconciliation import (
@@ -261,3 +264,67 @@ class TestReport(ReconciliationTestCase):
 		row = next(r for r in self.rows() if r["status"] == "Suggested Match")
 		self.assertIn("Date", row["differences"])
 		self.assertIn("VAT", row["differences"])
+
+
+class TestVATReturnWarning(ReconciliationTestCase):
+	def setUp(self):
+		super().setUp()
+		# A day of its own: test methods share one transaction, so a wider period would see the
+		# invoices of the others.
+		self.today = str(get_unique_test_date())
+
+	def vat_return(self):
+		return frappe.get_doc(
+			{
+				"doctype": "UAE VAT Return",
+				"company": self.company,
+				"from_date": self.today,
+				"to_date": self.today,
+			}
+		)
+
+	def unreconciled(self):
+		return recon.get_unreconciled_input_vat(self.company, self.today, self.today)
+
+	def test_no_warning_while_the_company_does_not_receive_e_invoices(self):
+		settings = frappe.get_doc("UAE E-Invoice Settings")
+		settings.companies = []
+		settings.save()
+		frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")
+		self.invoice()
+		self.assertEqual(self.unreconciled(), (0, 0.0))
+
+	def test_unmatched_input_vat_is_counted(self):
+		enable_einvoicing(self.company)
+		self.invoice()
+		self.invoice(bill_no="NOVAT", vat=False)
+		self.assertEqual(self.unreconciled(), (1, 50.0))
+
+	def test_matched_and_ignored_invoices_are_not_counted(self):
+		enable_einvoicing(self.company)
+		matched, ignored = self.invoice(), self.invoice(bill_no="IGN-1")
+		self.assertEqual(self.unreconciled(), (2, 100.0))
+		self.received()
+		recon.ignore_documents([], [ignored.name])
+		self.run_matching()
+
+		self.assertEqual(self.unreconciled(), (0, 0.0))
+		self.assertEqual(
+			frappe.db.get_value("Purchase Invoice", matched.name, "uae_reconciliation_status"), "Match Found"
+		)
+
+	def test_the_return_warns(self):
+		enable_einvoicing(self.company)
+		self.invoice()
+		with patch("frappe.msgprint") as msgprint:
+			self.vat_return().warn_if_input_vat_is_unreconciled()
+
+		msgprint.assert_called_once()
+		self.assertIn("no matching received e-invoice", msgprint.call_args.args[0])
+
+	def test_the_return_does_not_warn_without_unmatched_invoices(self):
+		enable_einvoicing(self.company)
+		with patch("frappe.msgprint") as msgprint:
+			self.vat_return().warn_if_input_vat_is_unreconciled()
+
+		msgprint.assert_not_called()

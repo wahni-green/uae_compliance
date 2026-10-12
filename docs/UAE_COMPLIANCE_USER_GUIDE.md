@@ -78,7 +78,7 @@ Open the report **UAE Purchase Reconciliation**, choose the company and period a
 - **Exact Match** and **Suggested Match** are linked for you. A suggestion differs in how the number is written or in the date.
 - **Mismatch** rows are likely pairs that differ too much: select one and choose **Actions > Link** to accept it.
 - **Only Received** rows are e-invoices with no Purchase Invoice; **Only in Books** rows are Purchase Invoices with no received e-invoice (check the supplier sent one before claiming the input VAT). To link two such rows by hand, select one of each and choose **Link**.
-- **Unlink** frees a pair so that it is matched again; **Ignore** leaves a row out (**Restore Ignored** brings it back). Reverse charge, GCC and import purchases are not expected to have an e-invoice and are not listed.
+- **Unlink** frees a pair so that it is matched again; **Ignore** leaves a row out (**Restore Ignored** brings it back). Reverse charge, GCC and import purchases are not expected to have an e-invoice and are not listed. When you generate a VAT return, or file it, you are warned if Purchase Invoices of the period carry input VAT and have no matching received e-invoice (only for companies that receive e-invoices; ignored invoices are not counted). It is a warning only.
 
 ## 7. When something looks wrong
 

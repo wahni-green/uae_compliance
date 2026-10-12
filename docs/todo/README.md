@@ -17,7 +17,6 @@ Phase checklists for [UAE_COMPLIANCE_PLAN.md](../UAE_COMPLIANCE_PLAN.md). Tick i
 **To build**
 - Self-billing documents (on hold: Microvista issues a type 389 as a standard invoice; [Phase 6](phase-6-einvoicing-pint-ae.md)).
 - Inbound e-invoices: create Purchase Invoices from received documents; acknowledge or dispute them (Microvista has no endpoint for it); full Schematron validation ([Phase 6](phase-6-einvoicing-pint-ae.md)).
-- Purchase reconciliation, further steps: create a Purchase Invoice from a received document, upload of supplier data, scheduled matching ([Phase 8](phase-8-purchase-reconciliation.md)).
 - **CD 149/2026** (read; [UAE_VERIFICATION.md](../UAE_VERIFICATION.md) section 9): the apportionment changes from the first tax year after 1 October 2027 ([Phase 5](phase-5-advanced-schemes.md)). The cash payment rule is built; enter the Minister's amount in UAE Compliance Settings once it is published.
 - The excise return ([Phase 5](phase-5-advanced-schemes.md)).
 

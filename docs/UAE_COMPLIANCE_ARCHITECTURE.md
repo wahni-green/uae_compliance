@@ -32,6 +32,7 @@ Mirrors `oman_compliance`. See [UAE_COMPLIANCE_PLAN.md](UAE_COMPLIANCE_PLAN.md) 
 - Received e-invoices (inbound UAE E-Invoice Logs, with `taxable_amount` and `tax_amount`) are matched with submitted Purchase Invoices of the same supplier, currency and kind (invoice or credit note). Purchase Invoices that are reverse charge, from a GCC supplier or imports are left out.
 - `run_matching` applies the stored rules in order over what is not matched yet, claiming each document once: exact (normalised number, same date, amounts within AED 1), suggested (close number and date, or the same number on another date). The match is stored on the log (`link_name`, `match_status`) and on the Purchase Invoice (`uae_reconciliation_status`). The taxable amount and the VAT together may differ by AED 1.
 - The mismatch rules (close number, or equal amounts within 10 days) are only evaluated by the report, for what is still unmatched; the user links such a pair by hand.
+- `UAE VAT Return` warns (`warn_if_input_vat_is_unreconciled`, after generating and when filing) about the input VAT of unmatched, unignored Purchase Invoices of the period, for the companies of its scope that receive e-invoices; it never blocks.
 - Manual link, unlink, ignore and restore are whitelisted functions; a link replaces any earlier link of either document, and cancelling a Purchase Invoice releases its e-invoice.
 
 ## Providers (`einvoice/asp_client.py`, `registry.py`, `asp_clients/`)

@@ -393,6 +393,23 @@ def release_cancelled_invoice(doc, method=None) -> None:
 	frappe.db.set_value(INVOICE, doc.name, "uae_reconciliation_status", "", update_modified=False)
 
 
+def get_unreconciled_input_vat(company: str, from_date, to_date) -> tuple[int, float]:
+	"""(count, input VAT in company currency) of the Purchase Invoices of the period that carry input
+	VAT and have no matching received e-invoice, for a company that receives e-invoices. Ignored
+	invoices are left out: that was a decision."""
+	from uae_compliance.uae_compliance.einvoice.registry import get_company_setting
+
+	row = get_company_setting(company)
+	if not row or (row.mandatory_from and getdate(to_date) < getdate(row.mandatory_from)):
+		return 0, 0.0
+
+	unmatched = [b for b in get_books(company, from_date, to_date, status="") if b["tax"] > 0]
+	rate = {
+		b["name"]: flt(frappe.db.get_value(INVOICE, b["name"], "conversion_rate")) or 1 for b in unmatched
+	}
+	return len(unmatched), sum(b["tax"] * rate[b["name"]] for b in unmatched)
+
+
 def get_differences(received: dict, book: dict) -> str:
 	"""What differs between a received e-invoice and a Purchase Invoice, for the report."""
 	notes = []
