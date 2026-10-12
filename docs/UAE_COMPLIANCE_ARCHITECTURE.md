@@ -28,6 +28,12 @@ Mirrors `oman_compliance`. See [UAE_COMPLIANCE_PLAN.md](UAE_COMPLIANCE_PLAN.md) 
 - A log is kept for 5 years (7 when an invoice row's Item is ticked **Real Estate**) from the invoice date, or from clearance if later, and cannot be deleted before then.
 - A log cannot be sent or polled with a different provider or environment from the ones it was created under. For an unsent log, changed settings use up send attempts until the retry limit marks it `Failed`, and it then needs a manual **Retry** once the original settings are restored. Polling of a sent log simply keeps waiting.
 
+## Purchase reconciliation (`einvoice/reconciliation.py`, report `UAE Purchase Reconciliation`)
+- Received e-invoices (inbound UAE E-Invoice Logs, with `taxable_amount` and `tax_amount`) are matched with submitted Purchase Invoices of the same supplier, currency and kind (invoice or credit note). Purchase Invoices that are reverse charge, from a GCC supplier or imports are left out.
+- `run_matching` applies the stored rules in order over what is not matched yet, claiming each document once: exact (normalised number, same date, amounts within AED 1), suggested (close number and date, or the same number on another date). The match is stored on the log (`link_name`, `match_status`) and on the Purchase Invoice (`uae_reconciliation_status`). The taxable amount and the VAT together may differ by AED 1.
+- The mismatch rules (close number, or equal amounts within 10 days) are only evaluated by the report, for what is still unmatched; the user links such a pair by hand.
+- Manual link, unlink, ignore and restore are whitelisted functions; a link replaces any earlier link of either document, and cancelling a Purchase Invoice releases its e-invoice.
+
 ## Providers (`einvoice/asp_client.py`, `registry.py`, `asp_clients/`)
 Providers are adapters of `ASPClient` registered with `@register_provider` and listed in `registry._load_adapters`. An adapter gets the invoice as PINT AE XML and as a plain-data model (`OutgoingDocument.xml` / `.model`), so providers whose API takes fields instead of a document need no second builder. The shared layer owns retries, idempotency, polling and retention; adapters only translate. Included: `Mock` (development and tests) and `Microvista`.
 

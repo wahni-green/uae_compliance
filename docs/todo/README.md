@@ -10,18 +10,18 @@ Phase checklists for [UAE_COMPLIANCE_PLAN.md](../UAE_COMPLIANCE_PLAN.md). Tick i
 - [Phase 5 – Advanced schemes](phase-5-advanced-schemes.md)
 - [Phase 6 – E-invoicing (PINT AE)](phase-6-einvoicing-pint-ae.md)
 - [Phase 7 – Hardening](phase-7-hardening.md)
+- [Phase 8 – Purchase reconciliation](phase-8-purchase-reconciliation.md)
 
 ## Remaining work (kept in step with the phase checklists)
 
 **To build**
-- E-invoice cases: summary, continuous and agent billing invoices, self-billing ([Phase 6](phase-6-einvoicing-pint-ae.md)).
-- Inbound e-invoices: create Purchase Invoices from received documents; acknowledge or dispute them ([Phase 6](phase-6-einvoicing-pint-ae.md)).
+- Self-billing documents (on hold: Microvista issues a type 389 as a standard invoice; [Phase 6](phase-6-einvoicing-pint-ae.md)).
+- Inbound e-invoices: create Purchase Invoices from received documents; acknowledge or dispute them (Microvista has no endpoint for it); full Schematron validation ([Phase 6](phase-6-einvoicing-pint-ae.md)).
+- Purchase reconciliation, further steps: create a Purchase Invoice from a received document, upload of supplier data, scheduled matching ([Phase 8](phase-8-purchase-reconciliation.md)).
 - **CD 149/2026** (read; [UAE_VERIFICATION.md](../UAE_VERIFICATION.md) section 9): the apportionment changes from the first tax year after 1 October 2027 ([Phase 5](phase-5-advanced-schemes.md)). The cash payment rule is built; enter the Minister's amount in UAE Compliance Settings once it is published.
-- Tourist refund: the 90-day limit and the daily cap across invoices ([Phase 5](phase-5-advanced-schemes.md)).
-- Smaller gaps: the excise return, 7-year retention for real estate, detection of other e-invoice exclusions.
+- The excise return ([Phase 5](phase-5-advanced-schemes.md)).
 
 **To confirm or run**
 - Where a supplier reports the value of a reverse charge sale on the VAT 201 ([UAE_VERIFICATION.md](../UAE_VERIFICATION.md) sections 7 and 8).
 - The current FAF specification and tax codes; the electronic devices reverse charge text (CD 91/2023).
 - A Microvista production run; UAT with a real UAE company.
-- Wider tests that non-UAE companies are unaffected; `pip-audit` locally.

@@ -379,6 +379,7 @@ class MicrovistaASP(ASPClient):
 			"buyer_trn": row.get("buyerTRN") or "",
 			"tax_total": flt(row.get("taxAmount")),
 			"payable": flt(row.get("totalAmount")),
+			"taxable": flt(row.get("totalAmount")) - flt(row.get("taxAmount")),
 			"lines": len(lines),
 		}
 

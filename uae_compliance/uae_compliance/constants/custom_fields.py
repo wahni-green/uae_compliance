@@ -234,6 +234,15 @@ CUSTOM_FIELDS = {
 			"Check",
 			"uae_is_postponed_import_vat",
 		),
+		_field(
+			"uae_reconciliation_status",
+			"E-Invoice Reconciliation",
+			"Select",
+			"uae_cash_payment_intended",
+			options="\nMatch Found\nIgnored",
+			read_only=1,
+			no_copy=1,
+		),
 	],
 	"Sales Invoice Item": [
 		_field(
