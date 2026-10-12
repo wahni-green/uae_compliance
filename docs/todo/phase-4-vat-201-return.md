@@ -10,6 +10,8 @@
 - [x] Reports: UAE VAT Sales Register, Purchase Register, VAT Audit (invoice level); FAF export
 - [x] Reconcile against ERPNext UAE VAT 201 on same data
 - [x] Tests
+- [ ] Block transactions (create, amend, cancel, backdated posting) that would change the value of a VAT 201 after it is filed (a Filed UAE VAT Return for the company and period); decide the rule for late documents (whether they go in the next return, a correction of the filed one, or a Voluntary Disclosure, under the FTA's guidance)
+- [ ] File the VAT 201 directly from ERPNext: check first whether the FTA offers an API for returns (otherwise this is not possible and Mark as Filed stays manual); if it does, add a submit action that records the FTA reference and then marks the return Filed
 
 ## From verification (see ../UAE_VERIFICATION.md)
 - [x] Box 1 per emirate (lettering a-g to confirm); box 15 is Yes/No; profit margin scheme = Yes/No flag only

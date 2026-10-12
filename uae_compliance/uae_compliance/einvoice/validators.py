@@ -159,6 +159,10 @@ def _check_parties(xml) -> list[str]:
 				errors.append(_("The {0} has no {1}.").format(label, what))
 
 		subdivision = _text(xml, f"{base}/cac:PostalAddress/cbc:CountrySubentity")
+		if not subdivision and not is_domestic and is_buyer:
+			# Rule ibr-144-ae asks for it whatever the country, and ClearTax enforces it for a buyer abroad.
+			errors.append(_("The {0} has no state or province.").format(label))
+
 		if is_domestic:
 			if not subdivision:
 				errors.append(_("The {0} has no emirate.").format(label))
@@ -425,6 +429,21 @@ def _check_conditional(xml, is_credit_note: bool, line_tag: str) -> list[str]:
 		):
 			if not _text(xml, f"cac:Delivery/cac:DeliveryLocation/cac:Address/cbc:{tag}"):
 				errors.append(_("An e-commerce supply needs the delivery {0}.").format(what))
+
+	if flags[7:8] == "1":
+		address = "cac:Delivery/cac:DeliveryLocation/cac:Address"
+		for tag, what in (
+			("StreetName", _("address line")),
+			("CityName", _("city")),
+			("CountrySubentity", _("state or province")),
+		):
+			if not _text(xml, f"{address}/cbc:{tag}"):
+				errors.append(_("An export needs the delivery {0}.").format(what))
+		country = _text(xml, f"{address}/cac:Country/cbc:IdentificationCode")
+		if not country:
+			errors.append(_("An export needs the delivery country."))
+		elif country == "AE":
+			errors.append(_("An export must be delivered outside the UAE."))
 
 	tax_point = _text(xml, "cbc:TaxPointDate")
 	if tax_point and tax_point >= _text(xml, "cbc:IssueDate"):

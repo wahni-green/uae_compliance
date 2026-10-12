@@ -719,8 +719,9 @@ class PintAEBuilder:
 		return (self.doc.get("uae_principal_trn") or "").strip()
 
 	def _delivery_details(self) -> dict | None:
-		"""Where an e-commerce supply was delivered: the shipping address, else the customer's."""
-		if not self.doc.get("uae_is_ecommerce_supply"):
+		"""Where an e-commerce supply or an export was delivered: the shipping address, else the
+		customer's (rule ibr-152-ae asks for it on an export)."""
+		if not (self.doc.get("uae_is_ecommerce_supply") or self.doc.get("uae_is_export")):
 			return None
 
 		address = self._address(self.doc.get("shipping_address_name") or self.doc.get("customer_address"))
