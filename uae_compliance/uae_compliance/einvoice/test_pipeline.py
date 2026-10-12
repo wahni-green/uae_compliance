@@ -89,6 +89,16 @@ class TestScope(PipelineTestCase):
 		doc.save()
 		self.assertEqual(doc.uae_einvoice_exclusion, "Airline E-Ticket")
 
+	def test_a_reason_chosen_over_a_copied_one_is_kept(self):
+		item = make_einvoice_item("_Test EInv Ticket 4")
+		frappe.db.set_value("Item", item.name, "uae_einvoice_exclusion", "Airline E-Ticket")
+		doc = self.invoice(rows=[{"item_code": item.name, "rate": 500, "qty": 1}])
+
+		doc.uae_einvoice_exclusion = "Sovereign Activity"
+		doc.append("items", {"item_code": "_Test EInv Service", "qty": 1, "rate": 100})
+		doc.save()
+		self.assertEqual(doc.uae_einvoice_exclusion, "Sovereign Activity")
+
 	def test_a_mix_of_excluded_and_other_items_is_sent(self):
 		item = make_einvoice_item("_Test EInv Ticket 2")
 		frappe.db.set_value("Item", item.name, "uae_einvoice_exclusion", "Airline E-Ticket")
