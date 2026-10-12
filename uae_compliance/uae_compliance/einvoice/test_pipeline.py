@@ -75,6 +75,20 @@ class TestScope(PipelineTestCase):
 		self.assertIsNone(self.log_of(doc))
 		enqueue.assert_not_called()
 
+	def test_an_exclusion_copied_from_items_follows_the_rows(self):
+		item = make_einvoice_item("_Test EInv Ticket 3")
+		frappe.db.set_value("Item", item.name, "uae_einvoice_exclusion", "Airline E-Ticket")
+		doc = self.invoice(rows=[{"item_code": item.name, "rate": 500, "qty": 1}])
+		self.assertEqual(doc.uae_einvoice_exclusion, "Airline E-Ticket")
+
+		doc.append("items", {"item_code": "_Test EInv Service", "qty": 1, "rate": 100})
+		doc.save()
+		self.assertFalse(doc.uae_einvoice_exclusion)
+
+		doc.items = doc.items[:1]
+		doc.save()
+		self.assertEqual(doc.uae_einvoice_exclusion, "Airline E-Ticket")
+
 	def test_a_mix_of_excluded_and_other_items_is_sent(self):
 		item = make_einvoice_item("_Test EInv Ticket 2")
 		frappe.db.set_value("Item", item.name, "uae_einvoice_exclusion", "Airline E-Ticket")

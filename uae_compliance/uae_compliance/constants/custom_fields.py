@@ -268,6 +268,15 @@ CUSTOM_FIELDS = {
 			"uae_supply_date",
 			options=EXCLUSION_SELECT_OPTIONS,
 		),
+		_field(
+			"uae_einvoice_exclusion_from_items",
+			"E-Invoice Exclusion from Items",
+			"Check",
+			"uae_einvoice_exclusion",
+			hidden=1,
+			read_only=1,
+			no_copy=1,
+		),
 		_field("uae_einvoice_uuid", "E-Invoice UUID", "Data", "amended_from", read_only=1, no_copy=1),
 		_field(
 			"uae_einvoice_status",

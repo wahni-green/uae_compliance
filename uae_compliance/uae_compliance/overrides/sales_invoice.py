@@ -43,13 +43,15 @@ def validate(doc, method=None):
 
 def set_einvoice_exclusion(doc) -> None:
 	"""An invoice whose rows all carry the same E-Invoice Exclusion on their Items is left out of
-	e-invoicing. A reason chosen on the invoice is kept."""
-	if doc.get("uae_einvoice_exclusion"):
+	e-invoicing. A reason copied from the Items follows the rows when they change; a reason chosen on
+	the invoice is kept."""
+	if doc.get("uae_einvoice_exclusion") and not doc.get("uae_einvoice_exclusion_from_items"):
 		return
 
 	reasons = {frappe.get_cached_value("Item", row.item_code, "uae_einvoice_exclusion") for row in doc.items}
-	if len(reasons) == 1 and (reason := reasons.pop()):
-		doc.uae_einvoice_exclusion = reason
+	reason = reasons.pop() if len(reasons) == 1 else None
+	doc.uae_einvoice_exclusion = reason or ""
+	doc.uae_einvoice_exclusion_from_items = 1 if reason else 0
 
 
 def validate_billing_types(doc) -> None:
