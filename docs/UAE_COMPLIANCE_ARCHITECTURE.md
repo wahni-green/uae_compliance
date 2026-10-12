@@ -25,7 +25,7 @@ Mirrors `oman_compliance`. See [UAE_COMPLIANCE_PLAN.md](UAE_COMPLIANCE_PLAN.md) 
 - A transient failure (`ServiceProviderError`) is retried with exponential backoff up to the settings' retry limit, then the log is `Failed`. A `ProviderRejectedError` is final (`Rejected`).
 - `process_pending` runs every 5 minutes: it sends logs that are due (new logs are due at once, so a lost job is picked up) and polls `Submitted`/`Delivered` logs, the least recently checked first. Status goes `Submitted` -> `Delivered` -> `Cleared` (reported to the FTA).
 - Cancelling an invoice is refused once it has been sent, and while the outcome of an attempt is unknown; an unsent invoice's log is closed as `Invalid`. A sent invoice is corrected with a credit note.
-- A log is kept for 5 years from the invoice date, or from clearance if later, and cannot be deleted before then.
+- A log is kept for 5 years (7 when an invoice row's Item is ticked **Real Estate**) from the invoice date, or from clearance if later, and cannot be deleted before then.
 - A log cannot be sent or polled with a different provider or environment from the ones it was created under. For an unsent log, changed settings use up send attempts until the retry limit marks it `Failed`, and it then needs a manual **Retry** once the original settings are restored. Polling of a sent log simply keeps waiting.
 
 ## Providers (`einvoice/asp_client.py`, `registry.py`, `asp_clients/`)

@@ -16,6 +16,7 @@ from uae_compliance.uae_compliance.constants.einvoice import (
 	DEFAULT_RETRY_LIMIT,
 	DIRECTION_OUTBOUND,
 	POLL_STATUSES,
+	REAL_ESTATE_RETENTION_YEARS,
 	RETENTION_YEARS,
 	SENT_STATUSES,
 	STATUS_CLEARED,
@@ -147,6 +148,18 @@ def get_log(doc_name: str):
 	return frappe.get_doc(LOG, name) if name else None
 
 
+def get_retention_years(invoice: str) -> int:
+	"""Seven years when the invoice has a real estate item, else five."""
+	has_real_estate = frappe.db.exists(
+		"Sales Invoice Item",
+		{
+			"parent": invoice,
+			"item_code": ("in", frappe.get_all("Item", filters={"uae_is_real_estate": 1}, pluck="name")),
+		},
+	)
+	return REAL_ESTATE_RETENTION_YEARS if has_real_estate else RETENTION_YEARS
+
+
 def create_log(doc, row):
 	"""The log of an invoice, created on first use. Building and checking the XML decides whether it
 	starts as Generated or Invalid."""
@@ -162,7 +175,7 @@ def create_log(doc, row):
 				"document_number": doc.name,
 				"provider": row.provider,
 				"environment": row.environment,
-				"retain_until": add_years(getdate(doc.posting_date), RETENTION_YEARS),
+				"retain_until": add_years(getdate(doc.posting_date), get_retention_years(doc.name)),
 			}
 		)
 		log.flags.ignore_permissions = True
@@ -304,7 +317,8 @@ def _apply_result(log, status: str, detail: str | None) -> None:
 	if status == STATUS_CLEARED:
 		log.cleared_on = log.cleared_on or now_datetime()
 		log.retain_until = max(
-			getdate(log.retain_until or log.cleared_on), add_years(getdate(log.cleared_on), RETENTION_YEARS)
+			getdate(log.retain_until or log.cleared_on),
+			add_years(getdate(log.cleared_on), get_retention_years(log.reference_name)),
 		)
 
 

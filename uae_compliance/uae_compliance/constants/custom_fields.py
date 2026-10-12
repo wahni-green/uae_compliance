@@ -139,6 +139,7 @@ CUSTOM_FIELDS = {
 			"uae_sac_code",
 			options=EXEMPTION_REASON_SELECT_OPTIONS,
 		),
+		_field("uae_is_real_estate", "Real Estate", "Check", "uae_exemption_reason_code"),
 	],
 	_ITEM_ROW_DOCTYPES: [
 		_field(
