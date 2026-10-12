@@ -169,7 +169,9 @@ class TestBuilder(EInvoiceTestCase):
 	def test_export_flag_and_predefined_endpoint(self):
 		from uae_compliance.tests import make_address
 
-		abroad = make_address("_Test Export Addr", "India", customer="_Test UAE Customer")
+		abroad = make_address(
+			"_Test Export Addr", "India", customer="_Test UAE Customer", state="Maharashtra"
+		)
 		frappe.db.set_value("Customer", "_Test UAE Customer", "uae_tin", "")
 		doc = self.invoice(
 			[{"item_code": "_Test EInv Zero", "rate": 500, "vat_rate": 0}],
@@ -179,6 +181,13 @@ class TestBuilder(EInvoiceTestCase):
 		xml, _bytes, _summary = self.build(doc)
 
 		self.assertEqual(_text(xml, "cbc:ProfileExecutionID"), "00000001")
+		# Rule ibr-152-ae: an export names where it was delivered.
+		delivery = "cac:Delivery/cac:DeliveryLocation/cac:Address"
+		self.assertEqual(_text(xml, f"{delivery}/cbc:StreetName"), "1 Test Street")
+		self.assertEqual(_text(xml, f"{delivery}/cbc:CityName"), "Test City")
+		self.assertEqual(_text(xml, f"{delivery}/cbc:CountrySubentity"), "Maharashtra")
+		self.assertEqual(_text(xml, f"{delivery}/cac:Country/cbc:IdentificationCode"), "IN")
+		self.assertEqual(validate_xml(etree.tostring(xml)), [])
 		self.assertEqual(_text(xml, "cac:AccountingCustomerParty/cac:Party/cbc:EndpointID"), "9900000099")
 		self.assertEqual(
 			_text(
@@ -429,10 +438,12 @@ class TestValidators(EInvoiceTestCase):
 		mutate(xml)
 		return validate_xml(etree.tostring(xml))
 
-	def test_a_foreign_buyer_needs_no_trn_or_emirate(self):
+	def test_a_foreign_buyer_needs_no_trn_or_emirate_but_a_state(self):
 		from uae_compliance.tests import make_address
 
-		abroad = make_address("_Test Foreign Buyer", "India", customer="_Test UAE Customer")
+		abroad = make_address(
+			"_Test Foreign Buyer", "India", customer="_Test UAE Customer", state="Maharashtra"
+		)
 		frappe.db.set_value("Customer", "_Test UAE Customer", {"uae_tin": "", "uae_trn": ""})
 		doc = self.invoice(
 			[{"item_code": "_Test EInv Zero", "rate": 500, "vat_rate": 0}],
@@ -441,6 +452,43 @@ class TestValidators(EInvoiceTestCase):
 		)
 
 		self.assertEqual(validate_xml(build_xml(doc)[0]), [])
+
+	def test_a_foreign_buyer_without_a_state_is_invalid(self):
+		"""Rule ibr-144-ae: ClearTax rejected a buyer abroad with no state or province."""
+		from uae_compliance.tests import make_address
+
+		abroad = make_address("_Test Stateless Buyer", "India", customer="_Test UAE Customer")
+		frappe.db.set_value("Customer", "_Test UAE Customer", {"uae_tin": "", "uae_trn": ""})
+		doc = self.invoice(
+			[{"item_code": "_Test EInv Zero", "rate": 500, "vat_rate": 0}],
+			customer_address=abroad.name,
+			shipping_address_name=abroad.name,
+		)
+
+		errors = validate_xml(build_xml(doc)[0])
+
+		self.assertIn("The buyer has no state or province.", errors)
+		self.assertIn("An export needs the delivery state or province.", errors)
+
+	def test_an_export_delivered_in_the_uae_is_invalid(self):
+		from uae_compliance.tests import make_address
+
+		abroad = make_address(
+			"_Test Export Elsewhere", "India", customer="_Test UAE Customer", state="Maharashtra"
+		)
+		frappe.db.set_value("Customer", "_Test UAE Customer", {"uae_tin": "", "uae_trn": ""})
+		doc = self.invoice(
+			[{"item_code": "_Test EInv Zero", "rate": 500, "vat_rate": 0}],
+			customer_address=abroad.name,
+			shipping_address_name=abroad.name,
+		)
+		xml = etree.fromstring(build_xml(doc)[0])
+		country = _find(
+			xml, "cac:Delivery/cac:DeliveryLocation/cac:Address/cac:Country/cbc:IdentificationCode"
+		)[0]
+		country.text = "AE"
+
+		self.assertIn("An export must be delivered outside the UAE.", validate_xml(etree.tostring(xml)))
 
 	def test_a_domestic_buyer_needs_an_emirate(self):
 		def mutate(xml):
