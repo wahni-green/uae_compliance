@@ -363,6 +363,24 @@ class TestSendingAndPolling(PipelineTestCase):
 		self.assertEqual(log.status, "Invalid")
 		self.assertIn("cancelled", log.errors)
 
+		# The amendment is a new document: its own log sends its own number, and the old log stays closed.
+		with patch("frappe.enqueue"):
+			amended.submit()
+
+		new_log = self.log_of(amended)
+		self.assertNotEqual(new_log.name, log.name)
+		with patch(
+			"uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.submit",
+			return_value=SubmitResult(provider_reference="R2", status="Submitted", detail=""),
+		) as submit:
+			pipeline.submit_log(new_log.name)
+
+		self.assertEqual(submit.call_args.args[0].number, amended.name)
+		new_log.reload()
+		self.assertEqual(new_log.status, "Submitted")
+		log.reload()
+		self.assertEqual(log.status, "Invalid")
+
 	def test_a_timeout_is_retried_with_backoff_and_then_fails(self):
 		enable_einvoicing(self.company, behavior="timeout")
 		doc, _enqueue = self.submit()

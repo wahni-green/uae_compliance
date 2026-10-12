@@ -252,6 +252,8 @@ def create_submitted_sales_invoice(rows=None, emirate="Dubai", **kwargs):
 
 
 _test_date_counter = itertools.count()
+# No test class needs more fresh dates than this.
+MIN_DATE_SPAN = 60
 _bill_counter = itertools.count()
 
 
@@ -264,10 +266,12 @@ def get_unique_test_date():
 	from frappe.utils import add_days, getdate
 
 	_, fiscal_year_start, _end = get_fiscal_year(getdate())
-	# Stay before today: a return is posted now, and ERPNext refuses one dated before its invoice. Past
-	# a whole run's worth of tests the offsets wrap round, which is safe because each class rolls back.
-	elapsed = max((getdate() - getdate(fiscal_year_start)).days, 1)
-	return add_days(fiscal_year_start, next(_test_date_counter) % elapsed)
+	# Stay before today where the year allows it: a return is posted now, and ERPNext refuses one dated
+	# before its invoice. Past that the offsets wrap round, which is safe because each class rolls
+	# back. The wrap is never shorter than a class needs (early in the year the dates run on, as they
+	# always did), so the dates of one class stay distinct.
+	span = max((getdate() - getdate(fiscal_year_start)).days, MIN_DATE_SPAN)
+	return add_days(fiscal_year_start, next(_test_date_counter) % span)
 
 
 def make_uae_company(name: str, abbr: str) -> str:
