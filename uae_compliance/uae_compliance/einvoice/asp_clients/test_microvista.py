@@ -128,6 +128,18 @@ class TestMicrovista(EInvoiceTestCase):
 		with patch(POST, side_effect=[reply(TOKEN), reply({"success": True, "statusCode": 1})]):
 			self.assertRaises(ServiceProviderError, self.provider.submit, self.document(), "key")
 
+	def test_a_principal_or_period_is_refused_without_a_call(self):
+		for key, value in (
+			("principal_id", "100987654300003"),
+			("invoice_period", {"start": "a", "end": "b"}),
+		):
+			document = self.document()
+			document.model[key] = value
+			with patch(POST) as post:
+				self.assertRaises(ProviderRejectedError, self.provider.submit, document, "key")
+
+			post.assert_not_called()
+
 	def test_a_duplicate_number_is_recovered(self):
 		document = self.document()
 		duplicate = {

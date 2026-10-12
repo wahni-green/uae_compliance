@@ -22,7 +22,7 @@
 - [x] Tax category codes S, E, O, AE, Z (no `G`)
 - [x] Tax category N for the margin scheme (PR 6h). The code list file spells N with a Greek capital nu, but the Schematron rules and the official sample use the Latin letter, which is what is sent
 - [x] Transaction-type flags: free trade zone, deemed supply, e-commerce, export and margin scheme
-- [ ] Transaction-type flags: summary, continuous and agent billing
+- [x] Transaction-type flags: summary (with its invoice period), continuous and disclosed agent billing (with the principal's TRN), checked against the official rules and the UBL schema. The Microvista adapter refuses a document with a period or a principal: its fields are unverified
 - [x] Invoice types 380/480, credit notes 381/81; TaxCurrencyCode AED + `aedtotal-incl-vat` document reference
 - [x] Participant ID `0235:<TIN>` with predefined endpoints 9900000097/98/99; legal registration ID type (TL/EID/PAS/CD), with the issuing country for a passport
 - [ ] Self-billing (the buyer issues the invoice: types 389 and 261, a different CustomizationID, Purchase Invoices producing PINT documents, and provider support for sending as the buyer)
@@ -42,7 +42,8 @@
 - [x] Deemed supply, free trade zone beneficiary, e-commerce and out of scope documents (verified against the official rules and the Microvista sandbox)
 - [x] Reverse charge documents for oil, natural gas, pure hydrocarbons, electronic devices and precious metals and stones (PR 6g)
 - [x] Margin scheme documents, invoices and credit notes (PR 6h), verified against the official rules and the Microvista sandbox
-- [ ] Summary, continuous, agent billing and self-billing documents
+- [x] Summary, continuous and agent billing documents
+- [ ] Self-billing documents
 
 ## PR 6b: provider framework and sending pipeline
 - **UAE E-Invoice Settings** (one row per company: provider, environment, "E-Invoice From" date, endpoint, client ID, client secret as a Password, extra JSON configuration) and **UAE E-Invoice Log** (one per document: status, provider reference, idempotency key, attempts, next attempt, the XML, the provider's response, errors, retention date).
