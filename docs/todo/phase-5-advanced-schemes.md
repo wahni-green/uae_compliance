@@ -17,7 +17,7 @@
 - [x] CD 149/2026 Art 54(3): input VAT not recoverable on large cash payments. Built with a configurable limit (UAE Compliance Settings, off until set) covering cash paid on the invoice, by a Payment Entry, or marked Cash Payment Intended; the Minister's amount was unpublished on 10 Oct 2026 and must be entered when it is. Open: confirm the reading with an adviser (value of the supply vs the cash part)
 - [ ] CD 149/2026 from the first tax year after 1 Oct 2027: exclude capital asset supplies and reverse charge receipts from the recovery percentage, and the government and charity apportionment method
 - [x] Tourist refund: minimum purchase AED 250, cap AED 35,000, refund not above the VAT charged, standard rated only (PR 5b)
-- [ ] Tourist refund: the 90-day limit and the AED 35,000 cap per 24 hours across invoices are not validated (only a single invoice is checked)
+- [x] Tourist refund: the passport number and departure date are required; the goods must leave within 90 days of the supply, and the refunds of one passport are capped at AED 35,000 within 24 hours across invoices
 
 ## PR 5a: adjustments, partial exemption, capital assets
 - **UAE VAT Adjustment** (submittable): Bad Debt Relief (box 1 adjustment column, per emirate, negative; more than six months after the supply, customer notified, never more than the VAT charged), Bad Debt Repayment (box 9 adjustment, negative; more than six months after the supplier's notice), Annual Apportionment and Capital Assets Scheme (box 9 adjustment, signed), Import Adjustment (box 7 amount and VAT).

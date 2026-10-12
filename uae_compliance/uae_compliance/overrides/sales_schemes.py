@@ -1,9 +1,12 @@
+from datetime import timedelta
+
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, nowdate
+from frappe.utils import add_days, flt, format_date, get_datetime, getdate, nowdate
 
 from uae_compliance.uae_compliance.constants import (
 	STANDARD_VAT_RATE,
+	TOURIST_EXPORT_DAYS,
 	TOURIST_MIN_PURCHASE,
 	TOURIST_REFUND_CAP,
 )
@@ -106,6 +109,68 @@ def validate_tourist_refund(doc) -> None:
 			_("The refund of {0} is more than the {1} of VAT charged on this invoice.").format(
 				refund, flt(charged, 2)
 			),
+			title=_("Invalid Tourist Refund"),
+		)
+
+	if not (doc.get("uae_tourist_passport") and doc.get("uae_tourist_departure_date")):
+		frappe.throw(
+			_("A tourist refund needs the tourist's passport number and departure date."),
+			title=_("Invalid Tourist Refund"),
+		)
+
+	validate_tourist_departure(doc)
+	validate_tourist_daily_cap(doc, refund * rate)
+
+
+def validate_tourist_departure(doc) -> None:
+	"""The goods must leave the UAE with the tourist within 90 days of the supply."""
+	supply = getdate(doc.get("uae_supply_date") or doc.get("posting_date") or nowdate())
+	departure = getdate(doc.get("uae_tourist_departure_date"))
+	if departure < supply:
+		frappe.throw(
+			_("The tourist cannot depart before the supply date, {0}.").format(format_date(supply)),
+			title=_("Invalid Tourist Refund"),
+		)
+
+	if departure > add_days(supply, TOURIST_EXPORT_DAYS):
+		frappe.throw(
+			_("The goods must leave the UAE within {0} days of the supply. The last day was {1}.").format(
+				TOURIST_EXPORT_DAYS, format_date(add_days(supply, TOURIST_EXPORT_DAYS))
+			),
+			title=_("Invalid Tourist Refund"),
+		)
+
+
+def validate_tourist_daily_cap(doc, refund: float) -> None:
+	"""A tourist is refunded at most AED 35,000 in 24 hours, across invoices. The tourist is known by
+	the passport number, and the window is the 24 hours around this invoice, so a refund counts
+	together with every other one given within a day of it in either direction."""
+	passport = (doc.get("uae_tourist_passport") or "").strip()
+	posted = get_datetime(f"{getdate(doc.posting_date)} {doc.get('posting_time') or '00:00:00'}")
+	day = timedelta(hours=24)
+
+	others = frappe.get_all(
+		"Sales Invoice",
+		filters={
+			"uae_tourist_passport": passport,
+			"uae_tourist_refund": ("!=", 0),
+			"docstatus": ("!=", 2),
+			"name": ("!=", doc.name or ""),
+			"posting_date": ("between", [add_days(posted.date(), -1), add_days(posted.date(), 1)]),
+		},
+		fields=["name", "posting_date", "posting_time", "uae_tourist_refund", "conversion_rate"],
+	)
+	total = refund
+	for other in others:
+		at = get_datetime(f"{other.posting_date} {other.posting_time}")
+		if abs(at - posted) < day:
+			total += flt(other.uae_tourist_refund) * (flt(other.conversion_rate) or 1)
+
+	if total > TOURIST_REFUND_CAP + TOLERANCE:
+		frappe.throw(
+			_(
+				"This tourist is refunded AED {0} within 24 hours with this invoice. The limit is AED {1}."
+			).format(flt(total, 2), TOURIST_REFUND_CAP),
 			title=_("Invalid Tourist Refund"),
 		)
 

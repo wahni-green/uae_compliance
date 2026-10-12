@@ -41,7 +41,12 @@ class TestRegisters(VATReturnTestCase):
 		)
 
 	def test_sales_register_lists_tourist_refunds_in_box_2(self):
-		self.sale(rate=1000, uae_tourist_refund=20)
+		self.sale(
+			rate=1000,
+			uae_tourist_refund=20,
+			uae_tourist_passport="P1234567",
+			uae_tourist_departure_date=self.date,
+		)
 		doc = self.new_return()
 		doc.generate_return()
 
