@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import date_diff, flt
+from frappe.utils import date_diff, flt, getdate
 
 from uae_compliance.uae_compliance.constants import TAX_INVOICE_ISSUE_DAYS
 from uae_compliance.uae_compliance.overrides.sales_schemes import (
@@ -20,6 +20,7 @@ from uae_compliance.uae_compliance.utils.tax_account import (
 	is_einvoicing_company,
 	is_output_vat_account,
 )
+from uae_compliance.uae_compliance.utils.trn import validate_trn
 
 
 def validate(doc, method=None):
@@ -35,7 +36,47 @@ def validate(doc, method=None):
 	validate_margin_scheme(doc)
 	validate_reverse_charge_supply(doc)
 	validate_tourist_refund(doc)
+	validate_billing_types(doc)
 	warn_if_excise_missing(doc)
+
+
+def validate_billing_types(doc) -> None:
+	"""The summary invoice, continuous supply and disclosed agent billing transaction types of the
+	e-invoice. A summary invoice needs the period it covers (rule ibr-138-ae), a disclosed agent bills
+	for a principal with another TRN than its own (rules ibr-137-ae and ibr-176-ae)."""
+	start, end = doc.get("uae_invoice_period_start"), doc.get("uae_invoice_period_end")
+	if doc.get("uae_is_summary_invoice") and not (start and end):
+		frappe.throw(
+			_("A summary invoice needs the Invoice Period Start and End."), title=_("Summary Invoice")
+		)
+
+	if (start or end) and not (doc.get("uae_is_summary_invoice") or doc.get("uae_is_continuous_supply")):
+		frappe.throw(
+			_("The invoice period belongs to a summary invoice or a continuous supply: tick one of them."),
+			title=_("Invoice Period"),
+		)
+
+	if bool(start) != bool(end):
+		frappe.throw(_("Enter both the start and the end of the invoice period."), title=_("Invoice Period"))
+
+	if start and end and getdate(start) > getdate(end):
+		frappe.throw(_("The invoice period cannot end before it starts."), title=_("Invoice Period"))
+
+	if doc.get("uae_is_agent_billing"):
+		principal = validate_trn(doc.get("uae_principal_trn"), label="Principal TRN")
+		if not principal:
+			frappe.throw(_("Enter the Principal TRN."), title=_("Disclosed Agent Billing"))
+
+		doc.uae_principal_trn = principal
+		if principal == frappe.db.get_value("Company", doc.company, "uae_trn"):
+			frappe.throw(
+				_("The principal cannot be the company itself: it bills as the agent of another person."),
+				title=_("Disclosed Agent Billing"),
+			)
+	elif doc.get("uae_principal_trn"):
+		frappe.throw(
+			_("The Principal TRN belongs to disclosed agent billing: tick it."), title=_("Principal")
+		)
 
 
 def validate_reverse_charge_supply(doc) -> None:

@@ -24,11 +24,14 @@ from uae_compliance.uae_compliance.constants.pint_ae import (
 	ENDPOINT_BUYER_NOT_ON_NETWORK,
 	ENDPOINT_EXPORT,
 	ENDPOINT_SCHEME,
+	FLAG_AGENT_BILLING,
+	FLAG_CONTINUOUS,
 	FLAG_DEEMED_SUPPLY,
 	FLAG_E_COMMERCE,
 	FLAG_EXPORT,
 	FLAG_FREE_TRADE_ZONE,
 	FLAG_MARGIN_SCHEME,
+	FLAG_SUMMARY,
 	GTIN_LENGTHS,
 	GTIN_SCHEME,
 	INVOICE_TYPE_CODE,
@@ -169,12 +172,20 @@ class PintAEBuilder:
 		if self.type_code in (
 			OUT_OF_SCOPE_INVOICE_TYPE_CODE,
 			OUT_OF_SCOPE_CREDIT_NOTE_TYPE_CODE,
-		) and self.doc.get("uae_is_deemed_supply"):
-			raise EInvoiceNotSupportedError(
-				_(
-					"A deemed supply cannot be an out of scope or exempt only document. Add a taxable line or clear Deemed Supply."
+		):
+			if self.doc.get("uae_is_deemed_supply"):
+				raise EInvoiceNotSupportedError(
+					_(
+						"A deemed supply cannot be an out of scope or exempt only document. Add a taxable line or clear Deemed Supply."
+					)
 				)
-			)
+
+			if self.doc.get("uae_is_summary_invoice"):
+				raise EInvoiceNotSupportedError(
+					_(
+						"A summary invoice cannot be an out of scope or exempt only document. Add a taxable line or clear Summary Invoice."
+					)
+				)
 
 	def _compute_lines(self):
 		resolver = CategoryResolver()
@@ -322,6 +333,8 @@ class PintAEBuilder:
 			if self.is_credit_note or self._is_deemed_supply
 			else PAYMENT_MEANS_CODE,
 			"beneficiary_id": self._beneficiary_id,
+			"invoice_period": self._invoice_period,
+			"principal_id": self._principal_id,
 			"delivery": self._delivery_details(),
 			"seller": seller,
 			"buyer": buyer,
@@ -422,6 +435,12 @@ class PintAEBuilder:
 			flags[FLAG_DEEMED_SUPPLY] = "1"
 		if self.doc.get("uae_is_margin_scheme"):
 			flags[FLAG_MARGIN_SCHEME] = "1"
+		if self.doc.get("uae_is_summary_invoice"):
+			flags[FLAG_SUMMARY] = "1"
+		if self.doc.get("uae_is_continuous_supply"):
+			flags[FLAG_CONTINUOUS] = "1"
+		if self.doc.get("uae_is_agent_billing"):
+			flags[FLAG_AGENT_BILLING] = "1"
 		if self.doc.get("uae_is_ecommerce_supply"):
 			flags[FLAG_E_COMMERCE] = "1"
 		if self.doc.get("uae_is_export"):
@@ -460,6 +479,12 @@ class PintAEBuilder:
 
 		if doc.get("po_no"):
 			_add(root, "cbc", "BuyerReference", doc.po_no)
+
+		period = self._invoice_period
+		if period:
+			element = _add(root, "cac", "InvoicePeriod")
+			_add(element, "cbc", "StartDate", period["start"])
+			_add(element, "cbc", "EndDate", period["end"])
 
 		if self.is_credit_note:
 			response = _add(root, "cac", "DiscrepancyResponse")
@@ -615,6 +640,7 @@ class PintAEBuilder:
 		self._party(root, "AccountingSupplierParty", seller)
 		self._party(root, "AccountingCustomerParty", buyer)
 		self._beneficiary(root)
+		self._principal(root)
 		self._delivery(root)
 
 	@property
@@ -656,6 +682,23 @@ class PintAEBuilder:
 
 		return (self.doc.get("uae_free_zone_beneficiary_id") or "").strip()
 
+	@property
+	def _invoice_period(self) -> dict | None:
+		"""The period a summary invoice or a continuous supply covers (IBG-14)."""
+		start, end = self.doc.get("uae_invoice_period_start"), self.doc.get("uae_invoice_period_end")
+		if not (start and end):
+			return None
+
+		return {"start": getdate(start).isoformat(), "end": getdate(end).isoformat()}
+
+	@property
+	def _principal_id(self) -> str | None:
+		"""The principal a disclosed agent bills for (BTAE-14)."""
+		if not self.doc.get("uae_is_agent_billing"):
+			return None
+
+		return (self.doc.get("uae_principal_trn") or "").strip()
+
 	def _delivery_details(self) -> dict | None:
 		"""Where an e-commerce supply was delivered: the shipping address, else the customer's."""
 		if not self.doc.get("uae_is_ecommerce_supply"):
@@ -678,6 +721,15 @@ class PintAEBuilder:
 		party = _add(wrapper, "cac", "Party")
 		identification = _add(party, "cac", "PartyIdentification")
 		_add(identification, "cbc", "ID", self._beneficiary_id)
+
+	def _principal(self, root):
+		if self._principal_id is None:
+			return
+
+		wrapper = _add(root, "cac", "SellerSupplierParty")
+		party = _add(wrapper, "cac", "Party")
+		identification = _add(party, "cac", "PartyIdentification")
+		_add(identification, "cbc", "ID", self._principal_id)
 
 	def _delivery(self, root):
 		details = self._delivery_details()

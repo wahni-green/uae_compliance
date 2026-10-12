@@ -160,6 +160,61 @@ class TestTransactionFlags(CasesTestCase):
 
 		self.assertEqual(_text(self.xml(doc), "cbc:ProfileExecutionID"), "10000010")
 
+	def test_a_summary_invoice_carries_its_period(self):
+		doc = self.invoice(
+			uae_is_summary_invoice=1,
+			uae_invoice_period_start="2026-09-01",
+			uae_invoice_period_end="2026-09-30",
+		)
+		xml = self.xml(doc)
+
+		self.assertEqual(_text(xml, "cbc:ProfileExecutionID"), "00010000")
+		self.assertEqual(_text(xml, "cac:InvoicePeriod/cbc:StartDate"), "2026-09-01")
+		self.assertEqual(_text(xml, "cac:InvoicePeriod/cbc:EndDate"), "2026-09-30")
+		self.assertEqual(validate_xml(etree.tostring(xml)), [])
+
+	def test_a_continuous_supply_is_flagged(self):
+		doc = self.invoice(uae_is_continuous_supply=1)
+		self.assertEqual(_text(self.xml(doc), "cbc:ProfileExecutionID"), "00001000")
+
+	def test_a_disclosed_agent_names_the_principal(self):
+		doc = self.invoice(uae_is_agent_billing=1, uae_principal_trn="100987654300003")
+		xml = self.xml(doc)
+
+		self.assertEqual(_text(xml, "cbc:ProfileExecutionID"), "00000100")
+		self.assertEqual(
+			_text(xml, "cac:SellerSupplierParty/cac:Party/cac:PartyIdentification/cbc:ID"), "100987654300003"
+		)
+		self.assertEqual(validate_xml(etree.tostring(xml)), [])
+
+	def test_a_summary_invoice_cannot_be_an_exempt_only_document(self):
+		doc = self.invoice(
+			[{"item_code": "_Test EInv Exempt", "rate": 300, "vat_rate": 0}],
+			uae_is_summary_invoice=1,
+			uae_invoice_period_start="2026-09-01",
+			uae_invoice_period_end="2026-09-30",
+		)
+		self.assertRaises(EInvoiceNotSupportedError, build_xml, doc)
+
+	def test_the_flags_are_checked_when_the_invoice_is_saved(self):
+		for values in (
+			{"uae_is_summary_invoice": 1},
+			{"uae_invoice_period_start": "2026-09-01", "uae_invoice_period_end": "2026-09-30"},
+			{
+				"uae_is_continuous_supply": 1,
+				"uae_invoice_period_start": "2026-10-01",
+				"uae_invoice_period_end": "2026-09-30",
+			},
+			{"uae_is_agent_billing": 1},
+			{"uae_is_agent_billing": 1, "uae_principal_trn": "12"},
+			{
+				"uae_is_agent_billing": 1,
+				"uae_principal_trn": frappe.db.get_value("Company", self.company, "uae_trn"),
+			},
+			{"uae_principal_trn": "100987654300003"},
+		):
+			self.assertRaises(frappe.ValidationError, self.invoice, **values)
+
 
 class TestCasesAgainstTheOfficialRules(CasesTestCase):
 	def setUp(self):
@@ -205,6 +260,13 @@ class TestCasesAgainstTheOfficialRules(CasesTestCase):
 	def test_ecommerce_supply(self):
 		self.assertEqual(self.failures(self.invoice(uae_is_ecommerce_supply=1)), [])
 
+	def test_summary_continuous_and_agent_billing(self):
+		period = {"uae_invoice_period_start": "2026-09-01", "uae_invoice_period_end": "2026-09-30"}
+		self.assertEqual(self.failures(self.invoice(uae_is_summary_invoice=1, **period)), [])
+		self.assertEqual(self.failures(self.invoice(uae_is_continuous_supply=1, **period)), [])
+		agent = self.invoice(uae_is_agent_billing=1, uae_principal_trn="100987654300003")
+		self.assertEqual(self.failures(agent), [])
+
 
 class TestCasesAgainstTheUBLSchema(CasesTestCase):
 	"""The new elements (BuyerCustomerParty, Delivery) and the 480/81 types must also be valid UBL, in
@@ -242,6 +304,14 @@ class TestCasesAgainstTheUBLSchema(CasesTestCase):
 		)
 		self.assert_valid(self.invoice(uae_is_deemed_supply=1))
 		self.assert_valid(self.invoice(uae_is_ecommerce_supply=1))
+		self.assert_valid(
+			self.invoice(
+				uae_is_summary_invoice=1,
+				uae_invoice_period_start="2026-09-01",
+				uae_invoice_period_end="2026-09-30",
+			)
+		)
+		self.assert_valid(self.invoice(uae_is_agent_billing=1, uae_principal_trn="100987654300003"))
 		self.assert_valid(
 			self.invoice(
 				uae_is_free_zone_supply=1,

@@ -213,6 +213,14 @@ class MicrovistaASP(ASPClient):
 		so a number that already exists is looked up instead of being treated as a failure: that is
 		what a retry looks like when the first attempt reached Microvista but its answer did not
 		reach us."""
+		if document.model.get("invoice_period") or document.model.get("principal_id"):
+			# Microvista's fields for the invoice period and the principal have not been verified.
+			raise ProviderRejectedError(
+				_(
+					"Invoices with an invoice period or a disclosed agent's principal cannot be sent through Microvista yet."
+				)
+			)
+
 		body = self._call("generate-invoice", json=to_payload(document.model))
 
 		if body.get("status") == 400 or (not body.get("success") and body.get("statusCode") != 3):
