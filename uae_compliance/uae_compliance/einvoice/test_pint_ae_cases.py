@@ -187,13 +187,11 @@ class TestTransactionFlags(CasesTestCase):
 		)
 		self.assertEqual(validate_xml(etree.tostring(xml)), [])
 
-	def test_a_summary_invoice_cannot_be_an_exempt_only_document(self):
-		doc = self.invoice(
-			[{"item_code": "_Test EInv Exempt", "rate": 300, "vat_rate": 0}],
-			uae_is_summary_invoice=1,
-			uae_invoice_period_start="2026-09-01",
-			uae_invoice_period_end="2026-09-30",
-		)
+	def test_the_builder_refuses_an_exempt_only_summary_invoice(self):
+		# Saving refuses it; a document changed after saving still cannot be built.
+		doc = self.invoice([{"item_code": "_Test EInv Exempt", "rate": 300, "vat_rate": 0}])
+		doc.uae_is_summary_invoice = 1
+		doc.uae_invoice_period_start, doc.uae_invoice_period_end = "2026-09-01", "2026-09-30"
 		self.assertRaises(EInvoiceNotSupportedError, build_xml, doc)
 
 	def test_the_flags_are_checked_when_the_invoice_is_saved(self):
@@ -214,6 +212,21 @@ class TestTransactionFlags(CasesTestCase):
 			{"uae_principal_trn": "100987654300003"},
 		):
 			self.assertRaises(frappe.ValidationError, self.invoice, **values)
+
+	def test_an_exempt_only_summary_invoice_is_refused_as_a_draft(self):
+		self.assertRaises(
+			frappe.ValidationError,
+			self.invoice,
+			[{"item_code": "_Test EInv Exempt", "rate": 300, "vat_rate": 0}],
+			uae_is_summary_invoice=1,
+			uae_invoice_period_start="2026-09-01",
+			uae_invoice_period_end="2026-09-30",
+		)
+
+	def test_the_principal_trn_must_follow_the_specification(self):
+		doc = self.invoice(uae_is_agent_billing=1, uae_principal_trn="100987654300003")
+		xml = build_xml(doc)[0].replace(b"100987654300003", b"200987654300003")
+		self.assertTrue(any("principal TRN" in e for e in validate_xml(xml)))
 
 
 class TestCasesAgainstTheOfficialRules(CasesTestCase):

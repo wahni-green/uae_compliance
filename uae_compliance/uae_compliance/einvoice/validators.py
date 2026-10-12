@@ -407,6 +407,16 @@ def _check_conditional(xml, is_credit_note: bool, line_tag: str) -> list[str]:
 		errors.append(_("The margin scheme category can only be used on a margin scheme invoice."))
 	if flags[:1] == "1" and not _text(xml, "cac:BuyerCustomerParty/cac:Party/cac:PartyIdentification/cbc:ID"):
 		errors.append(_("A free trade zone supply needs the beneficiary ID."))
+	if flags[3:4] == "1" and not _x(xml, "cac:InvoicePeriod"):
+		errors.append(_("A summary invoice needs the invoice period."))
+	if flags[5:6] == "1":
+		principal = _text(xml, "cac:SellerSupplierParty/cac:Party/cac:PartyIdentification/cbc:ID")
+		if not re.fullmatch(PINT_TRN_PATTERN, principal):
+			errors.append(_("The principal TRN must be 15 digits, starting with 1 and ending with 03."))
+		elif principal == _text(
+			xml, "cac:AccountingSupplierParty/cac:Party/cac:PartyTaxScheme/cbc:CompanyID"
+		):
+			errors.append(_("The principal cannot be the seller."))
 	if flags[6:7] == "1":
 		for tag, what in (
 			("StreetName", _("address line")),

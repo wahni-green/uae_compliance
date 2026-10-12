@@ -45,10 +45,17 @@ def validate_billing_types(doc) -> None:
 	e-invoice. A summary invoice needs the period it covers (rule ibr-138-ae), a disclosed agent bills
 	for a principal with another TRN than its own (rules ibr-137-ae and ibr-176-ae)."""
 	start, end = doc.get("uae_invoice_period_start"), doc.get("uae_invoice_period_end")
-	if doc.get("uae_is_summary_invoice") and not (start and end):
-		frappe.throw(
-			_("A summary invoice needs the Invoice Period Start and End."), title=_("Summary Invoice")
-		)
+	if doc.get("uae_is_summary_invoice"):
+		if not (start and end):
+			frappe.throw(
+				_("A summary invoice needs the Invoice Period Start and End."), title=_("Summary Invoice")
+			)
+
+		if all(row.get("uae_vat_category") in ("Exempt", "Out of Scope") for row in doc.items):
+			frappe.throw(
+				_("A summary invoice cannot have only exempt or out of scope rows (rule ibr-157-ae)."),
+				title=_("Summary Invoice"),
+			)
 
 	if (start or end) and not (doc.get("uae_is_summary_invoice") or doc.get("uae_is_continuous_supply")):
 		frappe.throw(
