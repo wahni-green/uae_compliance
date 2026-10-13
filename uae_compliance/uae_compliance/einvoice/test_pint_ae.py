@@ -311,7 +311,14 @@ class TestWhatTheInvoiceMustCarry(EInvoiceTestCase):
 		self.assertIn("differs from its item rows", str(ctx.exception))
 
 	def test_a_standard_rated_row_at_zero_percent_is_refused_not_charged_five(self):
-		doc = self.invoice([{"item_code": "_Test EInv Service", "rate": 100, "vat_rate": 0}])
+		make_einvoice_item("_Test EInv Goods2")
+		# Another row is charged, or the invoice as a whole charges no VAT and its rows are Zero Rated.
+		doc = self.invoice(
+			[
+				{"item_code": "_Test EInv Service", "rate": 100, "vat_rate": 0},
+				{"item_code": "_Test EInv Goods2", "rate": 100},
+			]
+		)
 
 		with self.assertRaises(EInvoiceNotSupportedError) as ctx:
 			build_xml(doc)

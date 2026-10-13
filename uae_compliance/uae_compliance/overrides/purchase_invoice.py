@@ -22,7 +22,6 @@ from uae_compliance.uae_compliance.utils.tax_account import (
 	is_output_vat_account,
 )
 from uae_compliance.uae_compliance.utils.vat_category import (
-	get_item_category,
 	get_item_tax_template_category,
 )
 from uae_compliance.uae_compliance.utils.vat_return.cash_payments import exceeds_cash_limit
@@ -66,14 +65,11 @@ def warn_if_cash_payment_over_limit(doc) -> None:
 
 def set_vat_category_defaults(doc) -> None:
 	for row in doc.get("items", []):
-		if row.get("uae_vat_category"):
-			continue
-
-		row.uae_vat_category = (
-			get_item_tax_template_category(row.get("item_tax_template"))
-			or get_item_category(row.get("item_code"))
-			or DEFAULT_VAT_CATEGORY
-		)
+		template_category = get_item_tax_template_category(row.get("item_tax_template"))
+		if template_category:
+			row.uae_vat_category = template_category
+		elif not row.get("uae_vat_category"):
+			row.uae_vat_category = DEFAULT_VAT_CATEGORY
 
 
 def validate_reverse_charge(doc) -> None:

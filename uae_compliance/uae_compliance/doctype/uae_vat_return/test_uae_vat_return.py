@@ -5,6 +5,7 @@ from uae_compliance.tests import (
 	configure_vat_settings,
 	create_submitted_purchase_invoice,
 	create_submitted_sales_invoice,
+	get_category_template,
 	get_uae_test_company,
 	get_unique_test_date,
 	make_customer,
@@ -334,15 +335,18 @@ class TestVATReturnLifecycle(VATReturnTestCase):
 		self.assertRaises(frappe.ValidationError, doc.mark_as_filed)
 
 	def test_a_changed_category_of_an_old_invoice_blocks_filing(self):
-		# An invoice from before the app has no category on its rows and takes it from its item.
+		# An invoice from before the app has no category on its rows and takes it from its template.
 		invoice = self.sale(item="_Test Print Item", rate=1000)
 		frappe.db.set_value("Sales Invoice Item", {"parent": invoice.name}, "uae_vat_category", None)
 		doc = self.new_return()
 		doc.generate_return()
 
-		item_category = frappe.db.get_value("Item", "_Test Print Item", "uae_vat_category")
-		self.addCleanup(frappe.db.set_value, "Item", "_Test Print Item", "uae_vat_category", item_category)
-		frappe.db.set_value("Item", "_Test Print Item", "uae_vat_category", "Exempt")
+		frappe.db.set_value(
+			"Sales Invoice Item",
+			{"parent": invoice.name},
+			"item_tax_template",
+			get_category_template("Exempt", self.company),
+		)
 
 		self.assertRaises(frappe.ValidationError, doc.mark_as_filed)
 

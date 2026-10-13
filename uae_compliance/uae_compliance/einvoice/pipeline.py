@@ -8,7 +8,7 @@ import json
 
 import frappe
 from frappe import _
-from frappe.utils import add_to_date, add_years, cint, get_datetime, getdate, now_datetime
+from frappe.utils import add_to_date, add_years, cint, flt, get_datetime, getdate, now_datetime
 
 from uae_compliance.exceptions import ServiceProviderError
 from uae_compliance.uae_compliance.constants.einvoice import (
@@ -242,6 +242,10 @@ def prepare(log, doc=None):
 	log.uuid = doc.get("uae_einvoice_uuid")
 	log.xml = xml.decode() if xml else ""
 	log.payload = frappe.as_json(model) if model else ""
+	totals = model.get("totals") or {}
+	log.total_amount = flt(totals.get("payable"))
+	log.taxable_amount = flt(totals.get("tax_exclusive"))
+	log.tax_amount = flt(totals.get("tax_total"))
 	log.errors = "\n".join(errors)
 	# A new send gets a new key only when the last one definitely did not reach the provider. After a
 	# timeout it might have, so the same key is kept and the provider can recognise the repeat.

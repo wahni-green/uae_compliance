@@ -174,6 +174,10 @@ class TestSubmission(PipelineTestCase):
 		model = json.loads(log.payload)
 		self.assertEqual((model["number"], model["type_code"]), (doc.name, "380"))
 		self.assertEqual(model["totals"]["payable"], 2100)
+		self.assertEqual(
+			(log.total_amount, log.taxable_amount, log.tax_amount),
+			(model["totals"]["payable"], model["totals"]["tax_exclusive"], model["totals"]["tax_total"]),
+		)
 		self.assertTrue(log.uuid)
 		self.assertEqual(log.uuid, frappe.db.get_value("Sales Invoice", doc.name, "uae_einvoice_uuid"))
 		self.assertEqual(frappe.db.get_value("Sales Invoice", doc.name, "uae_einvoice_status"), "Generated")

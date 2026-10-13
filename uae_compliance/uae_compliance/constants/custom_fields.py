@@ -258,9 +258,9 @@ def _sales_invoice_fields():
 
 
 def _legal_registration_fields(insert_after, columns=False):
-	"""`columns` puts the type, the ID and the authority (with the passport country) in three columns."""
-	cb1 = [_field("uae_cb_legal_1", "", "Column Break", "uae_legal_registration_type")] if columns else []
-	cb2 = [_field("uae_cb_legal_2", "", "Column Break", "uae_legal_registration_id")] if columns else []
+	"""`columns` starts a new column before the authority, for a section that already has a column
+	of its own for the type and the ID."""
+	cb = [_field("uae_cb_legal_2", "", "Column Break", "uae_legal_registration_id")] if columns else []
 	return [
 		_field(
 			"uae_legal_registration_type",
@@ -269,19 +269,13 @@ def _legal_registration_fields(insert_after, columns=False):
 			insert_after,
 			options=LEGAL_REGISTRATION_SELECT_OPTIONS,
 		),
-		*cb1,
-		_field(
-			"uae_legal_registration_id",
-			"Legal Registration ID",
-			"Data",
-			cb1[0]["fieldname"] if columns else "uae_legal_registration_type",
-		),
-		*cb2,
+		_field("uae_legal_registration_id", "Legal Registration ID", "Data", "uae_legal_registration_type"),
+		*cb,
 		_field(
 			"uae_licence_authority",
 			"Licence Issuing Authority",
 			"Data",
-			cb2[0]["fieldname"] if columns else "uae_legal_registration_id",
+			cb[0]["fieldname"] if columns else "uae_legal_registration_id",
 		),
 		_field(
 			"uae_passport_country",
@@ -319,20 +313,21 @@ CUSTOM_FIELDS = {
 		_field("uae_cb_company", "", "Column Break", "uae_tin"),
 		*_legal_registration_fields("uae_cb_company"),
 	],
-	("Customer", "Supplier"): [
-		# In the Tax tab, after its last field, so no existing field is swallowed.
-		_field("uae_vat_section", "UAE VAT", "Section Break", "tax_withholding_category"),
-		_field("uae_trn", "TRN", "Data", "uae_vat_section"),
-		_field("uae_cb_vat", "", "Column Break", "uae_trn"),
-		_field("uae_tin", "TIN (Peppol)", "Data", "uae_cb_vat"),
-	],
 	"Customer": [
 		_field("uae_customer_name_in_arabic", "Customer Name in Arabic", "Data", "customer_name"),
-		_field("uae_legal_section", "Legal Registration", "Section Break", "uae_tin"),
-		*_legal_registration_fields("uae_legal_section", columns=True),
+		# One section in the Tax tab, after its last field, so no existing field is swallowed.
+		_field("uae_vat_section", "UAE Compliance", "Section Break", "tax_withholding_category"),
+		_field("uae_trn", "TRN", "Data", "uae_vat_section"),
+		_field("uae_tin", "TIN (Peppol)", "Data", "uae_trn"),
+		_field("uae_cb_vat", "", "Column Break", "uae_tin"),
+		*_legal_registration_fields("uae_cb_vat", columns=True),
 	],
 	"Supplier": [
 		_field("uae_supplier_name_in_arabic", "Supplier Name in Arabic", "Data", "supplier_name"),
+		_field("uae_vat_section", "UAE Compliance", "Section Break", "tax_withholding_category"),
+		_field("uae_trn", "TRN", "Data", "uae_vat_section"),
+		_field("uae_cb_vat", "", "Column Break", "uae_trn"),
+		_field("uae_tin", "TIN (Peppol)", "Data", "uae_cb_vat"),
 	],
 	"Address": [
 		_field("uae_address_in_arabic", "Address in Arabic", "Small Text", "address_line2"),
@@ -346,58 +341,46 @@ CUSTOM_FIELDS = {
 		),
 	],
 	"Item": [
-		# In the Tax tab, after its Taxes table, the last field before the Quality tab, so no existing
-		# field is swallowed.
-		_field("uae_vat_section", "UAE VAT", "Section Break", "taxes"),
-		_field(
-			"uae_vat_category",
-			"VAT Category",
-			"Select",
-			"uae_vat_section",
-			options=VAT_CATEGORY_SELECT_OPTIONS,
-		),
-		_field("uae_cb_item_1", "", "Column Break", "uae_vat_category"),
+		# One section in the Tax tab, after its Taxes table, the last field before the Quality tab, so
+		# no existing field is swallowed. VAT, excise and e-invoice fields each have a column.
+		_field("uae_vat_section", "UAE Compliance", "Section Break", "taxes"),
 		_field(
 			"uae_exemption_reason_code",
 			"VAT Exemption Reason",
 			"Select",
-			"uae_cb_item_1",
+			"uae_vat_section",
 			options=EXEMPTION_REASON_SELECT_OPTIONS,
 		),
-		_field("uae_cb_item_2", "", "Column Break", "uae_exemption_reason_code"),
-		_field("uae_is_real_estate", "Real Estate", "Check", "uae_cb_item_2"),
-		_field("uae_excise_section", "Excise", "Section Break", "uae_is_real_estate"),
+		_field("uae_is_real_estate", "Real Estate", "Check", "uae_exemption_reason_code"),
+		_field("uae_cb_item_3", "", "Column Break", "uae_is_real_estate"),
 		_field(
 			"uae_excise_category",
 			"Excise Category",
 			"Link",
-			"uae_excise_section",
+			"uae_cb_item_3",
 			options="UAE Excise Rate",
 		),
-		_field("uae_cb_item_3", "", "Column Break", "uae_excise_category"),
 		_field(
 			"uae_excise_volume_litres",
 			"Volume per Stock Unit (Litres)",
 			"Float",
-			"uae_cb_item_3",
+			"uae_excise_category",
 			depends_on="uae_excise_category",
 		),
-		_field("uae_einvoice_section", "E-Invoice", "Section Break", "uae_excise_volume_litres"),
+		_field("uae_cb_item_4", "", "Column Break", "uae_excise_volume_litres"),
 		_field(
 			"uae_item_type",
 			"E-Invoice Item Type",
 			"Select",
-			"uae_einvoice_section",
+			"uae_cb_item_4",
 			options=ITEM_TYPE_SELECT_OPTIONS,
 		),
-		_field("uae_cb_item_4", "", "Column Break", "uae_item_type"),
-		_field("uae_sac_code", "Service Accounting Code", "Data", "uae_cb_item_4"),
-		_field("uae_cb_item_5", "", "Column Break", "uae_sac_code"),
+		_field("uae_sac_code", "Service Accounting Code", "Data", "uae_item_type"),
 		_field(
 			"uae_einvoice_exclusion",
 			"E-Invoice Exclusion",
 			"Select",
-			"uae_cb_item_5",
+			"uae_sac_code",
 			options=EXCLUSION_SELECT_OPTIONS,
 		),
 	],
@@ -408,6 +391,9 @@ CUSTOM_FIELDS = {
 			"Select",
 			"item_tax_template",
 			options=VAT_CATEGORY_SELECT_OPTIONS,
+			fetch_from="item_tax_template.uae_vat_category",
+			fetch_if_empty=1,
+			read_only=1,
 			in_list_view=1,
 		),
 	],

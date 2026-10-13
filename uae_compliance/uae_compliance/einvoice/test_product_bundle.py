@@ -3,7 +3,7 @@ from unittest.mock import patch
 import frappe
 from lxml import etree
 
-from uae_compliance.tests import make_einvoice_item
+from uae_compliance.tests import make_einvoice_item, set_item_category
 from uae_compliance.uae_compliance.einvoice.pint_ae_builder import NAMESPACES, build_xml
 from uae_compliance.uae_compliance.einvoice.test_pint_ae import EInvoiceTestCase
 from uae_compliance.uae_compliance.einvoice.validators import validate_xml
@@ -61,8 +61,8 @@ class TestProductBundle(EInvoiceTestCase):
 		self.assertRaises(frappe.ValidationError, bundle.save)
 
 	def test_a_bundle_item_that_differs_from_its_principal_component_is_warned_about(self):
-		frappe.db.set_value("Item", "_Test Bundle Licence", "uae_vat_category", "Standard Rated")
-		frappe.db.set_value("Item", BUNDLE, "uae_vat_category", "Zero Rated")
+		set_item_category("_Test Bundle Licence", "Standard Rated")
+		set_item_category(BUNDLE, "Zero Rated")
 		bundle = self.bundle()
 		bundle.uae_principal_item = "_Test Bundle Licence"
 
@@ -72,8 +72,8 @@ class TestProductBundle(EInvoiceTestCase):
 		self.assertTrue(any("principal component" in str(call) for call in msgprint.call_args_list))
 
 	def test_no_warning_when_the_bundle_item_matches(self):
-		frappe.db.set_value("Item", "_Test Bundle Licence", "uae_vat_category", "Standard Rated")
-		frappe.db.set_value("Item", BUNDLE, "uae_vat_category", "Standard Rated")
+		set_item_category("_Test Bundle Licence", "Standard Rated")
+		set_item_category(BUNDLE, "Standard Rated")
 		bundle = self.bundle()
 		bundle.uae_principal_item = "_Test Bundle Licence"
 
