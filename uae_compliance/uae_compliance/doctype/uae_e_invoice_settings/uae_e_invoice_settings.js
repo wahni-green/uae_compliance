@@ -1,6 +1,7 @@
-// What each provider reads from the Extra Configuration, with placeholder values to replace.
+// What each provider reads from the Extra Configuration, with placeholder values to replace. Keys that
+// would change behaviour when left as a sample (the ClearTax trn and branch) are left out.
 const EXTRA_CONFIG_TEMPLATES = {
-	ClearTax: { trn: "100000000000003", branch: "Main", timeout: 60, inbound_days: 30 },
+	ClearTax: { timeout: 60, inbound_days: 30 },
 	Microvista: { client_code: "CLIENT_CODE", version: "v1", timeout: 60, inbound_days: 30 },
 	Mock: { behavior: "clear" },
 };
