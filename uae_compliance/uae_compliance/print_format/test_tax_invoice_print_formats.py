@@ -4,6 +4,8 @@ from frappe.tests.utils import FrappeTestCase
 from uae_compliance.tests import (
 	configure_vat_settings,
 	create_submitted_sales_invoice,
+	disable_einvoicing,
+	enable_einvoicing,
 	get_uae_test_company,
 	make_address,
 	make_customer,
@@ -304,8 +306,13 @@ class TestQRCode(FrappeTestCase):
 		frappe.db.set_single_value("UAE Compliance Settings", "show_qr_code", value)
 		frappe.clear_document_cache("UAE Compliance Settings", "UAE Compliance Settings")
 
-	def _html(self):
+	def _html(self, einvoicing=False):
 		invoice = create_submitted_sales_invoice(customer="_Test UAE Customer")
+		if einvoicing:
+			# After the submit, which checks the invoice's e-invoice data once the company is enabled.
+			previous = enable_einvoicing(self.company)
+			self.addCleanup(disable_einvoicing, self.company, previous)
+
 		return _print(invoice, "UAE Tax Invoice")
 
 	def test_no_qr_code_by_default(self):
@@ -317,10 +324,9 @@ class TestQRCode(FrappeTestCase):
 		self.assertIn("data:image/png;base64", self._html())
 
 	def test_no_qr_code_for_einvoicing_company(self):
-		configure_vat_settings(self.company, issues_e_invoices=1)
 		self._set_show_qr_code(1)
 
-		self.assertNotIn("data:image/png;base64", self._html())
+		self.assertNotIn("data:image/png;base64", self._html(einvoicing=True))
 
 	def test_arabic_company_name_does_not_break_the_payload(self):
 		self._set_show_qr_code(1)

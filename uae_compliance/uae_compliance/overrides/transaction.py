@@ -2,12 +2,26 @@ import frappe
 from frappe import _
 
 from uae_compliance.uae_compliance.constants import DEFAULT_VAT_CATEGORY
+from uae_compliance.uae_compliance.constants.custom_fields import get_value_fieldnames
 from uae_compliance.uae_compliance.utils.company import is_uae_company
 from uae_compliance.uae_compliance.utils.vat_category import (
 	get_designated_zone,
 	get_item_category,
 	get_item_tax_template_category,
 )
+
+
+def clear_uae_fields(doc) -> None:
+	"""The UAE tab is hidden for a company outside the UAE, so nothing entered before the company
+	changed should linger on it."""
+	for fieldname in get_value_fieldnames(doc.doctype):
+		doc.set(fieldname, None)
+
+
+def validate_uae_fields(doc, method=None):
+	"""Sales Order and Delivery Note: their only UAE header field is the VAT Emirate."""
+	if not is_uae_company(doc.get("company")):
+		clear_uae_fields(doc)
 
 
 def set_vat_category_defaults(doc, method=None):

@@ -9,7 +9,7 @@ from uae_compliance.uae_compliance.overrides.sales_schemes import (
 	validate_tourist_refund,
 	warn_if_excise_missing,
 )
-from uae_compliance.uae_compliance.overrides.transaction import set_vat_category_defaults
+from uae_compliance.uae_compliance.overrides.transaction import clear_uae_fields, set_vat_category_defaults
 from uae_compliance.uae_compliance.overrides.vat_checks import (
 	validate_no_mixed_vat_category_per_item_code,
 	validate_vat_category_tax_consistency,
@@ -26,6 +26,7 @@ from uae_compliance.uae_compliance.utils.trn import validate_trn
 
 def validate(doc, method=None):
 	if not is_uae_company(doc.get("company")):
+		clear_uae_fields(doc)
 		return
 
 	set_vat_category_defaults(doc)

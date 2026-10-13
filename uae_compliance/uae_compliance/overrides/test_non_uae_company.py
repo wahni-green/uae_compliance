@@ -96,3 +96,33 @@ class TestNonUAECompanyIsUnaffected(FrappeTestCase):
 			}
 		)
 		self.assertRaises(frappe.ValidationError, return_.generate_return)
+
+
+class TestCompanyUAEFields(FrappeTestCase):
+	def test_uae_fields_are_emptied_for_a_non_uae_company(self):
+		from uae_compliance.uae_compliance.overrides import company
+
+		doc = frappe.get_doc("Company", get_foreign_company())
+		for fieldname in company.UAE_FIELDS:
+			doc.set(fieldname, "x")
+
+		company.validate(doc)
+
+		for fieldname in company.UAE_FIELDS:
+			self.assertFalse(doc.get(fieldname), fieldname)
+
+	def test_transaction_uae_fields_are_emptied_for_a_non_uae_company(self):
+		from uae_compliance.uae_compliance.constants.custom_fields import get_value_fieldnames
+
+		for doctype in ("Sales Order", "Delivery Note", "Sales Invoice"):
+			doc = frappe.new_doc(doctype)
+			doc.company = get_foreign_company()
+			fieldnames = get_value_fieldnames(doctype)
+			self.assertIn("uae_emirate", fieldnames)
+			for fieldname in fieldnames:
+				doc.set(fieldname, "x")
+
+			transaction.clear_uae_fields(doc)
+
+			for fieldname in fieldnames:
+				self.assertFalse(doc.get(fieldname), f"{doctype}.{fieldname}")

@@ -599,6 +599,8 @@ def to_payload(model: dict) -> dict:
 	payload = _build_payload(model)
 	for section, fields in ALWAYS_SENT.items():
 		for field in fields:
-			payload[section].setdefault(field, "")
+			# A key already there with None (passportIssuingCountryCode) would go out as null.
+			if payload[section].get(field) is None:
+				payload[section][field] = ""
 
 	return {name: _clean(value, ALWAYS_SENT.get(name, ())) for name, value in payload.items()}
