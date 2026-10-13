@@ -34,6 +34,7 @@ def validate(doc, method=None):
 	validate_no_mixed_vat_category_per_item_code(doc)
 	set_export_flag(doc)
 	set_simplified_tax_invoice_flag(doc)
+	set_supply_date(doc)
 	warn_late_tax_invoice(doc)
 	validate_margin_scheme(doc)
 	validate_reverse_charge_supply(doc)
@@ -41,6 +42,20 @@ def validate(doc, method=None):
 	validate_billing_types(doc)
 	set_einvoice_exclusion(doc)
 	warn_if_excise_missing(doc)
+
+
+def get_dashboard_data(data):
+	"""Show the invoice's E-Invoice Logs under Connections. The log points back through a Dynamic Link."""
+	data["non_standard_fieldnames"] = {
+		**data.get("non_standard_fieldnames", {}),
+		"UAE E-Invoice Log": "reference_name",
+	}
+	data["dynamic_links"] = {
+		**data.get("dynamic_links", {}),
+		"reference_name": ["Sales Invoice", "reference_doctype"],
+	}
+	data["transactions"].append({"label": _("E-Invoice"), "items": ["UAE E-Invoice Log"]})
+	return data
 
 
 def set_einvoice_exclusion(doc) -> None:
@@ -308,6 +323,26 @@ def is_simplified_tax_invoice_candidate(doc) -> bool:
 		return False
 
 	return not frappe.db.get_value("Customer", customer, "uae_trn")
+
+
+def set_supply_date(doc) -> None:
+	"""Leave a Supply Date the user entered alone. Otherwise the goods left with this invoice when it
+	updates stock, so the supply is on its posting date, and when it bills Delivery Notes the supply
+	is the earliest of their dates."""
+	if doc.get("uae_supply_date") or doc.get("is_return"):
+		return
+
+	if doc.get("update_stock"):
+		doc.uae_supply_date = doc.get("posting_date")
+		return
+
+	delivery_notes = {row.delivery_note for row in doc.get("items") or [] if row.get("delivery_note")}
+	if delivery_notes:
+		dates = frappe.get_all(
+			"Delivery Note", filters={"name": ("in", list(delivery_notes))}, pluck="posting_date"
+		)
+		if dates:
+			doc.uae_supply_date = min(dates)
 
 
 def warn_late_tax_invoice(doc) -> None:

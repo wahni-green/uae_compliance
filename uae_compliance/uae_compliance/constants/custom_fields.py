@@ -52,7 +52,7 @@ def _emirate_field(insert_after):
 		insert_after,
 		options=EMIRATE_SELECT_OPTIONS,
 		fetch_from="company_address.uae_emirate",
-		fetch_if_empty=1,
+		read_only=1,
 	)
 
 

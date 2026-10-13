@@ -187,9 +187,9 @@ required_apps = ["frappe/erpnext"]
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
 # along with any modifications made in other Frappe apps
-# override_doctype_dashboards = {
-# 	"Task": "uae_compliance.task.get_dashboard_data"
-# }
+override_doctype_dashboards = {
+	"Sales Invoice": "uae_compliance.uae_compliance.overrides.sales_invoice.get_dashboard_data",
+}
 
 # exempt linked doctypes from being automatically cancelled
 #
