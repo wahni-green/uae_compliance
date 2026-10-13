@@ -13,11 +13,21 @@ def get_item_tax_template_category(item_tax_template: str | None) -> str | None:
 
 
 def get_item_category(item_code: str | None) -> str | None:
-	"""The default VAT Category set on the Item master, if any."""
+	"""The VAT Category of an Item's default Item Tax Template (the first one in its Taxes table
+	that declares a category), if any. Items carry no category of their own."""
 	if not item_code:
 		return None
 
-	return frappe.get_cached_value("Item", item_code, "uae_vat_category") or None
+	for template in frappe.get_all(
+		"Item Tax",
+		filters={"parent": item_code, "parenttype": "Item"},
+		pluck="item_tax_template",
+		order_by="idx",
+	):
+		if category := get_item_tax_template_category(template):
+			return category
+
+	return None
 
 
 def get_designated_zone(address_name: str | None) -> str | None:

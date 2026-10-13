@@ -249,11 +249,10 @@ def _get_original_margin_ratios(items, margin_invoices, invoices_by_name, doctyp
 class CategoryResolver:
 	"""The VAT category of an item row. A row saved by this app carries its own. Rows from before
 	the app was installed fall back, in order, to the category of the row's Item Tax Template, the
-	ERPNext zero rated / exempt flags on the row, the Item's own category, then Standard Rated."""
+	ERPNext zero rated / exempt flags on the row, then Standard Rated."""
 
 	def __init__(self):
 		self._template: dict[str, str | None] = {}
-		self._item: dict[str, str | None] = {}
 
 	def resolve(self, row) -> str:
 		if row.get("uae_vat_category"):
@@ -272,13 +271,6 @@ class CategoryResolver:
 			return "Zero Rated"
 		if row.get("is_exempt") and not row.get("is_zero_rated"):
 			return "Exempt"
-
-		item_code = row.get("item_code")
-		if item_code:
-			if item_code not in self._item:
-				self._item[item_code] = frappe.db.get_value("Item", item_code, "uae_vat_category")
-			if self._item[item_code]:
-				return self._item[item_code]
 
 		return DEFAULT_VAT_CATEGORY
 

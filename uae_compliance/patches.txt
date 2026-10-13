@@ -12,3 +12,5 @@ uae_compliance.patches.v1.migrate_item_vat_flags
 uae_compliance.patches.v1.migrate_erpnext_uae_data
 uae_compliance.patches.v1.backfill_credit_note_original_value
 uae_compliance.patches.v1.update_default_trn_pattern
+uae_compliance.patches.v1.remove_item_vat_category
+uae_compliance.patches.v1.merge_uae_sections

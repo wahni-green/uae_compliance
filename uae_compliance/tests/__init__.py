@@ -4,6 +4,8 @@ import frappe
 from frappe.desk.page.setup_wizard.setup_wizard import setup_complete
 from frappe.utils import getdate
 
+from uae_compliance.uae_compliance.utils.tax_account import get_output_vat_account
+
 TEST_COMPANY = "_Test UAE VAT Company"
 
 
@@ -114,11 +116,45 @@ def configure_vat_settings(company: str, append: bool = False) -> tuple[str, str
 	return output, input_
 
 
+def get_category_template(category: str, company: str | None = None) -> str:
+	"""A 0% Item Tax Template declaring `category`."""
+	company = company or get_uae_test_company()
+	title = f"_Test UAE {category}"
+	abbr = frappe.get_cached_value("Company", company, "abbr")
+	name = f"{title} - {abbr}"
+	if not frappe.db.exists("Item Tax Template", name):
+		account = get_output_vat_account(company) or frappe.db.get_value(
+			"Account", {"company": company, "is_group": 0, "root_type": "Liability"}, "name"
+		)
+		frappe.get_doc(
+			{
+				"doctype": "Item Tax Template",
+				"title": title,
+				"company": company,
+				"uae_vat_category": category,
+				"taxes": [{"tax_type": account, "tax_rate": 0}],
+			}
+		).insert()
+
+	return name
+
+
+def set_item_category(item_code: str, category: str | None) -> None:
+	"""Make `category` the one the Item gets, through the default Item Tax Template in its Taxes
+	table. None clears the Taxes table."""
+	item = frappe.get_doc("Item", item_code)
+	item.set("taxes", [])
+	if category:
+		item.append("taxes", {"item_tax_template": get_category_template(category)})
+
+	item.save()
+
+
 def make_item(item_code: str, category: str | None = None):
 	if frappe.db.exists("Item", item_code):
 		return frappe.get_doc("Item", item_code)
 
-	return frappe.get_doc(
+	item = frappe.get_doc(
 		{
 			"doctype": "Item",
 			"item_code": item_code,
@@ -126,9 +162,13 @@ def make_item(item_code: str, category: str | None = None):
 			"item_group": "All Item Groups",
 			"stock_uom": "Nos",
 			"is_stock_item": 0,
-			"uae_vat_category": category or "",
 		}
 	).insert()
+	if category:
+		set_item_category(item_code, category)
+		item.reload()
+
+	return item
 
 
 def make_customer(name: str, trn: str | None = None):

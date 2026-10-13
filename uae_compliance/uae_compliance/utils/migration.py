@@ -35,33 +35,10 @@ def _log(title: str, message: str) -> None:
 
 
 def migrate_item_vat_flags(dry_run: bool = False) -> dict:
-	"""ERPNext Item.is_zero_rated / is_exempt -> Item.uae_vat_category, plus the matching Item Tax
-	Templates, plus the item rows of *draft* documents. Items with both flags set are skipped and
-	logged for manual review. Never overwrites a category that is already set."""
-	result = {"items": 0, "conflicts": [], "templates": 0, "draft_rows": 0}
-
-	if frappe.db.has_column("Item", "is_zero_rated") and frappe.db.has_column("Item", "is_exempt"):
-		items = frappe.get_all(
-			"Item",
-			filters=[["uae_vat_category", "in", ["", None]]],
-			or_filters={"is_zero_rated": 1, "is_exempt": 1},
-			fields=["name", "is_zero_rated", "is_exempt"],
-		)
-		for item in items:
-			if item.is_zero_rated and item.is_exempt:
-				result["conflicts"].append(item.name)
-				continue
-
-			result["items"] += 1
-			if not dry_run:
-				category = "Zero Rated" if item.is_zero_rated else "Exempt"
-				frappe.db.set_value("Item", item.name, "uae_vat_category", category, update_modified=False)
-
-	if result["conflicts"] and not dry_run:
-		_log(
-			"items with both is_zero_rated and is_exempt",
-			"Set the VAT Category manually on: " + ", ".join(result["conflicts"]),
-		)
+	"""ERPNext's UAE Item Tax Templates -> VAT Category on the template, plus the item rows of
+	*draft* documents. Items carry no category of their own: it comes from their Item Tax
+	Template. Never overwrites a category that is already set."""
+	result = {"templates": 0, "draft_rows": 0}
 
 	for template in frappe.get_all(
 		"Item Tax Template",
@@ -91,19 +68,10 @@ def backfill_draft_item_rows() -> int:
 	"""Fill blank VAT Categories on item rows of draft (docstatus 0) documents only. Precedence:
 	1. the category of the row's own Item Tax Template (the tax treatment the user chose),
 	2. ERPNext's legacy is_zero_rated / is_exempt flags on the row, when exactly one is set,
-	3. the Item's own category.
 	Rows with both legacy flags set are left blank and logged for manual review."""
 	template_categories = dict(
 		frappe.get_all(
 			"Item Tax Template",
-			filters=[["uae_vat_category", "not in", ["", None]]],
-			fields=["name", "uae_vat_category"],
-			as_list=True,
-		)
-	)
-	item_categories = dict(
-		frappe.get_all(
-			"Item",
 			filters=[["uae_vat_category", "not in", ["", None]]],
 			fields=["name", "uae_vat_category"],
 			as_list=True,
@@ -139,7 +107,6 @@ def backfill_draft_item_rows() -> int:
 
 				category = "Zero Rated" if row.is_zero_rated else "Exempt" if row.is_exempt else None
 
-			category = category or item_categories.get(row.item_code)
 			if not category:
 				continue
 

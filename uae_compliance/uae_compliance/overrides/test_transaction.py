@@ -2,6 +2,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from uae_compliance.tests import (
+	configure_vat_settings,
 	get_uae_test_company,
 	make_address,
 	make_customer,
@@ -30,18 +31,34 @@ class TestTransaction(FrappeTestCase):
 		doc.insert()
 		self.assertEqual(doc.items[0].uae_vat_category, "Exempt")
 
-	def test_defaults_to_standard_rated(self):
+	def test_defaults_to_standard_rated_when_vat_is_charged(self):
+		output, _input = configure_vat_settings(get_uae_test_company())
+		item = make_item("_Test Plain Item")
+		doc = self._sales_order(
+			item.name,
+			taxes=[{"charge_type": "On Net Total", "account_head": output, "rate": 5, "description": "VAT"}],
+		)
+		doc.insert()
+		self.assertEqual(doc.items[0].uae_vat_category, "Standard Rated")
+
+	def test_defaults_to_zero_rated_when_no_vat_is_charged(self):
+		configure_vat_settings(get_uae_test_company())
 		item = make_item("_Test Plain Item")
 		doc = self._sales_order(item.name)
 		doc.insert()
-		self.assertEqual(doc.items[0].uae_vat_category, "Standard Rated")
+		self.assertEqual(doc.items[0].uae_vat_category, "Zero Rated")
 
 	def test_designated_zone_address_never_auto_zero_rates(self):
 		zone = frappe.get_all("UAE Designated Zone", pluck="name", limit=1)[0]
 		address = make_address(
 			"_Test Zone Addr", "United Arab Emirates", customer="_Test UAE Customer", uae_designated_zone=zone
 		)
+		output, _input = configure_vat_settings(get_uae_test_company())
 		item = make_item("_Test Zone Item")
-		doc = self._sales_order(item.name, customer_address=address.name)
+		doc = self._sales_order(
+			item.name,
+			customer_address=address.name,
+			taxes=[{"charge_type": "On Net Total", "account_head": output, "rate": 5, "description": "VAT"}],
+		)
 		doc.insert()
 		self.assertEqual(doc.items[0].uae_vat_category, "Standard Rated")
