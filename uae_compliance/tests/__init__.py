@@ -92,7 +92,7 @@ def get_vat_accounts(company: str) -> tuple[str, str]:
 	return output, input_name
 
 
-def configure_vat_settings(company: str, issues_e_invoices: int = 0, append: bool = False) -> tuple[str, str]:
+def configure_vat_settings(company: str, append: bool = False) -> tuple[str, str]:
 	"""Point UAE Compliance Settings at this company's VAT accounts (rolled back with the test).
 	`append` keeps the rows of other companies, for tests that involve several."""
 	output, input_ = get_vat_accounts(company)
@@ -107,7 +107,6 @@ def configure_vat_settings(company: str, issues_e_invoices: int = 0, append: boo
 			"company": company,
 			"output_vat_account": output,
 			"input_vat_account": input_,
-			"issues_e_invoices": issues_e_invoices,
 		},
 	)
 	settings.save()
@@ -402,5 +401,14 @@ def enable_einvoicing(company: str, behavior: str = "clear", **row_values) -> No
 		},
 	)
 	settings.retry_limit = 3
+	settings.save()
+	frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")
+
+
+def disable_einvoicing(company: str) -> None:
+	"""Undo `enable_einvoicing` for a test that must not leave it on for the tests after it: the
+	cached settings outlive the rollback."""
+	settings = frappe.get_doc("UAE E-Invoice Settings")
+	settings.companies = [row for row in settings.companies if row.company != company]
 	settings.save()
 	frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")

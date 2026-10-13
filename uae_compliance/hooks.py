@@ -262,7 +262,12 @@ before_uninstall = "uae_compliance.uninstall.before_uninstall"
 before_migrate = "uae_compliance.patches.check_version_compatibility.execute"
 before_tests = "uae_compliance.tests.before_tests"
 
-doctype_js = {"Item Tax Template": "uae_compliance/client_scripts/item_tax_template.js"}
+doctype_js = {
+	"Item Tax Template": "uae_compliance/client_scripts/item_tax_template.js",
+	"Sales Order": "uae_compliance/client_scripts/transaction_tab.js",
+	"Delivery Note": "uae_compliance/client_scripts/transaction_tab.js",
+	"Sales Invoice": "uae_compliance/client_scripts/transaction_tab.js",
+}
 
 doc_events = {
 	"Company": {
@@ -271,6 +276,9 @@ doc_events = {
 	},
 	("Sales Order", "Quotation", "Delivery Note"): {
 		"validate": "uae_compliance.uae_compliance.overrides.transaction.set_vat_category_defaults",
+	},
+	("Sales Order", "Delivery Note"): {
+		"validate": "uae_compliance.uae_compliance.overrides.transaction.validate_uae_fields",
 	},
 	"Sales Invoice": {
 		"validate": "uae_compliance.uae_compliance.overrides.sales_invoice.validate",

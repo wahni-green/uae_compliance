@@ -52,3 +52,23 @@ class TestUAEComplianceSettings(FrappeTestCase):
 		self.settings.append("vat_accounts", {"company": company, "output_vat_account": group})
 
 		self.assertRaises(frappe.ValidationError, self.settings.validate)
+
+	def test_rejects_same_input_and_output_account(self):
+		company = get_uae_test_company()
+		account = frappe.db.get_value("Account", {"company": company, "is_group": 0}, "name")
+		self.settings.vat_accounts = []
+		self.settings.append(
+			"vat_accounts",
+			{"company": company, "output_vat_account": account, "input_vat_account": account},
+		)
+
+		self.assertRaises(frappe.ValidationError, self.settings.validate)
+
+	def test_rejects_same_excise_and_vat_account(self):
+		company = get_uae_test_company()
+		account = frappe.db.get_value("Account", {"company": company, "is_group": 0}, "name")
+		for fieldname in ("output_vat_account", "input_vat_account"):
+			self.settings.vat_accounts = []
+			self.settings.append("vat_accounts", {"company": company, fieldname: account, "excise_tax_account": account})
+
+			self.assertRaises(frappe.ValidationError, self.settings.validate)

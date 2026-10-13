@@ -9,6 +9,7 @@ class UAEComplianceSettings(Document):
 	def validate(self):
 		self.validate_unique_vat_account_per_company()
 		self.validate_account_ownership()
+		self.validate_distinct_vat_accounts()
 		self.validate_patterns()
 
 	def validate_unique_vat_account_per_company(self):
@@ -40,6 +41,23 @@ class UAEComplianceSettings(Document):
 						),
 						title=_("Invalid VAT Account"),
 					)
+
+	def validate_distinct_vat_accounts(self):
+		"""The VAT return and every VAT check tell the accounts apart, so one account for two of them
+		would count each tax row as both."""
+		for row in self.vat_accounts:
+			accounts = [
+				row.get(fieldname)
+				for fieldname in ("output_vat_account", "input_vat_account", "excise_tax_account")
+			]
+			accounts = [account for account in accounts if account]
+			if len(accounts) != len(set(accounts)):
+				frappe.throw(
+					_("Row #{0}: the Output VAT, Input VAT and Excise Tax accounts must all be different.").format(
+						row.idx
+					),
+					title=_("Same VAT Account"),
+				)
 
 	def validate_patterns(self):
 		for fieldname, label in (("trn_pattern", "TRN Pattern"), ("tin_pattern", "TIN Pattern")):

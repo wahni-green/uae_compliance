@@ -348,8 +348,12 @@ class TestExcise(VATReturnTestCase):
 	def setUp(self):
 		super().setUp()
 		create_excise_rates()
+		# Not the Output or Input VAT account: the settings refuse the same account for two of them.
+		vat_accounts = [a for a in (self.output, self.input) if a]
 		self.accounts = frappe.db.get_value(
-			"Account", {"company": self.company, "account_type": "Tax", "is_group": 0}, "name"
+			"Account",
+			{"company": self.company, "account_type": "Tax", "is_group": 0, "name": ("not in", vat_accounts)},
+			"name",
 		)
 
 	def _item(self, code, category, litres=None):

@@ -5,6 +5,8 @@ from frappe.tests.utils import FrappeTestCase
 
 from uae_compliance.tests import (
 	configure_vat_settings,
+	disable_einvoicing,
+	enable_einvoicing,
 	get_uae_test_company,
 	make_address,
 	make_customer,
@@ -126,7 +128,8 @@ class TestSalesInvoice(FrappeTestCase):
 		self.assertFalse(doc.uae_is_simplified_tax_invoice)
 
 	def test_no_simplified_flag_for_einvoicing_company(self):
-		configure_vat_settings(self.company, issues_e_invoices=1)
+		enable_einvoicing(self.company)
+		self.addCleanup(disable_einvoicing, self.company)
 		make_customer("_Test Retail Customer")
 		doc = make_sales_invoice([{"item_code": self.standard.name}], customer="_Test Retail Customer")
 		doc.insert()
