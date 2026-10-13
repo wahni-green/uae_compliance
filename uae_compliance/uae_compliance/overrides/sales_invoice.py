@@ -326,24 +326,23 @@ def is_simplified_tax_invoice_candidate(doc) -> bool:
 
 
 def set_supply_date(doc) -> None:
-	"""A date the user entered stays. One this method filled in follows its source: it is replaced
-	when the posting date, Update Stock or the Delivery Notes change, so it is told apart by
-	matching what the saved invoice would have defaulted to."""
+	"""A date the user entered stays. One this method filled in, flagged by uae_supply_date_is_default,
+	follows its source and is replaced when the posting date, Update Stock or the Delivery Notes change.
+	A date that differs from the saved one was entered by the user, even if it equals the default."""
 	if doc.get("is_return"):
 		doc.uae_supply_date = None
+		doc.uae_supply_date_is_default = 0
 		return
 
-	current = doc.get("uae_supply_date")
+	current = _as_date(doc.get("uae_supply_date"))
 	saved = doc.get_doc_before_save() if callable(getattr(doc, "get_doc_before_save", None)) else None
-	if current and not (
-		saved
-		and getdate(current)
-		== _as_date(saved.get("uae_supply_date"))
-		== _as_date(get_default_supply_date(saved))
-	):
+	edited = bool(saved) and current != _as_date(saved.get("uae_supply_date"))
+	if current and (edited or not doc.get("uae_supply_date_is_default")):
+		doc.uae_supply_date_is_default = 0
 		return
 
 	doc.uae_supply_date = get_default_supply_date(doc)
+	doc.uae_supply_date_is_default = 1 if doc.uae_supply_date else 0
 
 
 def _as_date(value):

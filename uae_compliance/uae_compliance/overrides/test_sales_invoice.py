@@ -253,6 +253,18 @@ class TestSalesInvoice(FrappeTestCase):
 		doc.save()
 		self.assertEqual(str(doc.uae_supply_date), today)
 
+	def test_entered_supply_date_equal_to_the_default_is_kept(self):
+		today = frappe.utils.today()
+		doc = make_sales_invoice([{"item_code": self.standard.name}])
+		doc.update_stock = 1
+		doc.uae_supply_date = doc.posting_date
+		doc.insert()
+
+		doc.posting_date = doc.due_date = frappe.utils.add_days(today, 3)
+		doc.payment_schedule = []
+		doc.save()
+		self.assertEqual(str(doc.uae_supply_date), today)
+
 	def test_return_has_no_supply_date(self):
 		from uae_compliance.uae_compliance.overrides.sales_invoice import set_supply_date
 
