@@ -28,7 +28,7 @@ def is_vat_applied(doc) -> bool:
 	"""Whether the document charges any VAT. Unknown (so true) when the company's Output VAT account
 	is not configured, as no row can then be told apart from a freight or discount charge. A reverse
 	charge supply carries no VAT row, and a margin scheme supply can owe none, but both are still
-	standard rated."""
+	standard rated. Judged by the VAT calculated, as an Item Tax Template can bring a 5% row to nothing."""
 	if doc.get("uae_is_reverse_charge") or doc.get("uae_is_margin_scheme"):
 		return True
 
@@ -37,16 +37,17 @@ def is_vat_applied(doc) -> bool:
 		return True
 
 	return any(
-		row.get("account_head") == output_account and (row.get("rate") or row.get("tax_amount"))
-		for row in doc.get("taxes") or []
+		row.get("account_head") == output_account and row.get("tax_amount") for row in doc.get("taxes") or []
 	)
 
 
 def set_vat_category_defaults(doc, method=None):
 	"""Shared by Sales Order, Quotation, Delivery Note and Sales Invoice. A row's category is the one
 	declared by its Item Tax Template, re-read on every save so that changing the template changes
-	the category. A row without one keeps the category already set, else gets Zero Rated when the
-	document charges no VAT, else Standard Rated.
+	the category. A row without one follows the VAT charged:
+	Zero Rated when the document charges none, else Standard Rated. Only a blank, Standard Rated or
+	Zero Rated category is re-derived; Exempt and Out of Scope are kept, as they can't be told from
+	the VAT charged.
 
 	A designated zone address never zero-rates a row automatically: goods supplied within a zone are
 	inside the UAE by default and are outside only with evidence (ER Art 51(5)), so this only warns."""
@@ -58,7 +59,7 @@ def set_vat_category_defaults(doc, method=None):
 		template_category = get_item_tax_template_category(row.get("item_tax_template"))
 		if template_category:
 			row.uae_vat_category = template_category
-		elif not row.get("uae_vat_category"):
+		elif row.get("uae_vat_category") in ("", None, DEFAULT_VAT_CATEGORY, "Zero Rated"):
 			row.uae_vat_category = default
 
 	warn_designated_zone(doc)

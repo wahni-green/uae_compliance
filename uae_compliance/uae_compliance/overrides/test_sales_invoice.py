@@ -62,8 +62,8 @@ class TestSalesInvoice(FrappeTestCase):
 		doc.insert()
 		self.assertEqual(doc.items[0].uae_vat_category, "Out of Scope")
 
-	def test_zero_rated_row_charged_vat_is_rejected(self):
-		doc = make_sales_invoice([{"item_code": self.standard.name, "uae_vat_category": "Zero Rated"}])
+	def test_exempt_row_charged_vat_is_rejected(self):
+		doc = make_sales_invoice([{"item_code": self.standard.name, "uae_vat_category": "Exempt"}])
 		self.assertRaises(frappe.ValidationError, doc.insert)
 
 	def test_zero_rated_item_is_not_charged_vat(self):
@@ -88,6 +88,14 @@ class TestSalesInvoice(FrappeTestCase):
 		)
 		doc.insert()
 		self.assertEqual(doc.items[0].uae_vat_category, "Exempt")
+
+	def test_a_row_without_a_template_follows_the_vat_charged(self):
+		doc = make_sales_invoice([{"item_code": self.standard.name}]).insert()
+		self.assertEqual(doc.items[0].uae_vat_category, "Standard Rated")
+
+		doc.taxes = []
+		doc.save()
+		self.assertEqual(doc.items[0].uae_vat_category, "Zero Rated")
 
 	def test_changing_the_item_tax_template_changes_the_category(self):
 		doc = make_sales_invoice([{"item_code": self.standard.name}]).insert()

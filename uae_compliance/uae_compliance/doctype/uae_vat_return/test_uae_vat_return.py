@@ -5,10 +5,10 @@ from uae_compliance.tests import (
 	configure_vat_settings,
 	create_submitted_purchase_invoice,
 	create_submitted_sales_invoice,
+	get_category_template,
 	get_uae_test_company,
 	get_unique_test_date,
 	make_customer,
-	get_category_template,
 	make_item,
 )
 
