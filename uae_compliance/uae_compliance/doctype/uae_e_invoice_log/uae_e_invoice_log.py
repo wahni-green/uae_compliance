@@ -19,7 +19,8 @@ class UAEEInvoiceLog(Document):
 
 	@frappe.whitelist()
 	def retry(self):
-		"""Rebuild and send the document again after a failure, a rejection or fixing its data."""
+		"""Rebuild and send the document again after a failure or after fixing its data. A rejected document
+		is not sent again: its number is not reused."""
 		from uae_compliance.uae_compliance.einvoice.pipeline import retry_log
 
 		frappe.has_permission(self.doctype, "write", doc=self, throw=True)

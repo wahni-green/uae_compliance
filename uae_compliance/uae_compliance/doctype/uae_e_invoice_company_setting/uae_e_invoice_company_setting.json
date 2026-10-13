@@ -46,9 +46,10 @@
   },
   {
    "fieldname": "provider",
-   "fieldtype": "Data",
+   "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Provider",
+   "options": "ClearTax\nMicrovista\nMock",
    "reqd": 1
   },
   {

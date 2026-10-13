@@ -119,10 +119,10 @@ class TestScope(PipelineTestCase):
 		doc.uae_billing_frequency = "Daily"
 		self.assertRaises(frappe.ValidationError, doc.save)
 
-		# A rejected invoice was refused before it was accepted, so it can be corrected; one waiting to
-		# be sent, cleared or failed (which the provider may hold) cannot.
+		# One that was rejected (its number is not reused), is waiting to be sent, cleared or failed (which
+		# the provider may hold) cannot.
 		for status, allowed in (
-			("Rejected", True),
+			("Rejected", False),
 			("Generated", False),
 			("Cleared", False),
 			("Failed", False),
@@ -323,6 +323,63 @@ class TestSendingAndPolling(PipelineTestCase):
 		log.reload()
 		self.assertEqual(log.status, "Rejected")
 		self.assertIn("Buyer unknown", log.errors)
+
+	def test_a_rejected_document_is_not_sent_again(self):
+		"""The provider blocks the number of a rejected document, so the invoice is cancelled and amended."""
+		doc, _enqueue = self.submit()
+		log = self.log_of(doc)
+		with patch(
+			"uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.submit",
+			side_effect=ProviderRejectedError("Buyer unknown"),
+		):
+			pipeline.submit_log(log.name)
+
+		with patch("uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.submit") as submit:
+			with self.assertRaisesRegex(frappe.ValidationError, "cannot be sent again"):
+				pipeline.retry_log(log.name)
+
+		submit.assert_not_called()
+		log.reload()
+		self.assertEqual(log.status, "Rejected")
+
+	def test_a_rejected_invoice_can_be_cancelled_and_amended_with_a_new_number(self):
+		doc, _enqueue = self.submit()
+		log = self.log_of(doc)
+		with patch(
+			"uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.submit",
+			side_effect=ProviderRejectedError("Buyer unknown"),
+		):
+			pipeline.submit_log(log.name)
+
+		doc.reload()
+		doc.cancel()
+		amended = frappe.copy_doc(doc)
+		amended.amended_from = doc.name
+		amended.docstatus = 0
+		amended.insert()
+
+		self.assertNotEqual(amended.name, doc.name)
+		log.reload()
+		self.assertEqual(log.status, "Invalid")
+		self.assertIn("cancelled", log.errors)
+
+		# The amendment is a new document: its own log sends its own number, and the old log stays closed.
+		with patch("frappe.enqueue"):
+			amended.submit()
+
+		new_log = self.log_of(amended)
+		self.assertNotEqual(new_log.name, log.name)
+		with patch(
+			"uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.submit",
+			return_value=SubmitResult(provider_reference="R2", status="Submitted", detail=""),
+		) as submit:
+			pipeline.submit_log(new_log.name)
+
+		self.assertEqual(submit.call_args.args[0].number, amended.name)
+		new_log.reload()
+		self.assertEqual(new_log.status, "Submitted")
+		log.reload()
+		self.assertEqual(log.status, "Invalid")
 
 	def test_a_timeout_is_retried_with_backoff_and_then_fails(self):
 		enable_einvoicing(self.company, behavior="timeout")

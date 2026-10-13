@@ -45,7 +45,7 @@ The company's UAE TIN is the taxpayer. `client_code` is required; a missing one 
 
 The company's UAE TIN is the taxpayer. ClearTax gives one access token per client secret and a new one revokes the old, so companies on the same account share it, and **no other system may create a token for the same client secret** (an integration that does so signs this one out; the app renews its token once when that happens). The sandbox allows 10 token requests an hour. The client secret may also be restricted to allowed IP addresses in the portal.
 
-With the sandbox account tested, a document number can be sent once: if ClearTax rejects an invoice, the same number cannot be sent again. This looks like an account setting, so ask ClearTax to allow a failed number to be sent again before going live (Phase 9 in the to-do list).
+A document number can be sent once on the sandbox account tested: ClearTax keeps a rejected document and blocks its number. The app therefore never sends a rejected number again, with any provider: the user cancels the rejected invoice and amends it (a new number).
 
 ### Mock
 Provider `Mock` talks to nobody. Extra Configuration `{"behavior": "clear"}` clears documents over successive status checks. Set `behavior` to `reject` to reject documents, or to `timeout` to simulate a timeout on submission. For development and tests only.

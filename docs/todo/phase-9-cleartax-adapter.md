@@ -22,7 +22,7 @@ Behaviour below was established against the ClearTax sandbox on 12 Oct 2026, not
 - [x] `fetch_inbound` (written and unit tested from the shape of a stored invoice; **never run against a received document**): `documents/query?einvoice-type=PURCHASE` in windows of 7 days, then `GET documents?einvoice-type=PURCHASE&document-number=` for the invoice JSON, mapped to the keys of `inbound.parse_document`. The invoice is found by its number, which two suppliers may share, so it is checked to be from the listed row's supplier (the sender's endpoint against `SellerTaxIdentifier`) and is otherwise left unlogged; the amount due is the payable amount. **Blocked:** not testable without a second sandbox entity (see below)
 - [x] Credit and cancel: a sent e-invoice is corrected by a credit note, as for Microvista. No cancel call is documented
 - [x] The email endpoint is out of scope; the invoice PDF (`documents/print`, a real PDF in the sandbox) is not needed either
-- [ ] Rejected invoices (open): the number is used up at the sandbox account (`300118`), which looks like an ASP account setting and not a rule of the API. Ask ClearTax for the setting that lets a failed number be sent again, as Microvista does; until then a retry of a rejected invoice finds the failed document and is rejected again
+- [x] Rejected invoices: a rejected number is never sent again, with any provider (decided 12 Oct 2026; ClearTax blocks it with `300118`, and Microvista replaces the failed document but is treated the same). The log's Retry is gone for Rejected; the user cancels the invoice and amends it for a new number. A credit note is for an invoice that has been Delivered or Cleared. (ClearTax's sandbox also accepted a credit note that referenced a failed invoice, and one that referenced a number that does not exist, so it would not have stopped one that corrects nothing at the FTA)
 
 ## Tests
 - [x] Unit tests with recorded responses (token, accepted, `300118`, rule failure, `PEPPOL` failure, each status) and the payload checked against the Postman fixture and the V5 mapping sheet's paths
@@ -35,7 +35,7 @@ Behaviour below was established against the ClearTax sandbox on 12 Oct 2026, not
 - [x] Remaining work list in [README.md](README.md)
 
 ## Questions for ClearTax
-1. **Rejected numbers:** after `Failed`, a corrected invoice with the same number is blocked with `300118`. Is there an account setting that allows a failed number to be sent again (Microvista allows it), and can it be turned on for the sandbox and production accounts?
+1. **Rejected numbers** (no longer blocking: the app never reuses one): is a number blocked after `Failed` on purpose, and does a credit note that references a failed or unknown invoice go to the FTA as a correction of nothing?
 2. **Resend after a delivered invoice:** is `300118` the intended answer (the PDF says `DUP-201`/`DUP-202`), and is there a way to get the existing document ID back from the send call?
 3. **Inbound:** how can a sandbox entity receive documents? A send to our own TIN is delivered but never appears in the `PURCHASE` query. Is there an acknowledge or dispute call, a webhook, and a list that returns the full document by ID rather than by (non-unique) number?
 4. **Payload:** the PDF's field tables use PascalCase and `invoiceDocumentReference` for the preceding invoice, but the API takes camelCase and `additionalDocumentReference`. Is there a corrected document?

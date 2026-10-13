@@ -3,7 +3,7 @@ from frappe import _
 from frappe.utils import date_diff, flt, getdate
 
 from uae_compliance.uae_compliance.constants import TAX_INVOICE_ISSUE_DAYS
-from uae_compliance.uae_compliance.constants.einvoice import STATUS_INVALID, STATUS_REJECTED
+from uae_compliance.uae_compliance.constants.einvoice import STATUS_INVALID
 from uae_compliance.uae_compliance.overrides.sales_schemes import (
 	validate_margin_scheme,
 	validate_tourist_refund,
@@ -62,9 +62,10 @@ def set_einvoice_exclusion(doc) -> None:
 	doc.uae_einvoice_exclusion_from_items = 1 if reason else 0
 
 
-# Only an invoice that is not logged, or whose retry rebuilds the document (Invalid, Rejected), can still
-# take the frequency: one waiting to be sent, sent, or failed (which the provider may hold) cannot.
-EDITABLE_STATUSES = (None, "", STATUS_INVALID, STATUS_REJECTED)
+# Only an invoice that is not logged, or whose retry rebuilds the document (Invalid), can still take the
+# frequency: one waiting to be sent, sent, rejected (its number is not reused) or failed (which the
+# provider may hold) cannot.
+EDITABLE_STATUSES = (None, "", STATUS_INVALID)
 
 
 def before_update_after_submit(doc, method=None):

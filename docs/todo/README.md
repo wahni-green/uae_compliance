@@ -16,7 +16,7 @@ Phase checklists for [UAE_COMPLIANCE_PLAN.md](../UAE_COMPLIANCE_PLAN.md). Tick i
 ## Remaining work (kept in step with the phase checklists)
 
 **To build**
-- ClearTax follow-ups: confirm with ClearTax whether an account setting lets a rejected number be sent again (a failed number is blocked on the sandbox account tested), and try inbound documents, which have not been run against a real received document ([Phase 9](phase-9-cleartax-adapter.md)).
+- ClearTax follow-up: inbound documents have not been run against a real received document ([Phase 9](phase-9-cleartax-adapter.md)).
 - Self-billing documents (on hold: Microvista issues a type 389 as a standard invoice; [Phase 6](phase-6-einvoicing-pint-ae.md)).
 - Inbound e-invoices: create Purchase Invoices from received documents; acknowledge or dispute them (Microvista has no endpoint for it); full Schematron validation ([Phase 6](phase-6-einvoicing-pint-ae.md)).
 - **CD 149/2026** (read; [UAE_VERIFICATION.md](../UAE_VERIFICATION.md) section 9): the apportionment changes from the first tax year after 1 October 2027 ([Phase 5](phase-5-advanced-schemes.md)). The cash payment rule is built; enter the Minister's amount in UAE Compliance Settings once it is published.

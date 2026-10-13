@@ -28,6 +28,16 @@ class TestUAEEInvoiceSettings(FrappeTestCase):
 		self.company = get_uae_test_company()
 		self.settings = self._fresh()
 
+	def register_demo(self):
+		"""Make the Demo provider selectable for the length of a test."""
+		registry.register_provider(DemoASP)
+		self.addCleanup(registry._PROVIDERS.pop, "Demo", None)
+
+		field = frappe.get_meta("UAE E-Invoice Company Setting").get_field("provider")
+		options = field.options
+		field.options = f"{options}\nDemo"
+		self.addCleanup(setattr, field, "options", options)
+
 	def _fresh(self):
 		settings = frappe.get_doc("UAE E-Invoice Settings")
 		settings.companies = []
@@ -41,6 +51,10 @@ class TestUAEEInvoiceSettings(FrappeTestCase):
 
 	def test_the_mock_provider_is_always_available(self):
 		self.assertIn("Mock", registry.get_provider_names())
+
+	def test_every_provider_can_be_selected(self):
+		options = frappe.get_meta("UAE E-Invoice Company Setting").get_field("provider").options
+		self.assertEqual(options.split("\n"), registry.get_provider_names())
 
 	def test_valid_settings_save(self):
 		self._row()
@@ -64,8 +78,7 @@ class TestUAEEInvoiceSettings(FrappeTestCase):
 		self.assertRaises(frappe.ValidationError, self.settings.save)
 
 	def test_a_provider_can_require_settings(self):
-		registry.register_provider(DemoASP)
-		self.addCleanup(registry._PROVIDERS.pop, "Demo", None)
+		self.register_demo()
 
 		self._row(provider="Demo")
 		self.assertRaises(frappe.ValidationError, self.settings.save)
@@ -75,15 +88,13 @@ class TestUAEEInvoiceSettings(FrappeTestCase):
 		self.settings.save()
 
 	def test_a_disabled_row_needs_nothing(self):
-		registry.register_provider(DemoASP)
-		self.addCleanup(registry._PROVIDERS.pop, "Demo", None)
+		self.register_demo()
 
 		self._row(provider="Demo", enabled=0)
 		self.settings.save()
 
 	def test_the_client_is_built_from_the_row_and_the_stored_secret(self):
-		registry.register_provider(DemoASP)
-		self.addCleanup(registry._PROVIDERS.pop, "Demo", None)
+		self.register_demo()
 
 		self._row(
 			provider="Demo",
