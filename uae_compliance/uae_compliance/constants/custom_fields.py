@@ -257,7 +257,10 @@ def _sales_invoice_fields():
 	]
 
 
-def _legal_registration_fields(insert_after):
+def _legal_registration_fields(insert_after, columns=False):
+	"""`columns` puts the type, the ID and the authority (with the passport country) in three columns."""
+	cb1 = [_field("uae_cb_legal_1", "", "Column Break", "uae_legal_registration_type")] if columns else []
+	cb2 = [_field("uae_cb_legal_2", "", "Column Break", "uae_legal_registration_id")] if columns else []
 	return [
 		_field(
 			"uae_legal_registration_type",
@@ -266,17 +269,19 @@ def _legal_registration_fields(insert_after):
 			insert_after,
 			options=LEGAL_REGISTRATION_SELECT_OPTIONS,
 		),
+		*cb1,
 		_field(
 			"uae_legal_registration_id",
 			"Legal Registration ID",
 			"Data",
-			"uae_legal_registration_type",
+			cb1[0]["fieldname"] if columns else "uae_legal_registration_type",
 		),
+		*cb2,
 		_field(
 			"uae_licence_authority",
 			"Licence Issuing Authority",
 			"Data",
-			"uae_legal_registration_id",
+			cb2[0]["fieldname"] if columns else "uae_legal_registration_id",
 		),
 		_field(
 			"uae_passport_country",
@@ -315,12 +320,16 @@ CUSTOM_FIELDS = {
 		*_legal_registration_fields("uae_cb_company"),
 	],
 	("Customer", "Supplier"): [
-		_field("uae_trn", "TRN", "Data", "tax_id"),
-		_field("uae_tin", "TIN (Peppol)", "Data", "uae_trn"),
+		# In the Tax tab, after its last field, so no existing field is swallowed.
+		_field("uae_vat_section", "UAE VAT", "Section Break", "tax_withholding_category"),
+		_field("uae_trn", "TRN", "Data", "uae_vat_section"),
+		_field("uae_cb_vat", "", "Column Break", "uae_trn"),
+		_field("uae_tin", "TIN (Peppol)", "Data", "uae_cb_vat"),
 	],
 	"Customer": [
 		_field("uae_customer_name_in_arabic", "Customer Name in Arabic", "Data", "customer_name"),
-		*_legal_registration_fields("uae_tin"),
+		_field("uae_legal_section", "Legal Registration", "Section Break", "uae_tin"),
+		*_legal_registration_fields("uae_legal_section", columns=True),
 	],
 	"Supplier": [
 		_field("uae_supplier_name_in_arabic", "Supplier Name in Arabic", "Data", "supplier_name"),

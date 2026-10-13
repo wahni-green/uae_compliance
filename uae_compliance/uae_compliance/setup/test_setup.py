@@ -54,7 +54,10 @@ class TestSetup(FrappeTestCase):
 					continue
 
 				meta_fields = frappe.get_meta(doctype).fields
-				start = next(i for i, f in enumerate(meta_fields) if f.fieldname == fields[0]["fieldname"])
+				first_section = next(f for f in fields if f["fieldtype"] == "Section Break")
+				start = next(
+					i for i, f in enumerate(meta_fields) if f.fieldname == first_section["fieldname"]
+				)
 				following = next((f for f in meta_fields[start:] if not f.fieldname.startswith("uae_")), None)
 				if not following:
 					# Our fields end the form, so there is nothing to swallow.
