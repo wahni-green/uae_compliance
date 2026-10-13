@@ -193,6 +193,85 @@ class TestSalesInvoice(FrappeTestCase):
 		self.assertFalse(doc.get("uae_is_export"))
 		self.assertFalse(doc.items[0].get("uae_vat_category") is None)
 
+	def test_einvoice_log_is_listed_in_connections(self):
+		from frappe.desk.notifications import get_open_count
+
+		doc = make_sales_invoice([{"item_code": self.standard.name}])
+		doc.insert()
+		frappe.get_doc(
+			{
+				"doctype": "UAE E-Invoice Log",
+				"company": self.company,
+				"direction": "Outbound",
+				"status": "Pending",
+				"reference_doctype": "Sales Invoice",
+				"reference_name": doc.name,
+			}
+		).insert(ignore_permissions=True, ignore_mandatory=True)
+
+		counts = get_open_count("Sales Invoice", doc.name)["count"]["external_links_found"]
+		self.assertEqual([c["count"] for c in counts if c["doctype"] == "UAE E-Invoice Log"], [1])
+
+	def test_supply_date_defaults(self):
+		from uae_compliance.uae_compliance.overrides.sales_invoice import set_supply_date
+
+		today = frappe.utils.today()
+		doc = frappe._dict(update_stock=1, posting_date=today, items=[])
+		set_supply_date(doc)
+		self.assertEqual(doc.uae_supply_date, today)
+
+		doc = frappe._dict(update_stock=1, posting_date=today, uae_supply_date="2020-01-01", items=[])
+		set_supply_date(doc)
+		self.assertEqual(doc.uae_supply_date, "2020-01-01")
+
+		early, late = frappe.utils.add_days(today, -9), frappe.utils.add_days(today, -5)
+		notes = [frappe._dict(name=f"_DN{i}", posting_date=d) for i, d in enumerate((late, early))]
+		rows = [frappe._dict(delivery_note=n.name) for n in notes]
+		doc = frappe._dict(update_stock=0, posting_date=today, items=rows)
+		with patch(
+			"uae_compliance.uae_compliance.overrides.sales_invoice.frappe.get_all",
+			return_value=[n.posting_date for n in notes],
+		):
+			set_supply_date(doc)
+		self.assertEqual(doc.uae_supply_date, early)
+
+	def test_supply_date_follows_posting_date_until_edited(self):
+		today = frappe.utils.today()
+		doc = make_sales_invoice([{"item_code": self.standard.name}], update_stock=0)
+		doc.update_stock = 1
+		doc.insert()
+		self.assertEqual(str(doc.uae_supply_date), str(doc.posting_date))
+
+		doc.posting_date = doc.due_date = frappe.utils.add_days(today, 1)
+		doc.payment_schedule = []
+		doc.save()
+		self.assertEqual(str(doc.uae_supply_date), str(doc.posting_date))
+
+		doc.uae_supply_date = today
+		doc.posting_date = doc.due_date = frappe.utils.add_days(today, 2)
+		doc.payment_schedule = []
+		doc.save()
+		self.assertEqual(str(doc.uae_supply_date), today)
+
+	def test_entered_supply_date_equal_to_the_default_is_kept(self):
+		today = frappe.utils.today()
+		doc = make_sales_invoice([{"item_code": self.standard.name}])
+		doc.update_stock = 1
+		doc.uae_supply_date = doc.posting_date
+		doc.insert()
+
+		doc.posting_date = doc.due_date = frappe.utils.add_days(today, 3)
+		doc.payment_schedule = []
+		doc.save()
+		self.assertEqual(str(doc.uae_supply_date), today)
+
+	def test_return_has_no_supply_date(self):
+		from uae_compliance.uae_compliance.overrides.sales_invoice import set_supply_date
+
+		doc = frappe._dict(is_return=1, uae_supply_date=frappe.utils.today())
+		set_supply_date(doc)
+		self.assertIsNone(doc.uae_supply_date)
+
 	def test_late_tax_invoice_warns(self):
 		from uae_compliance.uae_compliance.overrides.sales_invoice import warn_late_tax_invoice
 

@@ -34,6 +34,7 @@ def validate(doc, method=None):
 	validate_no_mixed_vat_category_per_item_code(doc)
 	set_export_flag(doc)
 	set_simplified_tax_invoice_flag(doc)
+	set_supply_date(doc)
 	warn_late_tax_invoice(doc)
 	validate_margin_scheme(doc)
 	validate_reverse_charge_supply(doc)
@@ -41,6 +42,20 @@ def validate(doc, method=None):
 	validate_billing_types(doc)
 	set_einvoice_exclusion(doc)
 	warn_if_excise_missing(doc)
+
+
+def get_dashboard_data(data):
+	"""Show the invoice's E-Invoice Logs under Connections. The log points back through a Dynamic Link."""
+	data["non_standard_fieldnames"] = {
+		**data.get("non_standard_fieldnames", {}),
+		"UAE E-Invoice Log": "reference_name",
+	}
+	data["dynamic_links"] = {
+		**data.get("dynamic_links", {}),
+		"reference_name": ["Sales Invoice", "reference_doctype"],
+	}
+	data["transactions"].append({"label": _("E-Invoice"), "items": ["UAE E-Invoice Log"]})
+	return data
 
 
 def set_einvoice_exclusion(doc) -> None:
@@ -308,6 +323,46 @@ def is_simplified_tax_invoice_candidate(doc) -> bool:
 		return False
 
 	return not frappe.db.get_value("Customer", customer, "uae_trn")
+
+
+def set_supply_date(doc) -> None:
+	"""A date the user entered stays. One this method filled in, flagged by uae_supply_date_is_default,
+	follows its source and is replaced when the posting date, Update Stock or the Delivery Notes change.
+	A date that differs from the saved one was entered by the user, even if it equals the default."""
+	if doc.get("is_return"):
+		doc.uae_supply_date = None
+		doc.uae_supply_date_is_default = 0
+		return
+
+	current = _as_date(doc.get("uae_supply_date"))
+	saved = doc.get_doc_before_save() if callable(getattr(doc, "get_doc_before_save", None)) else None
+	edited = bool(saved) and current != _as_date(saved.get("uae_supply_date"))
+	if current and (edited or not doc.get("uae_supply_date_is_default")):
+		doc.uae_supply_date_is_default = 0
+		return
+
+	doc.uae_supply_date = get_default_supply_date(doc)
+	doc.uae_supply_date_is_default = 1 if doc.uae_supply_date else 0
+
+
+def _as_date(value):
+	return getdate(value) if value else None
+
+
+def get_default_supply_date(doc):
+	"""The goods left with this invoice when it updates stock, so the supply is on its posting date.
+	When it bills Delivery Notes the supply is the earliest of their dates."""
+	if doc.get("update_stock"):
+		return doc.get("posting_date")
+
+	delivery_notes = {row.delivery_note for row in doc.get("items") or [] if row.get("delivery_note")}
+	if delivery_notes:
+		dates = frappe.get_all(
+			"Delivery Note", filters={"name": ("in", list(delivery_notes))}, pluck="posting_date"
+		)
+		return min(dates) if dates else None
+
+	return None
 
 
 def warn_late_tax_invoice(doc) -> None:

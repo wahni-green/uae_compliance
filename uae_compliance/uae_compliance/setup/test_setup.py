@@ -68,6 +68,21 @@ class TestSetup(FrappeTestCase):
 
 		self.assertTrue(checked)
 
+	def test_emirate_is_read_only_after_upgrade(self):
+		"""An existing site stored the VAT Emirate with fetch_if_empty; the upgrade must clear it."""
+		for doctype in ("Sales Invoice", "Sales Order", "Delivery Note"):
+			name = frappe.db.get_value("Custom Field", {"dt": doctype, "fieldname": "uae_emirate"})
+			frappe.db.set_value("Custom Field", name, {"fetch_if_empty": 1, "read_only": 0})
+
+		create_custom_fields()
+		for doctype in ("Sales Invoice", "Sales Order", "Delivery Note"):
+			values = frappe.db.get_value(
+				"Custom Field",
+				{"dt": doctype, "fieldname": "uae_emirate"},
+				["fetch_if_empty", "read_only"],
+			)
+			self.assertEqual(tuple(values), (0, 1), doctype)
+
 	def test_no_doctype_name_clashes_with_other_apps(self):
 		ours = frappe.get_all("DocType", filters={"module": "UAE Compliance"}, pluck="name")
 		self.assertTrue(ours)
