@@ -326,23 +326,44 @@ def is_simplified_tax_invoice_candidate(doc) -> bool:
 
 
 def set_supply_date(doc) -> None:
-	"""Leave a Supply Date the user entered alone. Otherwise the goods left with this invoice when it
-	updates stock, so the supply is on its posting date, and when it bills Delivery Notes the supply
-	is the earliest of their dates."""
-	if doc.get("uae_supply_date") or doc.get("is_return"):
+	"""A date the user entered stays. One this method filled in follows its source: it is replaced
+	when the posting date, Update Stock or the Delivery Notes change, so it is told apart by
+	matching what the saved invoice would have defaulted to."""
+	if doc.get("is_return"):
+		doc.uae_supply_date = None
 		return
 
-	if doc.get("update_stock"):
-		doc.uae_supply_date = doc.get("posting_date")
+	current = doc.get("uae_supply_date")
+	saved = doc.get_doc_before_save() if callable(getattr(doc, "get_doc_before_save", None)) else None
+	if current and not (
+		saved
+		and getdate(current)
+		== _as_date(saved.get("uae_supply_date"))
+		== _as_date(get_default_supply_date(saved))
+	):
 		return
+
+	doc.uae_supply_date = get_default_supply_date(doc)
+
+
+def _as_date(value):
+	return getdate(value) if value else None
+
+
+def get_default_supply_date(doc):
+	"""The goods left with this invoice when it updates stock, so the supply is on its posting date.
+	When it bills Delivery Notes the supply is the earliest of their dates."""
+	if doc.get("update_stock"):
+		return doc.get("posting_date")
 
 	delivery_notes = {row.delivery_note for row in doc.get("items") or [] if row.get("delivery_note")}
 	if delivery_notes:
 		dates = frappe.get_all(
 			"Delivery Note", filters={"name": ("in", list(delivery_notes))}, pluck="posting_date"
 		)
-		if dates:
-			doc.uae_supply_date = min(dates)
+		return min(dates) if dates else None
+
+	return None
 
 
 def warn_late_tax_invoice(doc) -> None:

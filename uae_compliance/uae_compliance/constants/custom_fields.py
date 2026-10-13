@@ -52,6 +52,7 @@ def _emirate_field(insert_after):
 		insert_after,
 		options=EMIRATE_SELECT_OPTIONS,
 		fetch_from="company_address.uae_emirate",
+		fetch_if_empty=0,
 		read_only=1,
 	)
 
@@ -72,7 +73,7 @@ def _sales_invoice_fields():
 	return [
 		_field("uae_tab", "UAE Compliance", "Tab Break", "remarks"),
 		# Supply details
-		_field("uae_supply_date", "Supply Date", "Date", "uae_tab"),
+		_field("uae_supply_date", "Supply Date", "Date", "uae_tab", no_copy=1),
 		_emirate_field("uae_supply_date"),
 		_field("uae_cb_supply_1", "", "Column Break", "uae_emirate"),
 		_field(
