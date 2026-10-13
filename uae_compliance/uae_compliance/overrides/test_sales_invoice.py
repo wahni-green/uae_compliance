@@ -128,8 +128,8 @@ class TestSalesInvoice(FrappeTestCase):
 		self.assertFalse(doc.uae_is_simplified_tax_invoice)
 
 	def test_no_simplified_flag_for_einvoicing_company(self):
-		enable_einvoicing(self.company)
-		self.addCleanup(disable_einvoicing, self.company)
+		previous = enable_einvoicing(self.company)
+		self.addCleanup(disable_einvoicing, self.company, previous)
 		make_customer("_Test Retail Customer")
 		doc = make_sales_invoice([{"item_code": self.standard.name}], customer="_Test Retail Customer")
 		doc.insert()

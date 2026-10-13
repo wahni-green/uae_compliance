@@ -310,8 +310,8 @@ class TestQRCode(FrappeTestCase):
 		invoice = create_submitted_sales_invoice(customer="_Test UAE Customer")
 		if einvoicing:
 			# After the submit, which checks the invoice's e-invoice data once the company is enabled.
-			enable_einvoicing(self.company)
-			self.addCleanup(disable_einvoicing, self.company)
+			previous = enable_einvoicing(self.company)
+			self.addCleanup(disable_einvoicing, self.company, previous)
 
 		return _print(invoice, "UAE Tax Invoice")
 

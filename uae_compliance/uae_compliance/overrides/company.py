@@ -2,7 +2,6 @@ from uae_compliance.uae_compliance.setup import hide_erpnext_uae_fields
 from uae_compliance.uae_compliance.utils.company import UAE
 from uae_compliance.uae_compliance.utils.trn import validate_tin, validate_trn
 
-
 UAE_FIELDS = (
 	"uae_company_name_in_arabic",
 	"uae_tax_group",

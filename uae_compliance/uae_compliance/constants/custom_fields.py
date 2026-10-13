@@ -43,6 +43,7 @@ _ITEM_ROW_DOCTYPES = (
 	"Purchase Invoice Item",
 )
 
+
 def _emirate_field(insert_after):
 	return _field(
 		"uae_emirate",
@@ -115,7 +116,9 @@ def _sales_invoice_fields():
 		# Transaction types: an invoice can be several at once, so these stay checkboxes
 		_field("uae_type_section", "Transaction Type", "Section Break", "uae_einvoice_log"),
 		_field("uae_is_export", "Export", "Check", "uae_type_section", read_only=1),
-		_field("uae_is_simplified_tax_invoice", "Simplified Tax Invoice", "Check", "uae_is_export", read_only=1),
+		_field(
+			"uae_is_simplified_tax_invoice", "Simplified Tax Invoice", "Check", "uae_is_export", read_only=1
+		),
 		_field("uae_is_margin_scheme", "Profit Margin Scheme", "Check", "uae_is_simplified_tax_invoice"),
 		_field("uae_is_deemed_supply", "Deemed Supply", "Check", "uae_is_margin_scheme"),
 		_field("uae_cb_type_1", "", "Column Break", "uae_is_deemed_supply"),
@@ -128,7 +131,9 @@ def _sales_invoice_fields():
 			depends_on="uae_is_free_zone_supply",
 			mandatory_depends_on="uae_is_free_zone_supply",
 		),
-		_field("uae_is_ecommerce_supply", "Supply through E-commerce", "Check", "uae_free_zone_beneficiary_id"),
+		_field(
+			"uae_is_ecommerce_supply", "Supply through E-commerce", "Check", "uae_free_zone_beneficiary_id"
+		),
 		_field("uae_cb_type_2", "", "Column Break", "uae_is_ecommerce_supply"),
 		_field("uae_is_summary_invoice", "Summary Invoice", "Check", "uae_cb_type_2"),
 		_field("uae_is_continuous_supply", "Continuous Supply", "Check", "uae_is_summary_invoice"),
@@ -332,13 +337,14 @@ CUSTOM_FIELDS = {
 		),
 	],
 	"Item": [
-		# After the last field of the form, which is not a section break, so no existing field is swallowed.
-		_field("uae_tab", "UAE Compliance", "Tab Break", "total_projected_qty"),
+		# In the Tax tab, after its Taxes table, the last field before the Quality tab, so no existing
+		# field is swallowed.
+		_field("uae_vat_section", "UAE VAT", "Section Break", "taxes"),
 		_field(
 			"uae_vat_category",
 			"VAT Category",
 			"Select",
-			"uae_tab",
+			"uae_vat_section",
 			options=VAT_CATEGORY_SELECT_OPTIONS,
 		),
 		_field("uae_cb_item_1", "", "Column Break", "uae_vat_category"),

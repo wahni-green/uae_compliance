@@ -383,11 +383,13 @@ def make_einvoice_item(item_code: str, category: str | None = None, **fields):
 	return item
 
 
-def enable_einvoicing(company: str, behavior: str = "clear", **row_values) -> None:
-	"""Enable e-invoicing for a company through the Mock provider (rolled back with the test)."""
+def enable_einvoicing(company: str, behavior: str = "clear", **row_values) -> dict | None:
+	"""Enable e-invoicing for a company through the Mock provider (rolled back with the test).
+	Returns the company's row as it was, to hand to `disable_einvoicing`."""
 	import json
 
 	settings = frappe.get_doc("UAE E-Invoice Settings")
+	previous = next((row.as_dict() for row in settings.companies if row.company == company), None)
 	settings.companies = [row for row in settings.companies if row.company != company]
 	settings.append(
 		"companies",
@@ -403,12 +405,16 @@ def enable_einvoicing(company: str, behavior: str = "clear", **row_values) -> No
 	settings.retry_limit = 3
 	settings.save()
 	frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")
+	return previous
 
 
-def disable_einvoicing(company: str) -> None:
+def disable_einvoicing(company: str, previous: dict | None = None) -> None:
 	"""Undo `enable_einvoicing` for a test that must not leave it on for the tests after it: the
-	cached settings outlive the rollback."""
+	cached settings outlive the rollback. Puts back the row the company had, if any."""
 	settings = frappe.get_doc("UAE E-Invoice Settings")
 	settings.companies = [row for row in settings.companies if row.company != company]
+	if previous:
+		settings.append("companies", {k: v for k, v in previous.items() if k not in ("name", "idx")})
+
 	settings.save()
 	frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")

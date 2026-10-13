@@ -69,6 +69,8 @@ class TestUAEComplianceSettings(FrappeTestCase):
 		account = frappe.db.get_value("Account", {"company": company, "is_group": 0}, "name")
 		for fieldname in ("output_vat_account", "input_vat_account"):
 			self.settings.vat_accounts = []
-			self.settings.append("vat_accounts", {"company": company, fieldname: account, "excise_tax_account": account})
+			self.settings.append(
+				"vat_accounts", {"company": company, fieldname: account, "excise_tax_account": account}
+			)
 
 			self.assertRaises(frappe.ValidationError, self.settings.validate)

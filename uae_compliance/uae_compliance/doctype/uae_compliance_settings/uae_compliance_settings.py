@@ -53,9 +53,9 @@ class UAEComplianceSettings(Document):
 			accounts = [account for account in accounts if account]
 			if len(accounts) != len(set(accounts)):
 				frappe.throw(
-					_("Row #{0}: the Output VAT, Input VAT and Excise Tax accounts must all be different.").format(
-						row.idx
-					),
+					_(
+						"Row #{0}: the Output VAT, Input VAT and Excise Tax accounts must all be different."
+					).format(row.idx),
 					title=_("Same VAT Account"),
 				)
 
