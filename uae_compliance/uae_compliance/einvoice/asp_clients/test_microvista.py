@@ -333,6 +333,7 @@ class TestMicrovista(EInvoiceTestCase):
 			"passportIssuingCountryCode",
 		):
 			self.assertIn(key, payload["buyer"])
+			self.assertEqual(payload["buyer"][key], "")  # not null: the API reads null as missing
 
 		self.assertEqual(payload["invoice"]["invoiceNumber"], model["number"])
 		json.dumps(payload)
