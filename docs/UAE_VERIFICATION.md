@@ -66,7 +66,7 @@ Source: https://www.oracle.com/webfolder/s/delivery_production/docs/FY16h1/doc21
 - **Exemption reason codes:** DL8.46.1 financial services, DL8.46.2 residential units, DL8.46.3 bare land, DL8.46.4 local passenger transport.
 - **Participant ID:** scheme `0235` + 10-digit TIN. Predefined endpoints: `0235:9900000098` (buyer not yet on system), `0235:9900000099` (exports, no Peppol ID), `0235:9900000097` (deemed supply). Seller/buyer legal registration ID with type (TL, EID, PAS, CD) required.
 - **AED:** if document currency is not AED set `TaxCurrencyCode` = AED, include VAT total in AED and total incl. VAT in AED (`AdditionalDocumentReference` type `aedtotal-incl-vat`), Central Bank rate (rules ibr-140-ae, ibr-153-ae, ibr-175-ae).
-- **Item type** G/S/B; services need Service Accounting Code.
+- **Item type** G/S/B; services need the HSN/SAC Code (Service Accounting Code).
 - **Retention:** 5 years after tax period (7 for real estate; +4 years during dispute/audit); "store within the State" interpreted as retrievable by the FTA.
 - **Resources:** https://docs.peppol.eu/poac/ae/pint-ae/resources.zip (code lists, Schematron, 24 sample XMLs); XSD is standard OASIS UBL 2.1. **Pin to v1.0.4.** Caveat: the "N" tax category in the code list is a Greek capital Nu (U+039D) while Schematron uses Latin N; check against the live Schematron.
 - **Unverified:** MD 243/244/64 and CD 106 article texts (taken from MoF Guidelines/deck and EY).

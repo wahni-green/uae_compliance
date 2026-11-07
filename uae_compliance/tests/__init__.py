@@ -419,7 +419,7 @@ def setup_einvoice_masters(company: str, customer: str = "_Test UAE Customer") -
 def make_einvoice_item(item_code: str, category: str | None = None, **fields):
 	"""A service item with the service accounting code a PINT AE line needs."""
 	item = make_item(item_code, category)
-	frappe.db.set_value("Item", item.name, {"uae_sac_code": "998311", **fields})
+	frappe.db.set_value("Item", item.name, {"uae_hsn_sac_code": "998311", **fields})
 	return item
 
 

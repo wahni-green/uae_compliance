@@ -223,7 +223,7 @@ def _check_lines(xml, line_tag: str, is_credit_note: bool) -> list[str]:
 		sac_codes = _x(line, "cac:Item/cac:AdditionalItemIdentification/cbc:ID[@schemeID='SAC']")
 		if item_type in ("G", "B") and not hs_codes:
 			errors.append(
-				_("Line {0}: goods need an HS code (customs tariff number on the Item).").format(number)
+				_("Line {0}: goods need an HS code (HSN/SAC Code on the Item).").format(number)
 			)
 		if item_type in ("S", "B") and not sac_codes:
 			errors.append(_("Line {0}: services need a service accounting code on the Item.").format(number))

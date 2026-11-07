@@ -129,7 +129,7 @@ class TestBuilder(EInvoiceTestCase):
 
 	def test_goods_use_the_hs_code(self):
 		make_einvoice_item(
-			"_Test EInv Goods", is_stock_item=0, uae_item_type="Goods", customs_tariff_number="84713000"
+			"_Test EInv Goods", is_stock_item=0, uae_item_type="Goods", uae_hsn_sac_code="84713000"
 		)
 		xml, _bytes, _summary = self.build(self.invoice([{"item_code": "_Test EInv Goods", "rate": 100}]))
 		code = _find(xml, "cac:InvoiceLine/cac:Item/cac:CommodityClassification/cbc:ItemClassificationCode")[

@@ -365,14 +365,15 @@ class PintAEBuilder:
 	def _line_model(self, line: dict) -> dict:
 		row = line["row"]
 		item_type = self._item_type(row)
+		hsn_sac_code = frappe.db.get_value("Item", row.item_code, "uae_hsn_sac_code")
 		return {
 			"id": row.idx,
 			"name": (row.item_name or row.item_code)[:200],
 			"description": (row.description or row.item_name or row.item_code)[:2000],
 			"item_type": item_type,
 			"item_type_code": ITEM_TYPE_CODES[item_type],
-			"hs_code": frappe.db.get_value("Item", row.item_code, "customs_tariff_number"),
-			"sac_code": frappe.db.get_value("Item", row.item_code, "uae_sac_code"),
+			"hs_code": hsn_sac_code if item_type in ("Goods", "Both") else None,
+			"sac_code": hsn_sac_code if item_type in ("Services", "Both") else None,
 			"quantity": line["qty"],
 			"unit_code": UNIT_CODES.get(row.uom, DEFAULT_UNIT_CODE),
 			"gross_price": line["gross_price"],
@@ -886,12 +887,12 @@ class PintAEBuilder:
 		return cache[row.item_code]
 
 	def _classification(self, item, row, line: dict | None = None):
-		"""The item type, HS code (goods) and service accounting code (services). The service
-		accounting code is an additional item identifier with the scheme SAC, not a classification
-		code, and comes before the classification in the Item element."""
+		"""The item type and the item's HSN/SAC code: the HS code for goods and the service accounting
+		code for services. The service accounting code is an additional item identifier with the
+		scheme SAC, not a classification code, and comes before the classification in the Item
+		element."""
 		item_type = self._item_type(row)
-		hs_code = frappe.db.get_value("Item", row.item_code, "customs_tariff_number")
-		sac_code = frappe.db.get_value("Item", row.item_code, "uae_sac_code")
+		hs_code = sac_code = frappe.db.get_value("Item", row.item_code, "uae_hsn_sac_code")
 		is_reverse_charge = bool(line) and line["code"] == REVERSE_CHARGE_CODE
 
 		# A reverse charge line names the item by its GTIN, which comes before the other identifiers.
