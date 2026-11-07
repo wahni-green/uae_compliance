@@ -351,8 +351,6 @@ CUSTOM_FIELDS = {
 		),
 	],
 	"Item": [
-		# In the Tax tab above the Taxes table, a field in the tab's first section, so no section is swallowed.
-		_field("uae_hsn_sac_code", "HSN/SAC Code", "Data", "item_tax_section_break"),
 		# One section in the Tax tab, after its Taxes table, the last field before the Quality tab, so
 		# no existing field is swallowed. VAT, excise and e-invoice fields each have a column.
 		_field("uae_vat_section", "UAE Compliance", "Section Break", "taxes"),
@@ -387,11 +385,12 @@ CUSTOM_FIELDS = {
 			"uae_cb_item_4",
 			options=ITEM_TYPE_SELECT_OPTIONS,
 		),
+		_field("uae_hsn_sac_code", "HSN/SAC Code", "Data", "uae_item_type"),
 		_field(
 			"uae_einvoice_exclusion",
 			"E-Invoice Exclusion",
 			"Select",
-			"uae_item_type",
+			"uae_hsn_sac_code",
 			options=EXCLUSION_SELECT_OPTIONS,
 		),
 	],
