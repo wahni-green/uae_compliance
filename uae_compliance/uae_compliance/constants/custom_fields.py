@@ -286,6 +286,8 @@ def _legal_registration_fields(insert_after, columns=False):
 			"Licence Issuing Authority",
 			"Data",
 			cb[0]["fieldname"] if columns else "uae_legal_registration_id",
+			depends_on="eval:doc.uae_legal_registration_type=='Trade License'",
+			mandatory_depends_on="eval:doc.uae_legal_registration_type=='Trade License'",
 		),
 		_field(
 			"uae_passport_country",

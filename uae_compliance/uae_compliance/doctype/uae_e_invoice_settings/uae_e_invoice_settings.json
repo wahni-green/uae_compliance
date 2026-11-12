@@ -32,7 +32,9 @@
   "companies_section",
   "companies",
   "options_section",
-  "retry_limit"
+  "retry_limit",
+  "validation_section",
+  "require_hsn_sac_code"
  ],
  "fields": [
   {
@@ -56,6 +58,17 @@
    "fieldname": "retry_limit",
    "fieldtype": "Int",
    "label": "Attempts Before Failing"
+  },
+  {
+   "fieldname": "validation_section",
+   "fieldtype": "Section Break",
+   "label": "Validation"
+  },
+  {
+   "default": "1",
+   "fieldname": "require_hsn_sac_code",
+   "fieldtype": "Check",
+   "label": "Require HSN/SAC Code on Items"
   }
  ]
 }

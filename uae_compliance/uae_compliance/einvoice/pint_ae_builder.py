@@ -46,7 +46,6 @@ from uae_compliance.uae_compliance.constants.pint_ae import (
 	PROFILE_ID,
 	REVERSE_CHARGE_CODE,
 	REVERSE_CHARGE_NATURE_CODES,
-	TRADE_LICENSE_AGENCY,
 	UNIT_CODES,
 	UTC_OFFSET,
 )
@@ -554,8 +553,8 @@ class PintAEBuilder:
 			agency = LEGAL_REGISTRATION_TYPES.get(details["legal_type"])
 			if agency:
 				attributes["schemeAgencyID"] = agency
-				if agency == "TL":
-					attributes["schemeAgencyName"] = details["authority"] or TRADE_LICENSE_AGENCY
+				if agency == "TL" and details["authority"]:
+					attributes["schemeAgencyName"] = details["authority"]
 				elif agency == "PAS" and details.get("passport_country"):
 					# The agency name of a passport is the ISO code of the country that issued it.
 					attributes["schemeAgencyName"] = details["passport_country"]

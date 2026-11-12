@@ -193,6 +193,14 @@ class TestSubmission(PipelineTestCase):
 
 		self.assertIn("legal registration identifier", str(ctx.exception))
 
+	def test_a_trade_license_without_an_authority_is_not_issued(self):
+		frappe.db.set_value("Company", self.company, "uae_licence_authority", "")
+		with patch("frappe.enqueue"):
+			with self.assertRaises(EInvoiceError) as ctx:
+				self.invoice(submit=True)
+
+		self.assertIn("authority that issued", str(ctx.exception))
+
 	def test_an_unsupported_invoice_is_issued_and_logged_as_invalid(self):
 		# Metal scrap under the reverse charge has no type of goods in the specification.
 		doc = self.invoice()

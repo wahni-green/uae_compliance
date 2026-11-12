@@ -70,7 +70,6 @@ LEGAL_REGISTRATION_TYPES = {
 	"Cabinet Decision": "CD",
 }
 LEGAL_REGISTRATION_SELECT_OPTIONS = "\n" + "\n".join(LEGAL_REGISTRATION_TYPES)
-TRADE_LICENSE_AGENCY = "Trade License issuing Authority"
 
 # VAT exemption reason codes (IBT-186).
 EXEMPTION_REASONS = {

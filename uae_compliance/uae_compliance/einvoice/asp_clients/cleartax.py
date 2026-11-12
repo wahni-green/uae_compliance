@@ -478,11 +478,14 @@ def _address(details: dict) -> dict:
 
 def _party(details: dict) -> dict:
 	company_id = {"value": details["legal_id"]}
-	if details.get("legal_type"):
-		company_id["schemeAgencyID"] = LEGAL_REGISTRATION_TYPES.get(details["legal_type"])
-	authority = details.get("authority") or details.get("passport_country")
-	if authority:
-		company_id["schemeAgencyName"] = authority
+	agency = LEGAL_REGISTRATION_TYPES.get(details.get("legal_type"))
+	if agency:
+		company_id["schemeAgencyID"] = agency
+		# Rule ibr-172-ae: a trade license needs its issuing authority (BTAE-12).
+		if agency == "TL" and details.get("authority"):
+			company_id["schemeAgencyName"] = details["authority"]
+		elif agency == "PAS" and details.get("passport_country"):
+			company_id["schemeAgencyName"] = details["passport_country"]
 
 	return {
 		"party": {

@@ -9,7 +9,7 @@ import re
 
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import cint, flt
 from lxml import etree
 
 from uae_compliance.uae_compliance.constants.pint_ae import (
@@ -150,6 +150,10 @@ def _check_parties(xml) -> list[str]:
 			errors.append(_("The {0} has no legal registration identifier.").format(label))
 
 		legal_entity = _x(xml, f"{base}/cac:PartyLegalEntity/cbc:CompanyID")
+		if legal_entity and legal_entity[0].get("schemeAgencyID") == "TL":
+			# Rule ibr-172-ae.
+			if not legal_entity[0].get("schemeAgencyName"):
+				errors.append(_("The {0} trade license needs the authority that issued it.").format(label))
 		if legal_entity and legal_entity[0].get("schemeAgencyID") == "PAS":
 			if not re.fullmatch(r"[A-Z]{2}", legal_entity[0].get("schemeAgencyName") or ""):
 				errors.append(_("The {0} passport needs the country that issued it.").format(label))
@@ -176,6 +180,12 @@ def _check_parties(xml) -> list[str]:
 	return errors
 
 
+def _require_hsn_sac_code() -> bool:
+	"""PINT AE makes the classification codes optional, so the check is a setting."""
+	value = frappe.db.get_single_value("UAE E-Invoice Settings", "require_hsn_sac_code")
+	return True if value is None else bool(cint(value))
+
+
 def _check_lines(xml, line_tag: str, is_credit_note: bool) -> list[str]:
 	errors = []
 	lines = _x(xml, f"cac:{line_tag}")
@@ -184,6 +194,7 @@ def _check_lines(xml, line_tag: str, is_credit_note: bool) -> list[str]:
 
 	quantity_tag = "CreditedQuantity" if is_credit_note else "InvoicedQuantity"
 	rate_to_aed = flt(_text(xml, "cac:TaxExchangeRate/cbc:CalculationRate")) or 1
+	require_code = _require_hsn_sac_code()
 	for line in lines:
 		number = _text(line, "cbc:ID")
 		quantity = flt(_text(line, f"cbc:{quantity_tag}"))
@@ -221,12 +232,15 @@ def _check_lines(xml, line_tag: str, is_credit_note: bool) -> list[str]:
 		item_type = _text(line, "cac:Item/cac:CommodityClassification/cbc:CommodityCode")
 		hs_codes = _x(line, "cac:Item/cac:CommodityClassification/cbc:ItemClassificationCode[@listID='HS']")
 		sac_codes = _x(line, "cac:Item/cac:AdditionalItemIdentification/cbc:ID[@schemeID='SAC']")
-		if item_type in ("G", "B") and not hs_codes:
-			errors.append(
-				_("Line {0}: goods need an HS code (HSN/SAC Code on the Item).").format(number)
-			)
-		if item_type in ("S", "B") and not sac_codes:
-			errors.append(_("Line {0}: services need a service accounting code on the Item.").format(number))
+		if require_code:
+			if item_type in ("G", "B") and not hs_codes:
+				errors.append(
+					_("Line {0}: goods need an HS code (HSN/SAC Code on the Item).").format(number)
+				)
+			if item_type in ("S", "B") and not sac_codes:
+				errors.append(
+					_("Line {0}: services need a service accounting code on the Item.").format(number)
+				)
 
 		if category != "E":
 			extension_tax = _text(line, "cac:ItemPriceExtension/cac:TaxTotal/cbc:TaxAmount")

@@ -671,6 +671,14 @@ class TestValidators(EInvoiceTestCase):
 		doc = self.invoice([{"item_code": "_Test EInv Goods2", "rate": 100}])
 		self.assertIn("HS code", " ".join(validate_xml(build_xml(doc)[0])))
 
+	def test_hs_code_is_optional_when_the_setting_is_off(self):
+		from uae_compliance.tests import make_einvoice_item
+
+		make_einvoice_item("_Test EInv Goods3", uae_item_type="Goods")
+		doc = self.invoice([{"item_code": "_Test EInv Goods3", "rate": 100}])
+		frappe.db.set_single_value("UAE E-Invoice Settings", "require_hsn_sac_code", 0)
+		self.assertNotIn("HS code", " ".join(validate_xml(build_xml(doc)[0])))
+
 	def test_credit_note_needs_a_reason_code(self):
 		from erpnext.controllers.sales_and_purchase_return import make_return_doc
 
