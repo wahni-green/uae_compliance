@@ -266,7 +266,10 @@ doctype_js = {
 	"Item Tax Template": "uae_compliance/client_scripts/item_tax_template.js",
 	"Sales Order": "uae_compliance/client_scripts/transaction_tab.js",
 	"Delivery Note": "uae_compliance/client_scripts/transaction_tab.js",
-	"Sales Invoice": "uae_compliance/client_scripts/transaction_tab.js",
+	"Sales Invoice": [
+		"uae_compliance/client_scripts/transaction_tab.js",
+		"uae_compliance/client_scripts/sales_invoice.js",
+	],
 }
 
 doc_events = {
