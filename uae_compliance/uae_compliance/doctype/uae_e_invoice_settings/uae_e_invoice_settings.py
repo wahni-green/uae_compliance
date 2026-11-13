@@ -5,6 +5,7 @@ from frappe import _
 from frappe.model.document import Document
 
 from uae_compliance.uae_compliance.einvoice.registry import get_provider_class
+from uae_compliance.uae_compliance.utils.rounding import warn_if_not_commercial_rounding
 
 
 class UAEEInvoiceSettings(Document):
@@ -19,6 +20,9 @@ class UAEEInvoiceSettings(Document):
 
 			seen.add(row.company)
 			self.validate_row(row)
+
+		if any(row.enabled for row in self.companies):
+			warn_if_not_commercial_rounding()
 
 	def validate_row(self, row):
 		provider = get_provider_class(row.provider)

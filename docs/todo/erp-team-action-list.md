@@ -32,7 +32,7 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 - [x] **18. Customer disabling script** (High). Not in this app. Ignored.
 - [ ] **19. Header discount and extra charge rows** (Medium). Send them as a document-level allowance and charge.
 - [x] **20. Cancellation after the e-invoice was attempted** (Medium). Added `block_cancellation_after_attempt` to UAE E-Invoice Settings (off by default). It blocks cancelling any invoice whose sending was attempted. The workflow button "Request for cancelation" is on the site, not in this app: finance adds the condition `not doc.uae_einvoice_status` to its transition (written in the user guide).
-- [ ] **21. Rounding method** (Medium). Warn when the site uses Banker's rounding. No change to the setting.
+- [x] **21. Rounding method** (Medium). A warning when System Settings do not use Commercial Rounding, on saving UAE E-Invoice Settings with a company enabled and on submitting an e-invoice. The setting itself is not changed.
 - [ ] **22. Address country data** (Low). Report addresses whose country is not United Arab Emirates, such as "UAE". No change.
 
 ## Other
