@@ -12,8 +12,8 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 - [x] **4. Customer licence authority** (Medium). Required when the type is Trade License, for all customers. The form already enforced it; the server check is new.
 - [x] **5. Customer passport country** (Medium). Required when the ID type is Passport, on the form and on the server.
 - [x] **6. Customer registration type** (Medium). Required when a registration ID is entered, on the form and on the server. The report of existing customers with no type is still to do (see the data-quality report note).
-- [ ] **7. Address emirate** (Medium). Required when the country is United Arab Emirates. Add a report of existing addresses with no emirate.
-- [ ] **8. Sales Invoice customer address** (Medium). The address is required on every invoice. No fallback to the primary address.
+- [x] **7. Address emirate** (Medium). Required when the country is United Arab Emirates, on the form and on the server. The report of existing addresses with no emirate is still to do (data-quality report).
+- [x] **8. Sales Invoice customer address** (Medium). Submit is blocked for a UAE invoice with no customer address. ERPNext fills the primary address during validation, so the block applies when the customer has no usable address at all. That fallback is ERPNext's own and is not removed.
 
 ## Create field
 

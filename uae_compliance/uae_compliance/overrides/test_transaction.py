@@ -51,7 +51,11 @@ class TestTransaction(FrappeTestCase):
 	def test_designated_zone_address_never_auto_zero_rates(self):
 		zone = frappe.get_all("UAE Designated Zone", pluck="name", limit=1)[0]
 		address = make_address(
-			"_Test Zone Addr", "United Arab Emirates", customer="_Test UAE Customer", uae_designated_zone=zone
+			"_Test Zone Addr",
+			"United Arab Emirates",
+			customer="_Test UAE Customer",
+			uae_designated_zone=zone,
+			uae_emirate="Dubai",
 		)
 		output, _input = configure_vat_settings(get_uae_test_company())
 		item = make_item("_Test Zone Item")

@@ -345,7 +345,14 @@ CUSTOM_FIELDS = {
 	],
 	"Address": [
 		_field("uae_address_in_arabic", "Address in Arabic", "Small Text", "address_line2"),
-		_field("uae_emirate", "Emirate", "Select", "state", options=EMIRATE_SELECT_OPTIONS),
+		_field(
+			"uae_emirate",
+			"Emirate",
+			"Select",
+			"state",
+			options=EMIRATE_SELECT_OPTIONS,
+			mandatory_depends_on=f"eval:doc.country=='{UAE}'",
+		),
 		_field(
 			"uae_designated_zone",
 			"Designated Zone",

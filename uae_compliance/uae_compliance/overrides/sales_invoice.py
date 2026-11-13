@@ -215,6 +215,7 @@ def before_submit(doc, method=None):
 	if not is_uae_company(doc.get("company")):
 		return
 
+	validate_customer_address(doc)
 	validate_emirate(doc)
 	validate_credit_note_reason(doc)
 	store_value_before_credit_note(doc)
@@ -233,6 +234,16 @@ def validate_credit_note_reason(doc) -> None:
 		frappe.throw(
 			_("Reason for Credit Note is required: a tax credit note must state why it was issued."),
 			title=_("Reason Missing"),
+		)
+
+
+def validate_customer_address(doc) -> None:
+	"""The buyer's address is part of a tax invoice and of the e-invoice. It is chosen on the invoice:
+	the customer's primary address is not assumed."""
+	if not doc.get("customer_address"):
+		frappe.throw(
+			_("Select the Customer Address: it is required on a UAE invoice."),
+			title=_("Customer Address Missing"),
 		)
 
 

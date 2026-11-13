@@ -4,7 +4,12 @@ from unittest.mock import patch
 import frappe
 from frappe.utils import add_days
 
-from uae_compliance.tests import create_submitted_sales_invoice, make_item, make_sales_invoice
+from uae_compliance.tests import (
+	create_submitted_sales_invoice,
+	get_customer_address,
+	make_item,
+	make_sales_invoice,
+)
 from uae_compliance.uae_compliance.doctype.uae_vat_return.test_uae_vat_return import (
 	VATReturnTestCase,
 	_boxes,
@@ -298,6 +303,7 @@ class TestTouristRefund(VATReturnTestCase):
 			uae_emirate="Dubai",
 			**kwargs,
 		)
+		doc.customer_address = get_customer_address(doc.customer)
 		doc.insert()
 		doc.submit()
 		return doc

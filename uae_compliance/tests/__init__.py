@@ -204,6 +204,16 @@ def make_address(
 	).insert()
 
 
+def get_customer_address(customer: str) -> str:
+	"""The customer's test address, created once. An invoice needs one to be submitted."""
+	title = f"{customer} Invoice Address"
+	name = f"{title}-Billing"
+	if frappe.db.exists("Address", name):
+		return name
+
+	return make_address(title, "United Arab Emirates", customer=customer, uae_emirate="Dubai").name
+
+
 def make_sales_invoice(rows: list[dict], customer: str = "_Test UAE Customer", rate: float = 5, **kwargs):
 	"""A draft Sales Invoice with a VAT row at `rate`% on the output account. Each row dict takes
 	item_code, qty, rate, plus optional uae_vat_category, item_tax_template and `vat_rate` (a row-
@@ -284,6 +294,8 @@ def create_submitted_sales_invoice(rows=None, emirate="Dubai", **kwargs):
 	"""A submitted Sales Invoice with a VAT emirate, for print and report tests."""
 	make_item("_Test Print Item")
 	doc = make_sales_invoice(rows or [{"item_code": "_Test Print Item"}], **kwargs)
+	if not doc.customer_address:
+		doc.customer_address = get_customer_address(doc.customer)
 	doc.uae_emirate = emirate
 	doc.insert()
 	doc.submit()
