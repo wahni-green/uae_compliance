@@ -23,7 +23,7 @@ def validate_no_extra_charges(doc) -> None:
 			_(
 				"The taxes table has a charge that is not VAT: {0}. Enter it as an item row (for example a"
 				" freight service item) so that it carries a VAT category, and remove it from the taxes table."
-			).format(", ".join(map(frappe.bold, charges))),
+			).format(", ".join([frappe.bold(charge) for charge in charges])),
 			exc=EInvoiceError,
 			title=_("Charge in the Taxes Table"),
 		)

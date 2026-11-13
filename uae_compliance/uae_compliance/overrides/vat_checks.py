@@ -77,7 +77,7 @@ def validate_zero_rate_template_not_overridden(doc, is_vat_account) -> None:
 			_(
 				"The tax template charges 0% VAT, but the Item Tax Template of {0} raises it. Use a tax"
 				" template that charges VAT, or remove the Item Tax Template from the item."
-			).format(", ".join(map(frappe.bold, sorted(overridden)))),
+			).format(", ".join([frappe.bold(item_code) for item_code in sorted(overridden)])),
 			title=_("VAT Charged Under a Zero Rate Template"),
 		)
 

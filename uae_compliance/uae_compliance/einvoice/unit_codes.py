@@ -17,7 +17,7 @@ def validate_unit_codes(doc) -> None:
 	if missing:
 		frappe.throw(
 			_("Set the UN/ECE Code on the unit of measure: {0}.").format(
-				", ".join(map(frappe.bold, missing))
+				", ".join([frappe.bold(uom) for uom in missing])
 			),
 			exc=EInvoiceError,
 			title=_("Unit Code Missing"),
