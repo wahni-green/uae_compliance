@@ -8,9 +8,9 @@ The app works for companies whose country is United Arab Emirates. Its invoice c
 
 1. **UAE Compliance Settings:** add a row for your company with the Output VAT account, the Input VAT account (and Excise Tax account if you pay excise) and your filing frequency (Quarterly Stagger 1, 2 or 3, or Monthly).
 2. **Company:** enter the **TRN** (15 digits, starting with 1 and ending with 03), the **TIN (Peppol)** (10 digits), the Arabic name if you print Arabic invoices, and the **Legal Registration** type and ID. Add the company address with its **Emirate**.
-3. **Item Tax Templates:** give each template a **VAT Category** (Standard Rated, Zero Rated, Exempt or Out of Scope). Use **Fetch VAT Accounts** on a template to add the company's VAT accounts to it. Zero rated and exempt templates should carry 0% VAT. Exempt items also need a **VAT Exemption Reason**.
+3. **Item Tax Templates:** give each template a **VAT Category** (Standard Rated, Zero Rated, Exempt or Out of Scope). Use **Fetch VAT Accounts** on a template to add the company's VAT accounts to it. Zero rated and exempt templates should carry 0% VAT. Exempt items also need a **VAT Exemption Reason**, chosen from the **UAE Exemption Reason** list that finance maintains. A Sales Taxes and Charges Template that charges 0% VAT cannot be combined with an item whose Item Tax Template raises the rate.
 4. **Items:** set a default **VAT Category**. Goods and services need an **HSN/SAC Code** for e-invoices (UAE Compliance section of the Tax tab): the HS code for goods, the service accounting code for services.
-5. **Customers and suppliers:** enter the **TRN** (and **TIN** for businesses you will e-invoice). Mark customers in a **Designated Zone** on their address.
+5. **Customers and suppliers:** enter the **TRN** (and **TIN** for businesses you will e-invoice). Mark customers in a **Designated Zone** on their address. Every address in the UAE needs its **Emirate**, and every UAE invoice needs a **Customer Address**. Each unit of measure needs its **UN/ECE Code** (UOM list). Customers saved before these rules can be found in the **UAE Master Data Issues** report, which changes nothing.
 
 Data from ERPNext's own UAE VAT setup (item flags, VAT accounts, TRNs) is migrated when the app is installed or updated. Check **Error Log** for cases it could not decide.
 

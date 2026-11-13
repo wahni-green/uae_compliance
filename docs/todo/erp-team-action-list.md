@@ -11,8 +11,8 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 - [x] **3. Exemption reason code on Exempt lines** (High). Submit is blocked when an Exempt line has no code.
 - [x] **4. Customer licence authority** (Medium). Required when the type is Trade License, for all customers. The form already enforced it; the server check is new.
 - [x] **5. Customer passport country** (Medium). Required when the ID type is Passport, on the form and on the server.
-- [x] **6. Customer registration type** (Medium). Required when a registration ID is entered, on the form and on the server. The report of existing customers with no type is still to do (see the data-quality report note).
-- [x] **7. Address emirate** (Medium). Required when the country is United Arab Emirates, on the form and on the server. The report of existing addresses with no emirate is still to do (data-quality report).
+- [x] **6. Customer registration type** (Medium). Required when a registration ID is entered, on the form and on the server. Existing customers with no type are listed in the UAE Master Data Issues report.
+- [x] **7. Address emirate** (Medium). Required when the country is United Arab Emirates, on the form and on the server. Existing addresses with no emirate are listed in the UAE Master Data Issues report.
 - [x] **8. Sales Invoice customer address** (Medium). Submit is blocked for a UAE invoice with no customer address. ERPNext fills the primary address during validation, so the block applies when the customer has no usable address at all. That fallback is ERPNext's own and is not removed.
 
 ## Create field
@@ -33,7 +33,7 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 - [ ] **19. Header discount and extra charge rows** (Medium). Send them as a document-level allowance and charge.
 - [x] **20. Cancellation after the e-invoice was attempted** (Medium). Added `block_cancellation_after_attempt` to UAE E-Invoice Settings (off by default). It blocks cancelling any invoice whose sending was attempted. The workflow button "Request for cancelation" is on the site, not in this app: finance adds the condition `not doc.uae_einvoice_status` to its transition (written in the user guide).
 - [x] **21. Rounding method** (Medium). A warning when System Settings do not use Commercial Rounding, on saving UAE E-Invoice Settings with a company enabled and on submitting an e-invoice. The setting itself is not changed.
-- [ ] **22. Address country data** (Low). Report addresses whose country is not United Arab Emirates, such as "UAE". No change.
+- [x] **22. Address country data** (Low). The UAE Master Data Issues report lists addresses whose country is another spelling of the UAE, such as "UAE". Nothing is changed.
 
 ## Other
 
