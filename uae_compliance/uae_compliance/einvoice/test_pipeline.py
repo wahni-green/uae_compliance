@@ -296,6 +296,19 @@ class TestSubmission(PipelineTestCase):
 
 		self.assertEqual(xml.xpath("//@unitCode")[0], "XPA")
 
+	def test_a_charge_in_the_taxes_table_is_not_issued(self):
+		doc = self.invoice()
+		doc.append(
+			"taxes",
+			{"charge_type": "Actual", "account_head": self.input, "description": "Freight", "tax_amount": 50},
+		)
+		doc.save()
+		with patch("frappe.enqueue"):
+			with self.assertRaises(EInvoiceError) as ctx:
+				doc.submit()
+
+		self.assertIn("Enter it as an item row", str(ctx.exception))
+
 	def set_template_reason(self, template, reason):
 		frappe.db.set_value("Item Tax Template", template, "uae_exemption_reason_code", reason)
 		frappe.clear_document_cache("Item Tax Template", template)

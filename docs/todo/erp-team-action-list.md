@@ -24,13 +24,13 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 - [x] **13. Intra-group exclusion** (Medium). Added `exclude_intra_vat_group` and `intra_group_grace_end` to UAE E-Invoice Settings. A UAE Tax Group lists companies, so a sale is intra-group when the customer is an internal customer (Represents Company) of a company in the same group as the invoicing company. Set the end date to 31-Dec-2028 for 24 months from 1-Jan-2027.
 - [x] **14. E-invoice applicability on the invoice** (Medium). Added `uae_einvoice_applicable` and `uae_einvoice_exclusion_reason`, read-only and set at submit for companies that send e-invoices.
 - [x] **15. Buyer endpoint** (Medium). No new field. `uae_tin` feeds IBT-049. The work is loading TIN data, which is not a code change.
-- [ ] **16. PDF sent flag and setting** (Low). Deferred.
+- [ ] **16. PDF sent flag and setting** (Low). Deferred, not part of this pull request.
 
 ## Fix
 
 - [x] **17. Item Tax Template overriding Zero and Exempt templates** (High). The old check missed it because the line took its category from the item's own 5% template. New check: a Sales Taxes and Charges Template that charges 0% VAT cannot be overridden by an item's Item Tax Template; the invoice cannot be saved.
 - [x] **18. Customer disabling script** (High). Not in this app. Ignored.
-- [ ] **19. Header discount and extra charge rows** (Medium). Send them as a document-level allowance and charge.
+- [x] **19. Header discount and extra charge rows** (Medium). Changed after testing. A header discount already exports correctly: ERPNext spreads it into the net amount of each row, for both "Net Total" and "Grand Total", and the e-invoice uses those amounts. So no document-level allowance was built. A charge row in the taxes table (freight) cannot get a VAT category, so submit is now blocked with a message to enter it as an item row.
 - [x] **20. Cancellation after the e-invoice was attempted** (Medium). Added `block_cancellation_after_attempt` to UAE E-Invoice Settings (off by default). It blocks cancelling any invoice whose sending was attempted. The workflow button "Request for cancelation" is on the site, not in this app: finance adds the condition `not doc.uae_einvoice_status` to its transition (written in the user guide).
 - [x] **21. Rounding method** (Medium). A warning when System Settings do not use Commercial Rounding, on saving UAE E-Invoice Settings with a company enabled and on submitting an e-invoice. The setting itself is not changed.
 - [x] **22. Address country data** (Low). The UAE Master Data Issues report lists addresses whose country is another spelling of the UAE, such as "UAE". Nothing is changed.

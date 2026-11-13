@@ -27,6 +27,7 @@ from uae_compliance.uae_compliance.constants.einvoice import (
 	SUBMIT_PENDING_STATUSES,
 )
 from uae_compliance.uae_compliance.einvoice.asp_client import OutgoingDocument
+from uae_compliance.uae_compliance.einvoice.charge_checks import validate_no_extra_charges
 from uae_compliance.uae_compliance.einvoice.company_checks import validate_company_registration
 from uae_compliance.uae_compliance.einvoice.exceptions import (
 	EInvoiceError,
@@ -56,6 +57,7 @@ def validate_before_submit(doc, method=None):
 
 	validate_company_registration(doc.company)
 	validate_unit_codes(doc)
+	validate_no_extra_charges(doc)
 
 	try:
 		xml, _summary = build_xml(doc)
