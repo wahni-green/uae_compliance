@@ -5,7 +5,7 @@
  "engine": "InnoDB",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-12 12:00:00.000000",
+ "modified": "2026-11-13 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "UAE Compliance",
  "owner": "Administrator",
@@ -33,8 +33,12 @@
   "companies",
   "options_section",
   "retry_limit",
+  "block_cancellation_after_attempt",
   "validation_section",
-  "require_hsn_sac_code"
+  "require_hsn_sac_code",
+  "scope_section",
+  "exclude_intra_vat_group",
+  "intra_group_grace_end"
  ],
  "fields": [
   {
@@ -60,6 +64,12 @@
    "label": "Attempts Before Failing"
   },
   {
+   "default": "0",
+   "fieldname": "block_cancellation_after_attempt",
+   "fieldtype": "Check",
+   "label": "Block Cancellation After an E-Invoice Was Sent"
+  },
+  {
    "fieldname": "validation_section",
    "fieldtype": "Section Break",
    "label": "Validation"
@@ -69,6 +79,24 @@
    "fieldname": "require_hsn_sac_code",
    "fieldtype": "Check",
    "label": "Require HSN/SAC Code on Items"
+  },
+  {
+   "fieldname": "scope_section",
+   "fieldtype": "Section Break",
+   "label": "Scope"
+  },
+  {
+   "default": "0",
+   "fieldname": "exclude_intra_vat_group",
+   "fieldtype": "Check",
+   "label": "Exclude Sales Within the VAT Group"
+  },
+  {
+   "depends_on": "exclude_intra_vat_group",
+   "fieldname": "intra_group_grace_end",
+   "fieldtype": "Date",
+   "label": "Exclude Until",
+   "mandatory_depends_on": "exclude_intra_vat_group"
   }
  ]
 }

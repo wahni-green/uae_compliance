@@ -2,16 +2,17 @@ import json
 from unittest.mock import patch
 
 import frappe
-from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_to_date, add_years, getdate, now_datetime
 
 from uae_compliance.tests import (
+	delete_tax_groups,
 	enable_einvoicing,
 	make_customer,
 	make_einvoice_item,
 	make_sales_invoice,
+	make_uae_company,
 )
-from uae_compliance.uae_compliance.einvoice import pipeline
+from uae_compliance.uae_compliance.einvoice import pipeline, scope
 from uae_compliance.uae_compliance.einvoice.asp_client import SubmitResult
 from uae_compliance.uae_compliance.einvoice.exceptions import EInvoiceError, ProviderRejectedError
 from uae_compliance.uae_compliance.einvoice.test_pint_ae import EInvoiceTestCase
@@ -59,6 +60,55 @@ class TestScope(PipelineTestCase):
 
 		self.assertIsNone(self.log_of(doc))
 		enqueue.assert_not_called()
+
+	def test_a_b2c_buyer_is_out_of_scope_and_the_invoice_says_why(self):
+		# Tests share one database until the class ends, so the category is put back after this one.
+		self.addCleanup(frappe.db.set_value, "Customer", "_Test UAE Customer", "uae_buyer_category", "")
+		frappe.db.set_value("Customer", "_Test UAE Customer", "uae_buyer_category", "B2C")
+		doc, enqueue = self.submit()
+
+		self.assertIsNone(self.log_of(doc))
+		enqueue.assert_not_called()
+		self.assertEqual(doc.uae_einvoice_applicable, 0)
+		self.assertIn("B2C", doc.uae_einvoice_exclusion_reason)
+
+	def test_an_invoice_that_is_sent_is_marked_applicable(self):
+		doc, _enqueue = self.submit()
+
+		self.assertEqual(doc.uae_einvoice_applicable, 1)
+		self.assertFalse(doc.uae_einvoice_exclusion_reason)
+
+	def test_sales_within_the_vat_group_are_left_out_until_the_end_date(self):
+		member = make_uae_company("_Test UAE Group Member B", "TGB")
+		self.addCleanup(delete_tax_groups)
+		frappe.get_doc(
+			{
+				"doctype": "UAE Tax Group",
+				"group_name": "_Test Scope Group",
+				"representative_member": self.company,
+				"members": [{"company": self.company}, {"company": member}],
+			}
+		).insert()
+		self.addCleanup(self.set_intra_group_exclusion, 0, None)
+		self.set_intra_group_exclusion(1, add_to_date(self.date, days=10))
+		doc = frappe._dict(company=self.company, posting_date=self.date)
+
+		self.assertTrue(scope.is_intra_group_sale(doc, member))
+		self.assertFalse(scope.is_intra_group_sale(doc, None))
+		self.assertFalse(scope.is_intra_group_sale(doc, "_Test UAE Company"))
+
+		doc.posting_date = add_to_date(self.date, days=11)
+		self.assertFalse(scope.is_intra_group_sale(doc, member))
+
+		self.set_intra_group_exclusion(0, None)
+		doc.posting_date = self.date
+		self.assertFalse(scope.is_intra_group_sale(doc, member))
+
+	def set_intra_group_exclusion(self, switch, end):
+		frappe.db.set_single_value(
+			"UAE E-Invoice Settings", {"exclude_intra_vat_group": switch, "intra_group_grace_end": end}
+		)
+		frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")
 
 	def test_an_item_with_an_exclusion_keeps_its_invoices_out(self):
 		item = make_einvoice_item("_Test EInv Ticket")
@@ -196,10 +246,107 @@ class TestSubmission(PipelineTestCase):
 	def test_a_trade_license_without_an_authority_is_not_issued(self):
 		frappe.db.set_value("Company", self.company, "uae_licence_authority", "")
 		with patch("frappe.enqueue"):
+			with self.assertRaises(frappe.ValidationError) as ctx:
+				self.invoice(submit=True)
+
+		self.assertIn("Licence Issuing Authority", str(ctx.exception))
+
+	def test_an_exempt_line_takes_the_reason_of_its_item(self):
+		doc = self.invoice([{"item_code": "_Test EInv Exempt", "rate": 100}])
+		self.assertEqual(doc.items[0].uae_exemption_reason_code, "DL8.46.1")
+
+	def test_a_changed_template_reason_reaches_the_line_on_the_next_save(self):
+		doc = self.invoice([{"item_code": "_Test EInv Exempt", "rate": 100}])
+		self.assertEqual(doc.items[0].uae_exemption_reason_code, "DL8.46.1")
+
+		template = doc.items[0].item_tax_template
+		self.addCleanup(self.set_template_reason, template, "DL8.46.1")
+		self.set_template_reason(template, "DL8.46.2")
+		doc.save()
+
+		self.assertEqual(doc.items[0].uae_exemption_reason_code, "DL8.46.2")
+
+	def test_an_exempt_line_without_a_reason_is_not_issued(self):
+		item = make_einvoice_item("_Test EInv Exempt No Reason", "Exempt")
+		template = item.taxes[0].item_tax_template
+		self.addCleanup(self.set_template_reason, template, "DL8.46.1")
+		self.set_template_reason(template, "")
+		with patch("frappe.enqueue"):
+			with self.assertRaises(frappe.ValidationError) as ctx:
+				self.invoice([{"item_code": "_Test EInv Exempt No Reason", "rate": 100}], submit=True)
+
+		self.assertIn("VAT Exemption Reason", str(ctx.exception))
+
+	def set_nos_unit_code(self, code):
+		"""Tests share one database until the class ends, so the code is put back after each test."""
+		self.addCleanup(self.set_nos_unit_code_now, "H87")
+		self.set_nos_unit_code_now(code)
+
+	def set_nos_unit_code_now(self, code):
+		frappe.db.set_value("UOM", "Nos", "uae_uncefact_code", code)
+		frappe.clear_document_cache("UOM", "Nos")
+
+	def test_a_unit_without_a_code_is_not_issued(self):
+		self.set_nos_unit_code("")
+		with patch("frappe.enqueue"):
 			with self.assertRaises(EInvoiceError) as ctx:
 				self.invoice(submit=True)
 
-		self.assertIn("authority that issued", str(ctx.exception))
+		self.assertIn("UN/ECE Code", str(ctx.exception))
+
+	def test_the_unit_code_of_the_uom_goes_into_the_document(self):
+		self.set_nos_unit_code("XPA")
+		doc = self.invoice()
+		xml, _bytes, _summary = self.build(doc)
+
+		self.assertEqual(xml.xpath("//@unitCode")[0], "XPA")
+
+	def test_a_charge_in_the_taxes_table_is_not_issued(self):
+		doc = self.invoice()
+		doc.append(
+			"taxes",
+			{"charge_type": "Actual", "account_head": self.input, "description": "Freight", "tax_amount": 50},
+		)
+		doc.save()
+		with patch("frappe.enqueue"):
+			with self.assertRaises(EInvoiceError) as ctx:
+				doc.submit()
+
+		self.assertIn("Enter it as an item row", str(ctx.exception))
+
+	def set_template_reason(self, template, reason):
+		frappe.db.set_value("Item Tax Template", template, "uae_exemption_reason_code", reason)
+		frappe.clear_document_cache("Item Tax Template", template)
+
+	def test_a_company_without_a_registration_type_is_not_issued(self):
+		frappe.db.set_value("Company", self.company, "uae_legal_registration_type", "")
+		with patch("frappe.enqueue"):
+			with self.assertRaises(frappe.ValidationError) as ctx:
+				self.invoice(submit=True)
+
+		self.assertIn("Legal Registration Type", str(ctx.exception))
+
+	def test_saving_an_einvoicing_company_without_a_registration_type_is_blocked(self):
+		company = frappe.get_doc("Company", self.company)
+		company.uae_legal_registration_type = ""
+		with self.assertRaises(frappe.ValidationError):
+			company.save()
+
+	def test_saving_an_einvoicing_company_with_a_trade_license_needs_its_authority(self):
+		company = frappe.get_doc("Company", self.company)
+		company.uae_licence_authority = ""
+		with self.assertRaises(frappe.ValidationError):
+			company.save()
+
+	def test_a_company_that_does_not_send_e_invoices_can_be_saved_without_them(self):
+		settings = frappe.get_doc("UAE E-Invoice Settings")
+		settings.companies = []
+		settings.save()
+		frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")
+
+		company = frappe.get_doc("Company", self.company)
+		company.uae_legal_registration_type = ""
+		company.save()
 
 	def test_an_unsupported_invoice_is_issued_and_logged_as_invalid(self):
 		# Metal scrap under the reverse charge has no type of goods in the specification.
@@ -392,6 +539,35 @@ class TestSendingAndPolling(PipelineTestCase):
 		self.assertEqual(new_log.status, "Submitted")
 		log.reload()
 		self.assertEqual(log.status, "Invalid")
+
+	def test_the_setting_blocks_cancelling_a_rejected_invoice(self):
+		self.addCleanup(self.set_block_cancellation, 0)
+		doc, _enqueue = self.submit()
+		log = self.log_of(doc)
+		with patch(
+			"uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.submit",
+			side_effect=ProviderRejectedError("Buyer unknown"),
+		):
+			pipeline.submit_log(log.name)
+
+		doc.reload()
+		self.set_block_cancellation(1)
+		with self.assertRaises(frappe.ValidationError) as ctx:
+			doc.cancel()
+
+		self.assertIn("credit note", str(ctx.exception))
+
+	def test_the_setting_leaves_an_invoice_that_was_never_sent_cancellable(self):
+		self.addCleanup(self.set_block_cancellation, 0)
+		doc, _enqueue = self.submit()
+		self.set_block_cancellation(1)
+
+		doc.cancel()
+
+		self.assertEqual(doc.docstatus, 2)
+
+	def set_block_cancellation(self, value):
+		frappe.db.set_single_value("UAE E-Invoice Settings", "block_cancellation_after_attempt", value)
 
 	def test_a_timeout_is_retried_with_backoff_and_then_fails(self):
 		enable_einvoicing(self.company, behavior="timeout")

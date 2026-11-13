@@ -277,6 +277,9 @@ doc_events = {
 		"validate": "uae_compliance.uae_compliance.overrides.company.validate",
 		"on_update": "uae_compliance.uae_compliance.overrides.company.hide_erpnext_regional_fields",
 	},
+	"Address": {
+		"validate": "uae_compliance.uae_compliance.overrides.address.validate",
+	},
 	("Sales Order", "Quotation", "Delivery Note"): {
 		"validate": "uae_compliance.uae_compliance.overrides.transaction.set_vat_category_defaults",
 	},

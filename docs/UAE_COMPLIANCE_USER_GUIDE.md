@@ -8,9 +8,9 @@ The app works for companies whose country is United Arab Emirates. Its invoice c
 
 1. **UAE Compliance Settings:** add a row for your company with the Output VAT account, the Input VAT account (and Excise Tax account if you pay excise) and your filing frequency (Quarterly Stagger 1, 2 or 3, or Monthly).
 2. **Company:** enter the **TRN** (15 digits, starting with 1 and ending with 03), the **TIN (Peppol)** (10 digits), the Arabic name if you print Arabic invoices, and the **Legal Registration** type and ID. Add the company address with its **Emirate**.
-3. **Item Tax Templates:** give each template a **VAT Category** (Standard Rated, Zero Rated, Exempt or Out of Scope). Use **Fetch VAT Accounts** on a template to add the company's VAT accounts to it. Zero rated and exempt templates should carry 0% VAT. Exempt items also need a **VAT Exemption Reason**.
+3. **Item Tax Templates:** give each template a **VAT Category** (Standard Rated, Zero Rated, Exempt or Out of Scope). Use **Fetch VAT Accounts** on a template to add the company's VAT accounts to it. Zero rated and exempt templates should carry 0% VAT. Exempt items also need a **VAT Exemption Reason**, chosen from the **UAE Exemption Reason** list that finance maintains. A Sales Taxes and Charges Template that charges 0% VAT cannot be combined with an item whose Item Tax Template raises the rate.
 4. **Items:** set a default **VAT Category**. Goods and services need an **HSN/SAC Code** for e-invoices (UAE Compliance section of the Tax tab): the HS code for goods, the service accounting code for services.
-5. **Customers and suppliers:** enter the **TRN** (and **TIN** for businesses you will e-invoice). Mark customers in a **Designated Zone** on their address.
+5. **Customers and suppliers:** enter the **TRN** (and **TIN** for businesses you will e-invoice). Mark customers in a **Designated Zone** on their address. Every address in the UAE needs its **Emirate**, and every UAE invoice needs a **Customer Address**. Each unit of measure needs its **UN/ECE Code** (UOM list). Customers saved before these rules can be found in the **UAE Master Data Issues** report, which changes nothing.
 
 Data from ERPNext's own UAE VAT setup (item flags, VAT accounts, TRNs) is migrated when the app is installed or updated. Check **Error Log** for cases it could not decide.
 
@@ -62,16 +62,20 @@ The app does not calculate penalties.
 
 Only companies enabled in **UAE E-Invoice Settings** send e-invoices (see the configuration guide). From then on:
 
-1. Submitting a Sales Invoice builds its PINT AE document and checks it. An invoice whose lines are all exempt or out of scope is sent as an out of scope invoice (type 480; a credit note is type 81), because the specification does not allow them on an ordinary tax invoice. An invoice that would be invalid is **not issued**: fix what the message says (a missing TRN, TIN, address, VAT Emirate, and so on) and submit again.
-2. The invoice is sent in the background. Its **E-Invoice Status** shows the progress: Generated, Submitted (accepted by the provider), Delivered (to the buyer) and Cleared (reported to the FTA). Rejected means the provider or the FTA refused it; the reasons are in the **E-Invoice Log**. A rejected invoice's number is never sent again, so there is no Retry: fix what the reasons name (for example the customer's address or TIN), **cancel** the invoice and **amend** it, which gives it a new number and sends it as a new document. Once an invoice has been Delivered or Cleared it cannot be cancelled; issue a credit note instead.
-3. A failed send is retried automatically with increasing waits. After the retry limit the log shows Failed. Fix the cause and use **Retry** on the log.
-4. **A sent invoice cannot be cancelled.** Issue a credit note. An invoice whose last send attempt has no known outcome (for example, a timeout) also cannot be cancelled: use **Retry** until the status is settled.
-5. Logs are kept for five years, seven for an invoice with an item ticked **Real Estate**, and cannot be deleted before.
+1. Sales to a customer whose **Buyer Category** is B2C or an individual, and sales within your VAT group while the grace period in the settings lasts, are not sent. The invoice shows **E-Invoice Applicable** and, when it is not, **Why Not Applicable**.
+2. Submitting a Sales Invoice builds its PINT AE document and checks it. An invoice whose lines are all exempt or out of scope is sent as an out of scope invoice (type 480; a credit note is type 81), because the specification does not allow them on an ordinary tax invoice. An invoice that would be invalid is **not issued**: fix what the message says (a missing TRN, TIN, address, VAT Emirate, and so on) and submit again.
+3. The invoice is sent in the background. Its **E-Invoice Status** shows the progress: Generated, Submitted (accepted by the provider), Delivered (to the buyer) and Cleared (reported to the FTA). Rejected means the provider or the FTA refused it; the reasons are in the **E-Invoice Log**. A rejected invoice's number is never sent again, so there is no Retry: fix what the reasons name (for example the customer's address or TIN), **cancel** the invoice and **amend** it, which gives it a new number and sends it as a new document. Once an invoice has been Delivered or Cleared it cannot be cancelled; issue a credit note instead.
+4. A failed send is retried automatically with increasing waits. After the retry limit the log shows Failed. Fix the cause and use **Retry** on the log.
+5. **A sent invoice cannot be cancelled.** Issue a credit note. To stop the cancellation of every invoice whose sending was attempted, including a rejected one, tick **Block Cancellation After an E-Invoice Was Sent** in UAE E-Invoice Settings. A workflow action such as "Request for cancelation" is not covered: add the condition `not doc.uae_einvoice_status` to its transition so that it is hidden once an e-invoice exists. An invoice whose last send attempt has no known outcome (for example, a timeout) also cannot be cancelled: use **Retry** until the status is settled.
+6. Logs are kept for five years, seven for an invoice with an item ticked **Real Estate**, and cannot be deleted before.
 
 Received invoices appear as **inbound** logs, matched to your suppliers by TIN or TRN. One that cannot be read or is addressed to someone else is marked Invalid with the reason. Entering them as Purchase Invoices is still done by hand.
 
 ### What cannot be sent yet
-Invoices of metal scrap under the reverse charge, charges or discounts outside the item rows, and VAT that differs from the rows are refused or logged as Invalid with a clear message. Supplies the system leaves out (exempt financial services, airline e-tickets, sovereign activity) are not detected by themselves: set the **E-Invoice Exclusion** on their Items (an invoice whose rows all carry the same one is left out) or choose it on the invoice. Self-billing invoices are also unsupported, but the app does not detect or reject them: identify them yourself and issue all unsupported invoices outside the app, following your provider's process until support is added. A company whose own currency is not AED cannot send e-invoices.
+
+A charge in the taxes table that is not VAT, such as freight, cannot be sent: it has no VAT category. Enter it as an item row instead. A discount on the whole invoice is sent, spread into the item rows.
+
+Invoices of metal scrap under the reverse charge and VAT that differs from the rows are refused or logged as Invalid with a clear message. Supplies the system leaves out (exempt financial services, airline e-tickets, sovereign activity) are not detected by themselves: set the **E-Invoice Exclusion** on their Items (an invoice whose rows all carry the same one is left out) or choose it on the invoice. Self-billing invoices are also unsupported, but the app does not detect or reject them: identify them yourself and issue all unsupported invoices outside the app, following your provider's process until support is added. A company whose own currency is not AED cannot send e-invoices.
 
 ### Reconciling purchases with received e-invoices
 Open the report **UAE Purchase Reconciliation**, choose the company and period and press **Run Matching**. Received e-invoices are matched with your Purchase Invoices by supplier, bill number, date and amounts (the taxable amount and VAT may differ by AED 1 in total):
@@ -88,6 +92,13 @@ Open the report **UAE Purchase Reconciliation**, choose the company and period a
 | TRN or TIN rejected | It does not match the pattern in UAE Compliance Settings (15 digits starting 1 ending 03; 10 digits starting 1). |
 | Box 1 is zero for a standard rated sale | The invoice has no VAT Emirate, or its VAT is not on the Output VAT account. |
 | A purchase is missing from Box 9 | It is blocked input VAT, attributed to exempt supplies, or not Standard Rated. |
+| "Company Registration Incomplete" | The company has no Legal Registration Type, or a Trade License with no issuing authority. Set them on the company's UAE Compliance tab. |
+| "VAT Exemption Reason Missing" | An exempt row has no reason. Set it on the Item Tax Template or the Item: the row takes it from there. |
+| "Unit Code Missing" | The unit of measure has no **UN/ECE Code**. Enter it on the UOM. |
+| "Charge in the Taxes Table" | The taxes table holds a charge that is not VAT, such as freight. Enter it as an item row. |
+| "VAT Charged Under a Zero Rate Template" | An item's Item Tax Template raised a 0% tax template. Use a tax template that charges VAT, or remove the Item Tax Template from the item. |
+| "Customer Address Missing" | Select the customer address on the invoice. |
+| "E-Invoice Was Attempted" | **Block Cancellation After an E-Invoice Was Sent** is on in UAE E-Invoice Settings. Issue a credit note. |
 | E-invoice stays Generated | The provider was unreachable; it retries on its own. Check **Status Detail** on the log. |
 | Log says provider settings changed | The log was created under another provider or environment. Restore the settings, then use **Retry**. |
 | "Return Out of Date" when filing | Documents of the period changed after the return was generated. Generate it again. |

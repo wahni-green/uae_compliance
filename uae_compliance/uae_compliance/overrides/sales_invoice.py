@@ -16,6 +16,7 @@ from uae_compliance.uae_compliance.overrides.vat_checks import (
 )
 from uae_compliance.uae_compliance.utils.company import is_uae_company
 from uae_compliance.uae_compliance.utils.print_data import get_value_before_credit_note
+from uae_compliance.uae_compliance.utils.rounding import warn_if_not_commercial_rounding
 from uae_compliance.uae_compliance.utils.tax_account import (
 	get_item_wise_vat_rates,
 	is_einvoicing_company,
@@ -215,6 +216,10 @@ def before_submit(doc, method=None):
 	if not is_uae_company(doc.get("company")):
 		return
 
+	validate_customer_address(doc)
+	validate_exemption_reasons(doc)
+	if is_einvoicing_company(doc.company):
+		warn_if_not_commercial_rounding()
 	validate_emirate(doc)
 	validate_credit_note_reason(doc)
 	store_value_before_credit_note(doc)
@@ -234,6 +239,30 @@ def validate_credit_note_reason(doc) -> None:
 			_("Reason for Credit Note is required: a tax credit note must state why it was issued."),
 			title=_("Reason Missing"),
 		)
+
+
+def validate_customer_address(doc) -> None:
+	"""The buyer's address is part of a tax invoice and of the e-invoice. It is chosen on the invoice:
+	the customer's primary address is not assumed."""
+	if not doc.get("customer_address"):
+		frappe.throw(
+			_("Select the Customer Address: it is required on a UAE invoice."),
+			title=_("Customer Address Missing"),
+		)
+
+
+def validate_exemption_reasons(doc) -> None:
+	"""An exempt line goes out with its reason (IBT-186, rule ibr-167-ae); the network rejects it without."""
+	rows = [str(row.idx) for row in doc.items if is_exempt_without_reason(row)]
+	if rows:
+		frappe.throw(
+			_("Set the VAT Exemption Reason on the exempt items in row {0}.").format(", ".join(rows)),
+			title=_("VAT Exemption Reason Missing"),
+		)
+
+
+def is_exempt_without_reason(row) -> bool:
+	return row.get("uae_vat_category") == "Exempt" and not row.get("uae_exemption_reason_code")
 
 
 def validate_emirate(doc) -> None:

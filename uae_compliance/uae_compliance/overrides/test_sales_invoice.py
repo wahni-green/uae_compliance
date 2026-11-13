@@ -66,6 +66,16 @@ class TestSalesInvoice(FrappeTestCase):
 		doc = make_sales_invoice([{"item_code": self.standard.name, "uae_vat_category": "Exempt"}])
 		self.assertRaises(frappe.ValidationError, doc.insert)
 
+	def test_a_zero_rate_template_overridden_by_the_item_is_rejected(self):
+		doc = make_sales_invoice([{"item_code": "_Test Std Item", "vat_rate": 5}], rate=0)
+		with self.assertRaises(frappe.ValidationError) as ctx:
+			doc.insert()
+
+		self.assertIn("charges 0% VAT", str(ctx.exception))
+
+	def test_a_zero_rate_template_that_is_not_overridden_is_accepted(self):
+		make_sales_invoice([{"item_code": "_Test Zero Item"}], rate=0).insert()
+
 	def test_zero_rated_item_is_not_charged_vat(self):
 		doc = make_sales_invoice([{"item_code": self.zero.name}])
 		doc.insert()
@@ -285,3 +295,30 @@ class TestSalesInvoice(FrappeTestCase):
 		with patch("uae_compliance.uae_compliance.overrides.sales_invoice.frappe.msgprint") as msg:
 			warn_late_tax_invoice(doc)
 		msg.assert_not_called()
+
+
+class TestCustomerAddressRequired(FrappeTestCase):
+	def setUp(self):
+		self.company = get_uae_test_company()
+		configure_vat_settings(self.company)
+		make_item("_Test Std Item")
+		make_customer("_Test UAE No Address Customer")
+		make_customer("_Test UAE Address Customer")
+
+	def draft(self, customer="_Test UAE No Address Customer", **kwargs):
+		doc = make_sales_invoice(
+			[{"item_code": "_Test Std Item"}], customer=customer, uae_emirate="Dubai", **kwargs
+		)
+		doc.customer_address = kwargs.get("customer_address")
+		return doc.insert()
+
+	def test_an_invoice_without_an_address_cannot_be_submitted(self):
+		doc = self.draft()
+		self.assertRaises(frappe.ValidationError, doc.submit)
+
+	def test_an_invoice_with_an_address_can_be_submitted(self):
+		from uae_compliance.tests import get_customer_address
+
+		customer = "_Test UAE Address Customer"
+		doc = self.draft(customer=customer, customer_address=get_customer_address(customer))
+		doc.submit()

@@ -5,12 +5,14 @@ from uae_compliance.uae_compliance.constants import (
 	SALES_REVERSE_CHARGE_TYPE_SELECT_OPTIONS,
 	VAT_CATEGORY_SELECT_OPTIONS,
 )
-from uae_compliance.uae_compliance.constants.einvoice import EXCLUSION_SELECT_OPTIONS
+from uae_compliance.uae_compliance.constants.einvoice import (
+	BUYER_CATEGORY_SELECT_OPTIONS,
+	EXCLUSION_SELECT_OPTIONS,
+)
 from uae_compliance.uae_compliance.constants.emirates import EMIRATE_SELECT_OPTIONS
 from uae_compliance.uae_compliance.constants.pint_ae import (
 	BILLING_FREQUENCY_SELECT_OPTIONS,
 	CREDIT_REASON_SELECT_OPTIONS,
-	EXEMPTION_REASON_SELECT_OPTIONS,
 	ITEM_TYPE_SELECT_OPTIONS,
 	LEGAL_REGISTRATION_SELECT_OPTIONS,
 )
@@ -122,6 +124,23 @@ def _sales_invoice_fields():
 			"uae_cb_einvoice_2",
 			read_only=1,
 			no_copy=1,
+		),
+		_field(
+			"uae_einvoice_applicable",
+			"E-Invoice Applicable",
+			"Check",
+			"uae_einvoice_log",
+			read_only=1,
+			no_copy=1,
+		),
+		_field(
+			"uae_einvoice_exclusion_reason",
+			"Why Not Applicable",
+			"Data",
+			"uae_einvoice_applicable",
+			read_only=1,
+			no_copy=1,
+			depends_on="eval:!doc.uae_einvoice_applicable",
 		),
 		# Transaction types: an invoice can be several at once, so these stay checkboxes
 		_field("uae_type_section", "Transaction Type", "Section Break", "uae_einvoice_log"),
@@ -278,6 +297,7 @@ def _legal_registration_fields(insert_after, columns=False):
 			"Select",
 			insert_after,
 			options=LEGAL_REGISTRATION_SELECT_OPTIONS,
+			mandatory_depends_on="eval:doc.uae_legal_registration_id",
 		),
 		_field("uae_legal_registration_id", "Legal Registration ID", "Data", "uae_legal_registration_type"),
 		*cb,
@@ -296,6 +316,7 @@ def _legal_registration_fields(insert_after, columns=False):
 			"uae_licence_authority",
 			options="Country",
 			depends_on="eval:doc.uae_legal_registration_type=='Passport'",
+			mandatory_depends_on="eval:doc.uae_legal_registration_type=='Passport'",
 		),
 	]
 
@@ -331,7 +352,14 @@ CUSTOM_FIELDS = {
 		_field("uae_vat_section", "UAE Compliance", "Section Break", "tax_withholding_category"),
 		_field("uae_trn", "TRN", "Data", "uae_vat_section"),
 		_field("uae_tin", "TIN (Peppol)", "Data", "uae_trn"),
-		_field("uae_cb_vat", "", "Column Break", "uae_tin"),
+		_field(
+			"uae_buyer_category",
+			"Buyer Category",
+			"Select",
+			"uae_tin",
+			options=BUYER_CATEGORY_SELECT_OPTIONS,
+		),
+		_field("uae_cb_vat", "", "Column Break", "uae_buyer_category"),
 		*_legal_registration_fields("uae_cb_vat", columns=True),
 	],
 	"Supplier": [
@@ -343,7 +371,14 @@ CUSTOM_FIELDS = {
 	],
 	"Address": [
 		_field("uae_address_in_arabic", "Address in Arabic", "Small Text", "address_line2"),
-		_field("uae_emirate", "Emirate", "Select", "state", options=EMIRATE_SELECT_OPTIONS),
+		_field(
+			"uae_emirate",
+			"Emirate",
+			"Select",
+			"state",
+			options=EMIRATE_SELECT_OPTIONS,
+			mandatory_depends_on=f"eval:doc.country=='{UAE}'",
+		),
 		_field(
 			"uae_designated_zone",
 			"Designated Zone",
@@ -359,9 +394,9 @@ CUSTOM_FIELDS = {
 		_field(
 			"uae_exemption_reason_code",
 			"VAT Exemption Reason",
-			"Select",
+			"Link",
 			"uae_vat_section",
-			options=EXEMPTION_REASON_SELECT_OPTIONS,
+			options="UAE Exemption Reason",
 		),
 		_field("uae_is_real_estate", "Real Estate", "Check", "uae_exemption_reason_code"),
 		_field("uae_cb_item_3", "", "Column Break", "uae_is_real_estate"),
@@ -408,6 +443,20 @@ CUSTOM_FIELDS = {
 			read_only=1,
 			in_list_view=1,
 		),
+		# Copied from the Item Tax Template (else the Item) when the row is Exempt, on every save (see
+		# overrides/transaction.py).
+		_field(
+			"uae_exemption_reason_code",
+			"VAT Exemption Reason",
+			"Link",
+			"uae_vat_category",
+			options="UAE Exemption Reason",
+			depends_on="eval:doc.uae_vat_category=='Exempt'",
+			read_only=1,
+		),
+	],
+	"UOM": [
+		_field("uae_uncefact_code", "UN/ECE Code", "Data", "must_be_whole_number", in_list_view=1),
 	],
 	"Item Tax Template": [
 		_field(
@@ -420,9 +469,9 @@ CUSTOM_FIELDS = {
 		_field(
 			"uae_exemption_reason_code",
 			"VAT Exemption Reason",
-			"Select",
+			"Link",
 			"uae_vat_category",
-			options=EXEMPTION_REASON_SELECT_OPTIONS,
+			options="UAE Exemption Reason",
 		),
 		_field("uae_fetch_vat_accounts", "Fetch VAT Accounts", "Button", "section_break_5"),
 	],

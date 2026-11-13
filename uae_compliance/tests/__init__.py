@@ -7,6 +7,7 @@ from frappe.utils import getdate
 from uae_compliance.uae_compliance.utils.tax_account import get_output_vat_account
 
 TEST_COMPANY = "_Test UAE VAT Company"
+EXEMPTION_TEST_REASON = "DL8.46.1"
 
 
 def before_tests() -> None:
@@ -122,6 +123,8 @@ def get_category_template(category: str, company: str | None = None) -> str:
 	title = f"_Test UAE {category}"
 	abbr = frappe.get_cached_value("Company", company, "abbr")
 	name = f"{title} - {abbr}"
+	# An exempt line cannot be submitted without a reason.
+	reason = EXEMPTION_TEST_REASON if category == "Exempt" else None
 	if not frappe.db.exists("Item Tax Template", name):
 		account = get_output_vat_account(company) or frappe.db.get_value(
 			"Account", {"company": company, "is_group": 0, "root_type": "Liability"}, "name"
@@ -132,9 +135,13 @@ def get_category_template(category: str, company: str | None = None) -> str:
 				"title": title,
 				"company": company,
 				"uae_vat_category": category,
+				"uae_exemption_reason_code": reason,
 				"taxes": [{"tax_type": account, "tax_rate": 0}],
 			}
 		).insert()
+	elif reason:
+		frappe.db.set_value("Item Tax Template", name, "uae_exemption_reason_code", reason)
+		frappe.clear_document_cache("Item Tax Template", name)
 
 	return name
 
@@ -202,6 +209,16 @@ def make_address(
 			**kwargs,
 		}
 	).insert()
+
+
+def get_customer_address(customer: str) -> str:
+	"""The customer's test address, created once. An invoice needs one to be submitted."""
+	title = f"{customer} Invoice Address"
+	name = f"{title}-Billing"
+	if frappe.db.exists("Address", name):
+		return name
+
+	return make_address(title, "United Arab Emirates", customer=customer, uae_emirate="Dubai").name
 
 
 def make_sales_invoice(rows: list[dict], customer: str = "_Test UAE Customer", rate: float = 5, **kwargs):
@@ -284,6 +301,8 @@ def create_submitted_sales_invoice(rows=None, emirate="Dubai", **kwargs):
 	"""A submitted Sales Invoice with a VAT emirate, for print and report tests."""
 	make_item("_Test Print Item")
 	doc = make_sales_invoice(rows or [{"item_code": "_Test Print Item"}], **kwargs)
+	if not doc.customer_address:
+		doc.customer_address = get_customer_address(doc.customer)
 	doc.uae_emirate = emirate
 	doc.insert()
 	doc.submit()

@@ -46,6 +46,10 @@ class TestTaxInvoicePrintFormats(FrappeTestCase):
 	def test_missing_supplier_details_show_visible_warnings(self):
 		frappe.db.set_value("Company", self.company, "uae_trn", "")
 		invoice = create_submitted_sales_invoice(customer="_Test UAE Customer")
+		# An invoice cannot be submitted without it, but an older one can lack it.
+		frappe.db.set_value(
+			"Sales Invoice", invoice.name, {"customer_address": None, "address_display": None}
+		)
 
 		html = _print(invoice, "UAE Tax Invoice")
 
