@@ -11,15 +11,15 @@ app_license = "agpl-3.0"
 required_apps = ["frappe/erpnext"]
 
 # Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "uae_compliance",
-# 		"logo": "/assets/uae_compliance/logo.png",
-# 		"title": "UAE Compliance",
-# 		"route": "/uae_compliance",
-# 		"has_permission": "uae_compliance.api.permission.has_app_permission"
-# 	}
-# ]
+add_to_apps_screen = [
+	{
+		"name": "uae_compliance",
+		"logo": "/assets/uae_compliance/images/uae-compliance-logo.svg",
+		"title": "UAE Compliance",
+		"route": "/desk/uae-compliance",
+		"has_permission": "uae_compliance.app_permission.has_app_permission",
+	}
+]
 
 # Includes in <head>
 # ------------------
