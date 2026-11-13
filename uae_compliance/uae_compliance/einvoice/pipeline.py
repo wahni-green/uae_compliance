@@ -35,6 +35,7 @@ from uae_compliance.uae_compliance.einvoice.exceptions import (
 )
 from uae_compliance.uae_compliance.einvoice.pint_ae_builder import build_document, build_xml
 from uae_compliance.uae_compliance.einvoice.registry import get_client, get_company_setting
+from uae_compliance.uae_compliance.einvoice.unit_codes import validate_unit_codes
 from uae_compliance.uae_compliance.einvoice.validators import validate_xml
 from uae_compliance.uae_compliance.utils.company import is_uae_company
 
@@ -77,6 +78,7 @@ def validate_before_submit(doc, method=None):
 		return
 
 	validate_company_registration(doc.company)
+	validate_unit_codes(doc)
 
 	try:
 		xml, _summary = build_xml(doc)

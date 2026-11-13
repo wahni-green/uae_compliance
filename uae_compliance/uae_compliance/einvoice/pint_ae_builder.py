@@ -20,7 +20,6 @@ from uae_compliance.uae_compliance.constants.pint_ae import (
 	CATEGORY_CODES,
 	CREDIT_NOTE_TYPE_CODE,
 	CUSTOMIZATION_ID,
-	DEFAULT_UNIT_CODE,
 	EMIRATE_SUBDIVISIONS,
 	ENDPOINT_BUYER_NOT_ON_NETWORK,
 	ENDPOINT_EXPORT,
@@ -46,10 +45,10 @@ from uae_compliance.uae_compliance.constants.pint_ae import (
 	PROFILE_ID,
 	REVERSE_CHARGE_CODE,
 	REVERSE_CHARGE_NATURE_CODES,
-	UNIT_CODES,
 	UTC_OFFSET,
 )
 from uae_compliance.uae_compliance.einvoice.exceptions import EInvoiceNotSupportedError
+from uae_compliance.uae_compliance.einvoice.unit_codes import get_unit_code
 from uae_compliance.uae_compliance.overrides.transaction import get_default_exemption_reason
 from uae_compliance.uae_compliance.utils.print_data import get_output_vat_amount
 from uae_compliance.uae_compliance.utils.tax_account import (
@@ -375,7 +374,7 @@ class PintAEBuilder:
 			"hs_code": hsn_sac_code if item_type in ("Goods", "Both") else None,
 			"sac_code": hsn_sac_code if item_type in ("Services", "Both") else None,
 			"quantity": line["qty"],
-			"unit_code": UNIT_CODES.get(row.uom, DEFAULT_UNIT_CODE),
+			"unit_code": get_unit_code(row.uom),
 			"gross_price": line["gross_price"],
 			"net_price": line["net_price"],
 			"discount": flt(line["gross_price"] - line["net_price"], 6),
@@ -824,7 +823,7 @@ class PintAEBuilder:
 		row = line["row"]
 		tag = "CreditNoteLine" if self.is_credit_note else "InvoiceLine"
 		quantity_tag = "CreditedQuantity" if self.is_credit_note else "InvoicedQuantity"
-		unit = UNIT_CODES.get(row.uom, DEFAULT_UNIT_CODE)
+		unit = get_unit_code(row.uom)
 
 		element = _add(root, "cac", tag)
 		_add(element, "cbc", "ID", row.idx)

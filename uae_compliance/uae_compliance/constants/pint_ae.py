@@ -94,8 +94,8 @@ CREDIT_REASON_SELECT_OPTIONS = "\n" + "\n".join(CREDIT_REASONS)
 # Payment means: "instrument not defined". Credit transfer (30) would need an account identifier.
 PAYMENT_MEANS_CODE = "1"
 
-# UN/ECE Recommendation 20 unit codes for the units of measure we recognise; anything else is
-# reported as a piece (H87).
+# UN/ECE Recommendation 20 unit codes the UOM master starts with. Finance keeps the codes from
+# there (UOM.uae_uncefact_code); a unit with no code stops the invoice.
 UNIT_CODES = {
 	"Nos": "H87",
 	"Unit": "H87",
@@ -108,8 +108,8 @@ UNIT_CODES = {
 	"Hour": "HUR",
 	"Day": "DAY",
 	"Month": "MON",
+	"Pkt": "XPA",
 }
-DEFAULT_UNIT_CODE = "H87"
 
 # Item type (BTAE-13): goods need an HS code, services a service accounting code.
 ITEM_TYPE_CODES = {"Goods": "G", "Services": "S", "Both": "B"}

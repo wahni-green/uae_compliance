@@ -13,5 +13,7 @@ class TestUAEExemptionReason(FrappeTestCase):
 
 		create_exemption_reasons()
 
-		self.assertEqual(frappe.db.get_value("UAE Exemption Reason", code, "description"), "edited by finance")
+		self.assertEqual(
+			frappe.db.get_value("UAE Exemption Reason", code, "description"), "edited by finance"
+		)
 		self.assertEqual(frappe.db.count("UAE Exemption Reason", {"reason_code": code}), 1)

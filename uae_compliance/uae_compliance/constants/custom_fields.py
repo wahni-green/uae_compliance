@@ -427,6 +427,9 @@ CUSTOM_FIELDS = {
 			depends_on="eval:doc.uae_vat_category=='Exempt'",
 		),
 	],
+	"UOM": [
+		_field("uae_uncefact_code", "UN/ECE Code", "Data", "must_be_whole_number", in_list_view=1),
+	],
 	"Item Tax Template": [
 		_field(
 			"uae_vat_category",

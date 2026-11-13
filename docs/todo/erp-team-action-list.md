@@ -19,7 +19,7 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 
 - [ ] **9. VAT category for Exempt and Out-of-scope** (High). No new field. The category comes from the Item Tax Template, so this is a finance setup issue. Check the existing consistency check catches a wrong template.
 - [x] **10. Exemption reason code master** (High). New DocType UAE Exemption Reason, seeded with the four FTA codes and maintained by finance. It is a Link on the Item Tax Template, the Item and the line items. The line takes the template value, else the item's.
-- [ ] **11. UOM UN/ECE code** (High). Add `UOM.uae_uncefact_code`, fill it from the current dictionary with a patch, block submit when a used UOM has no code.
+- [x] **11. UOM UN/ECE code** (High). Added `UOM.uae_uncefact_code`. A patch fills blanks from the old dictionary, with Pkt as XPA. Submit is blocked when a UOM on the invoice has no code, with no H87 fallback. Ctn, Bag, Tin, Bottle and Pcs are not in the old dictionary, so finance must enter their codes.
 - [ ] **12. Customer buyer category** (Medium). Add `uae_buyer_category` (B2B, B2G, B2C). Existing customers stay blank.
 - [ ] **13. Intra-group exclusion** (Medium). Add `exclude_intra_vat_group` and `intra_group_grace_end` (fixed date) to UAE E-Invoice Settings. The customer's UAE Tax Group identifies intra-group sales.
 - [ ] **14. E-invoice applicability on the invoice** (Medium). Add `uae_einvoice_applicable` and `uae_einvoice_exclusion_reason`. Read-only, calculated at submit.

@@ -7,7 +7,7 @@ from uae_compliance.uae_compliance.constants.custom_fields import CUSTOM_FIELDS
 from uae_compliance.uae_compliance.constants.designated_zones import DESIGNATED_ZONES
 from uae_compliance.uae_compliance.constants.erpnext_uae_fields import ERPNEXT_UAE_FIELDS
 from uae_compliance.uae_compliance.constants.excise_rates import EFFECTIVE_FROM, EXCISE_RATES
-from uae_compliance.uae_compliance.constants.pint_ae import EXEMPTION_REASONS
+from uae_compliance.uae_compliance.constants.pint_ae import EXEMPTION_REASONS, UNIT_CODES
 
 
 def create_custom_fields() -> None:
@@ -38,6 +38,13 @@ def create_exemption_reasons() -> None:
 				"is_active": 1,
 			}
 		).insert(ignore_permissions=True)
+
+
+def fill_unit_codes() -> None:
+	# Fills blanks only: finance maintains the codes, so one it set is never overwritten.
+	for uom, code in UNIT_CODES.items():
+		if frappe.db.exists("UOM", uom) and not frappe.db.get_value("UOM", uom, "uae_uncefact_code"):
+			frappe.db.set_value("UOM", uom, "uae_uncefact_code", code)
 
 
 def create_excise_rates() -> None:

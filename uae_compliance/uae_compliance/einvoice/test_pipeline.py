@@ -219,6 +219,30 @@ class TestSubmission(PipelineTestCase):
 
 		self.assertIn("VAT Exemption Reason", str(ctx.exception))
 
+	def set_nos_unit_code(self, code):
+		"""Tests share one database until the class ends, so the code is put back after each test."""
+		self.addCleanup(self.set_nos_unit_code_now, "H87")
+		self.set_nos_unit_code_now(code)
+
+	def set_nos_unit_code_now(self, code):
+		frappe.db.set_value("UOM", "Nos", "uae_uncefact_code", code)
+		frappe.clear_document_cache("UOM", "Nos")
+
+	def test_a_unit_without_a_code_is_not_issued(self):
+		self.set_nos_unit_code("")
+		with patch("frappe.enqueue"):
+			with self.assertRaises(EInvoiceError) as ctx:
+				self.invoice(submit=True)
+
+		self.assertIn("UN/ECE Code", str(ctx.exception))
+
+	def test_the_unit_code_of_the_uom_goes_into_the_document(self):
+		self.set_nos_unit_code("XPA")
+		doc = self.invoice()
+		xml, _bytes, _summary = self.build(doc)
+
+		self.assertEqual(xml.xpath("//@unitCode")[0], "XPA")
+
 	def test_a_company_without_a_registration_type_is_not_issued(self):
 		frappe.db.set_value("Company", self.company, "uae_legal_registration_type", "")
 		with patch("frappe.enqueue"):
