@@ -1,5 +1,8 @@
+import json
+
 import frappe
 from frappe import _
+from frappe.utils import flt
 
 from uae_compliance.uae_compliance.constants import NO_TAX_VAT_CATEGORIES
 from uae_compliance.uae_compliance.utils.tax_account import (
@@ -17,6 +20,7 @@ def validate_vat_category_tax_consistency(doc) -> None:
 	ordinary tax templates."""
 	# Sales charge VAT on the Output account; purchases bear it on the Input account.
 	is_vat_account = is_input_vat_account if doc.doctype == "Purchase Invoice" else is_output_vat_account
+	validate_zero_rate_template_not_overridden(doc, is_vat_account)
 	charged_rates = get_item_wise_vat_rates(doc.get("taxes") or [], doc.get("company"), is_vat_account)
 	categories_by_item = _categories_by_item_code(doc.get("items") or [])
 
@@ -50,6 +54,32 @@ def validate_vat_category_tax_consistency(doc) -> None:
 				),
 				title=_("VAT Category Mismatch"),
 			)
+
+
+def validate_zero_rate_template_not_overridden(doc, is_vat_account) -> None:
+	"""A Sales Taxes and Charges Template that charges 0% VAT (a Zero Rated or Exempt supply) must stay
+	at 0%. ERPNext lets an item's own Item Tax Template replace the rate of the row, which is how VAT
+	was charged on items sold under such a template."""
+	overridden = set()
+	for tax in doc.get("taxes") or []:
+		if tax.get("charge_type") != "On Net Total" or flt(tax.get("rate")):
+			continue
+
+		if not is_vat_account(tax.get("account_head"), doc.get("company")):
+			continue
+
+		detail = tax.get("item_wise_tax_detail") or {}
+		detail = json.loads(detail) if isinstance(detail, str) else detail
+		overridden.update(item_code for item_code, (rate, _amount) in detail.items() if flt(rate))
+
+	if overridden:
+		frappe.throw(
+			_(
+				"The tax template charges 0% VAT, but the Item Tax Template of {0} raises it. Use a tax"
+				" template that charges VAT, or remove the Item Tax Template from the item."
+			).format(", ".join(map(frappe.bold, sorted(overridden)))),
+			title=_("VAT Charged Under a Zero Rate Template"),
+		)
 
 
 def validate_no_mixed_vat_category_per_item_code(doc) -> None:

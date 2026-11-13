@@ -66,6 +66,16 @@ class TestSalesInvoice(FrappeTestCase):
 		doc = make_sales_invoice([{"item_code": self.standard.name, "uae_vat_category": "Exempt"}])
 		self.assertRaises(frappe.ValidationError, doc.insert)
 
+	def test_a_zero_rate_template_overridden_by_the_item_is_rejected(self):
+		doc = make_sales_invoice([{"item_code": "_Test Std Item", "vat_rate": 5}], rate=0)
+		with self.assertRaises(frappe.ValidationError) as ctx:
+			doc.insert()
+
+		self.assertIn("charges 0% VAT", str(ctx.exception))
+
+	def test_a_zero_rate_template_that_is_not_overridden_is_accepted(self):
+		make_sales_invoice([{"item_code": "_Test Zero Item"}], rate=0).insert()
+
 	def test_zero_rated_item_is_not_charged_vat(self):
 		doc = make_sales_invoice([{"item_code": self.zero.name}])
 		doc.insert()

@@ -17,7 +17,7 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 
 ## Create field
 
-- [ ] **9. VAT category for Exempt and Out-of-scope** (High). No new field. The category comes from the Item Tax Template, so this is a finance setup issue. Check the existing consistency check catches a wrong template.
+- [x] **9. VAT category for Exempt and Out-of-scope** (High). No new field. The category comes from the Item Tax Template. Checked: a wrong template was not caught when a zero template was overridden by the item; point 17 now blocks that.
 - [x] **10. Exemption reason code master** (High). New DocType UAE Exemption Reason, seeded with the four FTA codes and maintained by finance. It is a Link on the Item Tax Template, the Item and the line items. The line takes the template value, else the item's.
 - [x] **11. UOM UN/ECE code** (High). Added `UOM.uae_uncefact_code`. A patch fills blanks from the old dictionary, with Pkt as XPA. Submit is blocked when a UOM on the invoice has no code, with no H87 fallback. Ctn, Bag, Tin, Bottle and Pcs are not in the old dictionary, so finance must enter their codes.
 - [x] **12. Customer buyer category** (Medium). Added `uae_buyer_category` (B2B, B2G, B2C). B2C is out of scope. Existing customers stay blank.
@@ -28,7 +28,7 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 
 ## Fix
 
-- [ ] **17. Item Tax Template overriding Zero and Exempt templates** (High). Block submit when a Zero, Exempt or Out-of-scope line carries VAT.
+- [x] **17. Item Tax Template overriding Zero and Exempt templates** (High). The old check missed it because the line took its category from the item's own 5% template. New check: a Sales Taxes and Charges Template that charges 0% VAT cannot be overridden by an item's Item Tax Template; the invoice cannot be saved.
 - [x] **18. Customer disabling script** (High). Not in this app. Ignored.
 - [ ] **19. Header discount and extra charge rows** (Medium). Send them as a document-level allowance and charge.
 - [ ] **20. Cancellation after the e-invoice was attempted** (Medium). Add a setting that blocks cancellation for any status except not sent.
