@@ -443,8 +443,8 @@ CUSTOM_FIELDS = {
 			read_only=1,
 			in_list_view=1,
 		),
-		# Copied from the Item Tax Template (else the Item) when the row is Exempt (see
-		# overrides/transaction.py), and editable until then.
+		# Copied from the Item Tax Template (else the Item) when the row is Exempt, on every save (see
+		# overrides/transaction.py).
 		_field(
 			"uae_exemption_reason_code",
 			"VAT Exemption Reason",
@@ -452,6 +452,7 @@ CUSTOM_FIELDS = {
 			"uae_vat_category",
 			options="UAE Exemption Reason",
 			depends_on="eval:doc.uae_vat_category=='Exempt'",
+			read_only=1,
 		),
 	],
 	"UOM": [

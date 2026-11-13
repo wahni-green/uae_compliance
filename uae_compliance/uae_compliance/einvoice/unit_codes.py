@@ -8,7 +8,7 @@ from uae_compliance.uae_compliance.einvoice.exceptions import EInvoiceError
 
 
 def get_unit_code(uom: str | None) -> str | None:
-	return uom and frappe.get_cached_value("UOM", uom, "uae_uncefact_code") or None
+	return (uom and frappe.get_cached_value("UOM", uom, "uae_uncefact_code")) or None
 
 
 def validate_unit_codes(doc) -> None:

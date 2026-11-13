@@ -93,7 +93,7 @@ Open the report **UAE Purchase Reconciliation**, choose the company and period a
 | Box 1 is zero for a standard rated sale | The invoice has no VAT Emirate, or its VAT is not on the Output VAT account. |
 | A purchase is missing from Box 9 | It is blocked input VAT, attributed to exempt supplies, or not Standard Rated. |
 | "Company Registration Incomplete" | The company has no Legal Registration Type, or a Trade License with no issuing authority. Set them on the company's UAE Compliance tab. |
-| "VAT Exemption Reason Missing" | An exempt row has no reason. Set it on the Item Tax Template or the Item, or on the row. |
+| "VAT Exemption Reason Missing" | An exempt row has no reason. Set it on the Item Tax Template or the Item: the row takes it from there. |
 | "Unit Code Missing" | The unit of measure has no **UN/ECE Code**. Enter it on the UOM. |
 | "Charge in the Taxes Table" | The taxes table holds a charge that is not VAT, such as freight. Enter it as an item row. |
 | "VAT Charged Under a Zero Rate Template" | An item's Item Tax Template raised a 0% tax template. Use a tax template that charges VAT, or remove the Item Tax Template from the item. |

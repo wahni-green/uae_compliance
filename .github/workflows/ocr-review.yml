@@ -22,18 +22,24 @@ on:
   issue_comment:
     types: [created]
 
-permissions:
-  contents: read
-  pull-requests: write
-  issues: write # remove the trigger label, react to comments
+# No workflow-level grant: each job declares what it needs.
+permissions: {}
 
 jobs:
   review:
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write # remove the trigger label, react to comments
     # Cheap gate (uses no runner): automatic PR events, the `ocr-review` label,
-    # or a `/ocr` comment from an org owner/member/collaborator on a PR. The write
-    # access check is made in the first step.
+    # or a `/ocr` comment from an org owner/member/collaborator on a PR. Fork PRs are
+    # left out here and again in the first step, where the write access check is made.
+    # A fork can edit this file in its own PR, so also set the repository's "Approval
+    # for running fork pull request workflows" to require approval for all outside
+    # collaborators.
     if: >-
       (github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
         (github.event.action != 'labeled' || github.event.label.name == 'ocr-review'))
       ||
       (github.event_name == 'issue_comment' &&
@@ -168,6 +174,8 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'ocr-review'
     runs-on: ubuntu-latest
     timeout-minutes: 2
+    permissions:
+      issues: write # removing a label on a PR needs only this
     steps:
       - uses: actions/github-script@v7
         with:

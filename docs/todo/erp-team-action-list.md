@@ -18,7 +18,7 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 ## Create field
 
 - [x] **9. VAT category for Exempt and Out-of-scope** (High). No new field. The category comes from the Item Tax Template. Checked: a wrong template was not caught when a zero template was overridden by the item; point 17 now blocks that.
-- [x] **10. Exemption reason code master** (High). New DocType UAE Exemption Reason, seeded with the four FTA codes and maintained by finance. It is a Link on the Item Tax Template, the Item and the line items. The line takes the template value, else the item's.
+- [x] **10. Exemption reason code master** (High). New DocType UAE Exemption Reason, seeded with the four FTA codes and maintained by finance. It is a Link on the Item Tax Template, the Item and the line items. The line takes the template value, else the item's, and is read again on every save. The row field is read-only.
 - [x] **11. UOM UN/ECE code** (High). Added `UOM.uae_uncefact_code`. A patch fills blanks from the old dictionary, with Pkt as XPA. Submit is blocked when a UOM on the invoice has no code, with no H87 fallback. Ctn, Bag, Tin, Bottle and Pcs are not in the old dictionary, so finance must enter their codes.
 - [x] **12. Customer buyer category** (Medium). Added `uae_buyer_category` (B2B, B2G, B2C). B2C is out of scope. Existing customers stay blank.
 - [x] **13. Intra-group exclusion** (Medium). Added `exclude_intra_vat_group` and `intra_group_grace_end` to UAE E-Invoice Settings. A UAE Tax Group lists companies, so a sale is intra-group when the customer is an internal customer (Represents Company) of a company in the same group as the invoicing company. Set the end date to 31-Dec-2028 for 24 months from 1-Jan-2027.
@@ -42,4 +42,4 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 ## Notes
 
 - Points 6, 7 and 22 are reports. They are grouped into one data-quality report.
-- Point 8 removes the primary address fallback, so flows that rely on it will fail at submit.
+- Point 8 does not remove ERPNext's fallback to the customer's primary address: ERPNext fills it during validation. Submit is blocked only when the customer has no usable address at all.

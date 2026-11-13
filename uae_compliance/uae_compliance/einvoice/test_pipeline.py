@@ -255,10 +255,15 @@ class TestSubmission(PipelineTestCase):
 		doc = self.invoice([{"item_code": "_Test EInv Exempt", "rate": 100}])
 		self.assertEqual(doc.items[0].uae_exemption_reason_code, "DL8.46.1")
 
-	def test_a_reason_chosen_on_the_line_is_kept(self):
+	def test_a_changed_template_reason_reaches_the_line_on_the_next_save(self):
 		doc = self.invoice([{"item_code": "_Test EInv Exempt", "rate": 100}])
-		doc.items[0].uae_exemption_reason_code = "DL8.46.2"
+		self.assertEqual(doc.items[0].uae_exemption_reason_code, "DL8.46.1")
+
+		template = doc.items[0].item_tax_template
+		self.addCleanup(self.set_template_reason, template, "DL8.46.1")
+		self.set_template_reason(template, "DL8.46.2")
 		doc.save()
+
 		self.assertEqual(doc.items[0].uae_exemption_reason_code, "DL8.46.2")
 
 	def test_an_exempt_line_without_a_reason_is_not_issued(self):
