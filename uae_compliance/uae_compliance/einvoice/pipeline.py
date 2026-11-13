@@ -27,6 +27,7 @@ from uae_compliance.uae_compliance.constants.einvoice import (
 	SUBMIT_PENDING_STATUSES,
 )
 from uae_compliance.uae_compliance.einvoice.asp_client import OutgoingDocument
+from uae_compliance.uae_compliance.einvoice.company_checks import validate_company_registration
 from uae_compliance.uae_compliance.einvoice.exceptions import (
 	EInvoiceError,
 	EInvoiceNotSupportedError,
@@ -74,6 +75,8 @@ def validate_before_submit(doc, method=None):
 	logged as Invalid on submission instead, to be sent by other means."""
 	if not get_setting_if_required(doc):
 		return
+
+	validate_company_registration(doc.company)
 
 	try:
 		xml, _summary = build_xml(doc)

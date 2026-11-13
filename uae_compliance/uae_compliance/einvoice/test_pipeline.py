@@ -196,10 +196,40 @@ class TestSubmission(PipelineTestCase):
 	def test_a_trade_license_without_an_authority_is_not_issued(self):
 		frappe.db.set_value("Company", self.company, "uae_licence_authority", "")
 		with patch("frappe.enqueue"):
-			with self.assertRaises(EInvoiceError) as ctx:
+			with self.assertRaises(frappe.ValidationError) as ctx:
 				self.invoice(submit=True)
 
-		self.assertIn("authority that issued", str(ctx.exception))
+		self.assertIn("Licence Issuing Authority", str(ctx.exception))
+
+	def test_a_company_without_a_registration_type_is_not_issued(self):
+		frappe.db.set_value("Company", self.company, "uae_legal_registration_type", "")
+		with patch("frappe.enqueue"):
+			with self.assertRaises(frappe.ValidationError) as ctx:
+				self.invoice(submit=True)
+
+		self.assertIn("Legal Registration Type", str(ctx.exception))
+
+	def test_saving_an_einvoicing_company_without_a_registration_type_is_blocked(self):
+		company = frappe.get_doc("Company", self.company)
+		company.uae_legal_registration_type = ""
+		with self.assertRaises(frappe.ValidationError):
+			company.save()
+
+	def test_saving_an_einvoicing_company_with_a_trade_license_needs_its_authority(self):
+		company = frappe.get_doc("Company", self.company)
+		company.uae_licence_authority = ""
+		with self.assertRaises(frappe.ValidationError):
+			company.save()
+
+	def test_a_company_that_does_not_send_e_invoices_can_be_saved_without_them(self):
+		settings = frappe.get_doc("UAE E-Invoice Settings")
+		settings.companies = []
+		settings.save()
+		frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")
+
+		company = frappe.get_doc("Company", self.company)
+		company.uae_legal_registration_type = ""
+		company.save()
 
 	def test_an_unsupported_invoice_is_issued_and_logged_as_invalid(self):
 		# Metal scrap under the reverse charge has no type of goods in the specification.
