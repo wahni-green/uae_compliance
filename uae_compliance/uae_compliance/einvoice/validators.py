@@ -182,7 +182,7 @@ def _check_parties(xml) -> list[str]:
 
 def _require_hsn_sac_code() -> bool:
 	"""PINT AE makes the classification codes optional, so the check is a setting."""
-	value = frappe.db.get_single_value("UAE E-Invoice Settings", "require_hsn_sac_code")
+	value = frappe.db.get_single_value("UAE Compliance Settings", "require_hsn_sac_code")
 	return True if value is None else bool(cint(value))
 
 

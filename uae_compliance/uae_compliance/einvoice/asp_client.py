@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class ProviderConfig:
-	"""What an adapter is configured with, from UAE E-Invoice Settings."""
+	"""What an adapter is configured with, from UAE Compliance Settings."""
 
 	company: str
 	environment: str
@@ -66,7 +66,7 @@ class ASPClient(ABC):
 	"""Raise ServiceProviderError (or a subclass) for a failure worth retrying, such as a timeout or
 	a rate limit, and ProviderRejectedError when the provider refuses the document for good."""
 
-	#: Registry name, shown in UAE E-Invoice Settings.
+	#: Registry name, shown in UAE Compliance Settings.
 	name: str = ""
 	#: Settings the adapter cannot work without; checked when the settings are saved.
 	required_settings: tuple[str, ...] = ()

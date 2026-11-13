@@ -76,13 +76,13 @@ Primary-source check done: see [UAE_VERIFICATION.md](UAE_VERIFICATION.md). **Whe
 3. **Print formats & QR:** Tax Invoice (AR/EN), Simplified Tax Invoice, Tax Credit/Debit Note; AED VAT disclosure for foreign currency; QR payload for non-e-invoice interim.
 4. **VAT 201 return:** `UAE VAT Return` doctype generating boxes 1a–15 (+ margin scheme, GCC sections), emirate split, adjustment columns from returns, Generate/Mark as Filed, period validation (monthly/quarterly/stagger); registers and VAT audit report (invoice-level, ideally also FTA VAT audit file (FAF) export).
 5. **Advanced schemes:** profit margin scheme, partial exemption (input apportionment, annual adjustment), capital asset scheme (10-year adjustment for ≥ AED 5M assets), bad-debt relief, tourist refund (box 2), excise tax.
-6. **E-invoicing (PINT AE):** `UAE E-Invoice Settings` (ASP provider, credentials, environment), status doctype/log with the 7-state lifecycle (Draft → … → FTA Cleared) on Sales Invoice, XML builder (UBL 2.1, tax category mapping S/Z/E/G/O/AE from `vat_category`), XSD + Schematron validation, provider-agnostic `asp_client` base with idempotent submit, retries and scheduler-driven status polling (`scheduler_events`), inbound handling for Purchase Invoices, credit notes (381), XML retention, permissions.
+6. **E-invoicing (PINT AE):** `UAE Compliance Settings` (ASP provider, credentials, environment), status doctype/log with the 7-state lifecycle (Draft → … → FTA Cleared) on Sales Invoice, XML builder (UBL 2.1, tax category mapping S/Z/E/G/O/AE from `vat_category`), XSD + Schematron validation, provider-agnostic `asp_client` base with idempotent submit, retries and scheduler-driven status polling (`scheduler_events`), inbound handling for Purchase Invoices, credit notes (381), XML retention, permissions.
 7. **Hardening:** tests beside each module (pattern of oman test helpers incl. `_without_broken_third_party_hooks`), patches, docs, UAT with a real UAE company.
 
 ## E-invoicing provider strategy (decided)
 Provider-agnostic. Multiple ASPs will be integrated, so Phase 6 builds an adapter framework, not a single integration:
 - Abstract `ASPClient` interface (`einvoice/asp_client.py`): `submit(xml, idempotency_key)`, `get_status(ref)`, `fetch_inbound()`, `cancel/credit`, `validate_credentials()`; normalized status enum and error model shared by all adapters.
-- Registry keyed by provider name; each adapter lives in `einvoice/asp_clients/<provider>.py` and is selected per company via UAE E-Invoice Settings (provider Select/Link, per-provider credential fields stored as Password fields, sandbox/production).
+- Registry keyed by provider name; each adapter lives in `einvoice/asp_clients/<provider>.py` and is selected per company via UAE Compliance Settings (provider Select/Link, per-provider credential fields stored as Password fields, sandbox/production).
 - PINT AE XML building, validation and the status lifecycle are provider-independent; only transport, auth and response mapping live in adapters.
 - A mock/sandbox adapter ships first so the pipeline and tests need no real provider. Real adapters are added later without schema changes.
 

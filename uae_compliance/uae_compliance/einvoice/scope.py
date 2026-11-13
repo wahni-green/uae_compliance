@@ -36,7 +36,7 @@ def get_exclusion_reason(doc, row) -> str | None:
 
 def is_intra_group_sale(doc, customer_company: str | None) -> bool:
 	"""A sale to another member of the company's UAE Tax Group, while the grace period lasts."""
-	settings = frappe.get_cached_doc("UAE E-Invoice Settings")
+	settings = frappe.get_cached_doc("UAE Compliance Settings")
 	if not settings.exclude_intra_vat_group or not customer_company:
 		return False
 

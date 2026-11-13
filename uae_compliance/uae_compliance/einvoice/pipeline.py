@@ -112,11 +112,11 @@ def guard_cancellation(doc, method=None):
 		)
 
 	if log.last_attempt_on and frappe.db.get_single_value(
-		"UAE E-Invoice Settings", "block_cancellation_after_attempt"
+		"UAE Compliance Settings", "block_cancellation_after_attempt"
 	):
 		frappe.throw(
 			_(
-				"Sending this invoice as an e-invoice was attempted ({0}), and UAE E-Invoice Settings block"
+				"Sending this invoice as an e-invoice was attempted ({0}), and UAE Compliance Settings block"
 				" the cancellation of such an invoice. Issue a credit note instead."
 			).format(_(log.status)),
 			title=_("E-Invoice Was Attempted"),
@@ -278,7 +278,7 @@ def _mirror_status(log):
 
 
 def _retry_limit() -> int:
-	return cint(frappe.db.get_single_value("UAE E-Invoice Settings", "retry_limit")) or DEFAULT_RETRY_LIMIT
+	return cint(frappe.db.get_single_value("UAE Compliance Settings", "retry_limit")) or DEFAULT_RETRY_LIMIT
 
 
 def submit_log(log: str) -> None:
@@ -458,7 +458,7 @@ def process_pending() -> None:
 
 	from uae_compliance.uae_compliance.einvoice.inbound import receive
 
-	settings = frappe.get_cached_doc("UAE E-Invoice Settings")
+	settings = frappe.get_cached_doc("UAE Compliance Settings")
 	for company in [row.company for row in settings.companies if row.enabled]:
 		_run(receive, company)
 

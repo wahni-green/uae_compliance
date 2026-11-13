@@ -16,7 +16,7 @@ fills in the fixed parts itself. Behaviour was established against its sandbox:
   holds, not an error. The lookup is by the issue date, which is what the listing filters on.
 - A payload ClearTax cannot read is answered with HTTP 400 or 406.
 
-Settings, in UAE E-Invoice Settings: Endpoint URL (the API base, for example
+Settings, in UAE Compliance Settings: Endpoint URL (the API base, for example
 `https://api-sandbox.mea.cleartax.com`) and Client Secret; Extra Configuration may hold `trn`,
 `branch`, `inbound_days` (default 30) and `timeout` in seconds (default 60). The company's TIN is the
 taxpayer."""

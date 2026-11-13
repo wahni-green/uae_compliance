@@ -5,7 +5,7 @@
  "engine": "InnoDB",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-09 00:00:00.000000",
+ "modified": "2026-11-13 15:00:00.000000",
  "modified_by": "Administrator",
  "module": "UAE Compliance",
  "owner": "Administrator",
@@ -28,6 +28,17 @@
    "read": 1,
    "role": "Accounts Manager",
    "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "write": 1,
+   "role": "System Manager"
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "Accounts Manager"
   }
  ],
  "field_order": [
@@ -44,7 +55,17 @@
   "show_qr_code",
   "validation_section",
   "trn_pattern",
-  "tin_pattern"
+  "tin_pattern",
+  "einvoice_companies_section",
+  "companies",
+  "einvoice_sending_section",
+  "retry_limit",
+  "block_cancellation_after_attempt",
+  "einvoice_validation_section",
+  "require_hsn_sac_code",
+  "einvoice_scope_section",
+  "exclude_intra_vat_group",
+  "intra_group_grace_end"
  ],
  "fields": [
   {
@@ -130,6 +151,73 @@
    "fieldname": "tin_pattern",
    "fieldtype": "Data",
    "label": "TIN Pattern"
+  },
+  {
+   "fieldname": "einvoice_companies_section",
+   "fieldtype": "Section Break",
+   "label": "E-Invoice Companies",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "companies",
+   "fieldtype": "Table",
+   "label": "E-Invoice Companies",
+   "options": "UAE E-Invoice Company Setting",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "einvoice_sending_section",
+   "fieldtype": "Section Break",
+   "label": "E-Invoice Sending",
+   "permlevel": 1
+  },
+  {
+   "default": "5",
+   "fieldname": "retry_limit",
+   "fieldtype": "Int",
+   "label": "Attempts Before Failing",
+   "permlevel": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "block_cancellation_after_attempt",
+   "fieldtype": "Check",
+   "label": "Block Cancellation After an E-Invoice Was Sent",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "einvoice_validation_section",
+   "fieldtype": "Section Break",
+   "label": "E-Invoice Validation",
+   "permlevel": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "require_hsn_sac_code",
+   "fieldtype": "Check",
+   "label": "Require HSN/SAC Code on Items",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "einvoice_scope_section",
+   "fieldtype": "Section Break",
+   "label": "E-Invoice Scope",
+   "permlevel": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "exclude_intra_vat_group",
+   "fieldtype": "Check",
+   "label": "Exclude Sales Within the VAT Group",
+   "permlevel": 1
+  },
+  {
+   "depends_on": "exclude_intra_vat_group",
+   "fieldname": "intra_group_grace_end",
+   "fieldtype": "Date",
+   "label": "Exclude Until",
+   "mandatory_depends_on": "exclude_intra_vat_group",
+   "permlevel": 1
   }
  ]
 }

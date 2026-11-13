@@ -43,11 +43,11 @@ class PipelineTestCase(EInvoiceTestCase):
 
 class TestScope(PipelineTestCase):
 	def test_nothing_happens_when_the_company_has_not_enabled_it(self):
-		frappe.get_doc("UAE E-Invoice Settings").companies = []
-		settings = frappe.get_doc("UAE E-Invoice Settings")
+		frappe.get_doc("UAE Compliance Settings").companies = []
+		settings = frappe.get_doc("UAE Compliance Settings")
 		settings.companies = []
 		settings.save()
-		frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")
+		frappe.clear_document_cache("UAE Compliance Settings", "UAE Compliance Settings")
 
 		doc, enqueue = self.submit()
 
@@ -106,9 +106,9 @@ class TestScope(PipelineTestCase):
 
 	def set_intra_group_exclusion(self, switch, end):
 		frappe.db.set_single_value(
-			"UAE E-Invoice Settings", {"exclude_intra_vat_group": switch, "intra_group_grace_end": end}
+			"UAE Compliance Settings", {"exclude_intra_vat_group": switch, "intra_group_grace_end": end}
 		)
-		frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")
+		frappe.clear_document_cache("UAE Compliance Settings", "UAE Compliance Settings")
 
 	def test_an_item_with_an_exclusion_keeps_its_invoices_out(self):
 		item = make_einvoice_item("_Test EInv Ticket")
@@ -339,10 +339,10 @@ class TestSubmission(PipelineTestCase):
 			company.save()
 
 	def test_a_company_that_does_not_send_e_invoices_can_be_saved_without_them(self):
-		settings = frappe.get_doc("UAE E-Invoice Settings")
+		settings = frappe.get_doc("UAE Compliance Settings")
 		settings.companies = []
 		settings.save()
-		frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")
+		frappe.clear_document_cache("UAE Compliance Settings", "UAE Compliance Settings")
 
 		company = frappe.get_doc("Company", self.company)
 		company.uae_legal_registration_type = ""
@@ -567,7 +567,7 @@ class TestSendingAndPolling(PipelineTestCase):
 		self.assertEqual(doc.docstatus, 2)
 
 	def set_block_cancellation(self, value):
-		frappe.db.set_single_value("UAE E-Invoice Settings", "block_cancellation_after_attempt", value)
+		frappe.db.set_single_value("UAE Compliance Settings", "block_cancellation_after_attempt", value)
 
 	def test_a_timeout_is_retried_with_backoff_and_then_fails(self):
 		enable_einvoicing(self.company, behavior="timeout")

@@ -1,7 +1,7 @@
 # Phase 6 – E-invoicing (PINT AE)
 
 - [x] Official PINT AE spec, XSD and Schematron confirmed and used in the tests; FTA/MoF timelines are in UAE_VERIFICATION.md
-- [x] DocTypes: UAE E-Invoice Settings (provider, credentials, environment), UAE E-Invoice Log
+- [x] DocTypes: UAE Compliance Settings (provider, credentials, environment), UAE E-Invoice Log
 - [x] Status lifecycle on Sales Invoice (Draft -> ... -> FTA Cleared)
 - [x] `einvoice/pint_ae_builder.py`: UBL 2.1, CustomizationID `urn:peppol:pint:billing-1@ae-1`, tax category mapping S/Z/E
 - [x] Tax category O (out of scope); exempt/out of scope only documents are types 480/81
@@ -9,7 +9,7 @@
 - [x] Credit notes (type 381), line-level VAT in AED
 - [x] `einvoice/validators.py`: Python checks of the rules; the official XSD and Schematron run in the tests when supplied
 - [x] `einvoice/asp_client.py` abstract base: submit (idempotency key), get_status, fetch_inbound, credit/cancel, validate_credentials; normalized status enum and error model
-- [x] Provider registry + per-company provider selection in UAE E-Invoice Settings (credentials as Password fields, sandbox/production)
+- [x] Provider registry + per-company provider selection in UAE Compliance Settings (credentials as Password fields, sandbox/production)
 - [x] Mock/sandbox adapter (`asp_clients/mock.py`) used for tests; real adapters added later per provider, no schema changes
 - [x] Retries and correlation IDs handled in the shared layer, not in adapters
 - [x] Scheduler status polling (`scheduler_events`)
@@ -47,7 +47,7 @@
 - [ ] Self-billing documents. Tried on the Microvista sandbox (12 Oct 2026): `generate-invoice` with type 389 is accepted and Cleared, with the account as the seller or as the buyer, but the stored invoice comes back as type 380 (`get-invoice-details-by-id`), so Microvista issues a standard invoice and does not support self-billing through this API. Needs a provider that does
 
 ## PR 6b: provider framework and sending pipeline
-- **UAE E-Invoice Settings** (one row per company: provider, environment, "E-Invoice From" date, endpoint, client ID, client secret as a Password, extra JSON configuration) and **UAE E-Invoice Log** (one per document: status, provider reference, idempotency key, attempts, next attempt, the XML, the provider's response, errors, retention date).
+- **UAE Compliance Settings** (one row per company: provider, environment, "E-Invoice From" date, endpoint, client ID, client secret as a Password, extra JSON configuration) and **UAE E-Invoice Log** (one per document: status, provider reference, idempotency key, attempts, next attempt, the XML, the provider's response, errors, retention date).
 - **Providers:** adapters subclass `ASPClient` (submit an `OutgoingDocument` with an idempotency key, get status, fetch inbound, validate credentials). A document carries the PINT AE XML and the same invoice as a plain-data model (`PintAEBuilder.build_all`), because some providers (Microvista, for one) take the invoice's fields as JSON instead of an XML document, register with `@register_provider`, and are listed in `einvoice/registry.py`. The Mock adapter (behaviours `clear`, `reject`, `timeout`) is the only one so far. A real adapter is one file plus one line in the registry.
 - **Statuses:** Pending, Generated, Invalid, Submitted, Delivered, Cleared (terminal success: reported to the FTA), Rejected, Failed.
 - **Flow:** before submission an in-scope invoice is built and checked, and an invoice that would be invalid is not issued (one the builder does not support yet is issued and logged as Invalid). On submission the log is created and the send is queued; the scheduler (every five minutes) sends what is due, retries transient failures with backoff (1, 2, 4 ... minutes, up to the attempt limit) and polls sent documents until Cleared or Rejected. A provider's refusal is final; a manual **Retry** rebuilds the XML from the invoice as it is now.

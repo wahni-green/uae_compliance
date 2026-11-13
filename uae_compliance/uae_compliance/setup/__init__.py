@@ -73,6 +73,11 @@ def set_default_settings() -> None:
 		if not frappe.db.get_single_value("UAE Compliance Settings", fieldname):
 			frappe.db.set_single_value("UAE Compliance Settings", fieldname, value)
 
+	# These can be 0 on purpose, so only a value that was never stored gets the default.
+	for fieldname, value in {"retry_limit": 5, "require_hsn_sac_code": 1}.items():
+		if not frappe.db.exists("Singles", {"doctype": "UAE Compliance Settings", "field": fieldname}):
+			frappe.db.set_single_value("UAE Compliance Settings", fieldname, value)
+
 
 def hide_erpnext_uae_fields() -> None:
 	"""Hide ERPNext's own UAE localization fields (replaced by this app) with Property Setters.

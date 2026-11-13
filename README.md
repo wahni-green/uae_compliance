@@ -35,7 +35,7 @@ Run `bench migrate` again after each update. It creates the custom fields and fi
 1. Open **UAE Compliance Settings** and add a row for your company with its VAT accounts and filing frequency.
 2. Fill in the **UAE Compliance** tab of the Company: TRN, TIN, legal registration and address with its emirate.
 3. Give each Item Tax Template a **VAT Category**.
-4. To send e-invoices, add the company to **UAE E-Invoice Settings**.
+4. To send e-invoices, add the company to **UAE Compliance Settings**.
 
 The [user guide](docs/UAE_COMPLIANCE_USER_GUIDE.md) describes each step in full.
 

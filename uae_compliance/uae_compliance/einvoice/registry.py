@@ -10,7 +10,7 @@ _PROVIDERS: dict[str, type[ASPClient]] = {}
 
 
 def register_provider(cls: type[ASPClient]) -> type[ASPClient]:
-	"""Class decorator that makes an adapter selectable in UAE E-Invoice Settings."""
+	"""Class decorator that makes an adapter selectable in UAE Compliance Settings."""
 	if not cls.name:
 		raise ValueError("A provider adapter needs a name")
 
@@ -37,8 +37,8 @@ def get_provider_class(name: str) -> type[ASPClient]:
 
 
 def get_company_setting(company: str):
-	"""The enabled UAE E-Invoice Settings row of a company, if any."""
-	settings = frappe.get_cached_doc("UAE E-Invoice Settings")
+	"""The enabled UAE Compliance Settings row of a company, if any."""
+	settings = frappe.get_cached_doc("UAE Compliance Settings")
 	for row in settings.companies:
 		if row.company == company and row.enabled:
 			return row
@@ -51,7 +51,7 @@ def get_client(company: str) -> ASPClient:
 	row = get_company_setting(company)
 	if not row:
 		frappe.throw(
-			_("E-invoicing is not enabled for {0} in UAE E-Invoice Settings.").format(company),
+			_("E-invoicing is not enabled for {0} in UAE Compliance Settings.").format(company),
 			title=_("E-Invoicing Not Enabled"),
 		)
 

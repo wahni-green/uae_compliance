@@ -676,7 +676,7 @@ class TestValidators(EInvoiceTestCase):
 
 		make_einvoice_item("_Test EInv Goods3", uae_item_type="Goods")
 		doc = self.invoice([{"item_code": "_Test EInv Goods3", "rate": 100}])
-		frappe.db.set_single_value("UAE E-Invoice Settings", "require_hsn_sac_code", 0)
+		frappe.db.set_single_value("UAE Compliance Settings", "require_hsn_sac_code", 0)
 		self.assertNotIn("HS code", " ".join(validate_xml(build_xml(doc)[0])))
 
 	def test_credit_note_needs_a_reason_code(self):

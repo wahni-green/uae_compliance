@@ -13,7 +13,7 @@ Behaviour was established against its sandbox:
 - Status is by invoice id, passed as the `invoiceId` query parameter.
 - Received invoices are listed per taxpayer and fetched by id as JSON.
 
-Settings, in UAE E-Invoice Settings: Endpoint URL (the API base), Client ID (the API secret), Client
+Settings, in UAE Compliance Settings: Endpoint URL (the API base), Client ID (the API secret), Client
 Secret (the secret key), and Extra Configuration with `client_code` and optionally `version` (default
 `v1`), `inbound_days` (default 30) and `timeout` in seconds (default 60). The company's TIN is the
 taxpayer."""
@@ -91,7 +91,7 @@ class MicrovistaASP(ASPClient):
 	def _require_client_code(self) -> None:
 		if not self.config.extra.get("client_code"):
 			raise ServiceProviderError(
-				_("Microvista needs a client_code in the Extra Configuration of UAE E-Invoice Settings.")
+				_("Microvista needs a client_code in the Extra Configuration of UAE Compliance Settings.")
 			)
 
 	def _token(self, refresh: bool = False) -> str:

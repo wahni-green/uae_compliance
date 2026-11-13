@@ -17,3 +17,4 @@ uae_compliance.patches.v1.update_default_trn_pattern
 uae_compliance.patches.v1.remove_item_vat_category
 uae_compliance.patches.v1.merge_uae_sections
 uae_compliance.patches.v1.merge_item_hsn_sac_code
+uae_compliance.patches.v1.merge_einvoice_settings

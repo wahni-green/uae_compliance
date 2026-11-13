@@ -29,10 +29,10 @@ class TestInbound(PipelineTestCase):
 
 	def _enable(self, **documents):
 		enable_einvoicing(self.company)
-		settings = frappe.get_doc("UAE E-Invoice Settings")
+		settings = frappe.get_doc("UAE Compliance Settings")
 		settings.companies[0].extra_config = json.dumps({"inbound": documents})
 		settings.save()
-		frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")
+		frappe.clear_document_cache("UAE Compliance Settings", "UAE Compliance Settings")
 
 	def test_parse_reads_the_header(self):
 		details = inbound.parse_document(self._received_xml().encode())
@@ -279,10 +279,10 @@ class TestInbound(PipelineTestCase):
 		self.assertRaises(frappe.ValidationError, log.delete)
 
 	def test_nothing_is_fetched_for_a_company_that_is_not_enabled(self):
-		settings = frappe.get_doc("UAE E-Invoice Settings")
+		settings = frappe.get_doc("UAE Compliance Settings")
 		settings.companies = []
 		settings.save()
-		frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")
+		frappe.clear_document_cache("UAE Compliance Settings", "UAE Compliance Settings")
 
 		self.assertEqual(inbound.receive(self.company), 0)
 

@@ -287,10 +287,10 @@ class TestVATReturnWarning(ReconciliationTestCase):
 		return recon.get_unreconciled_input_vat(self.company, self.today, self.today)
 
 	def test_no_warning_while_the_company_does_not_receive_e_invoices(self):
-		settings = frappe.get_doc("UAE E-Invoice Settings")
+		settings = frappe.get_doc("UAE Compliance Settings")
 		settings.companies = []
 		settings.save()
-		frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")
+		frappe.clear_document_cache("UAE Compliance Settings", "UAE Compliance Settings")
 		self.invoice()
 		self.assertEqual(self.unreconciled(), (0, 0.0))
 
