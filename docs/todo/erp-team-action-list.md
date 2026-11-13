@@ -9,9 +9,9 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 - [x] **1. Company registration type** (High). Block at Company save and at Sales Invoice submit, for companies enabled in UAE E-Invoice Settings.
 - [x] **2. Company licence authority** (High). Checked: the field is already required for Trade License (commit 598a277). Now also blocked at Company save and at invoice submit, together with point 1.
 - [ ] **3. Exemption reason code on Exempt lines** (High). Block submit when an Exempt line has no code. The code list is a finance-defined master (see point 10).
-- [ ] **4. Customer licence authority** (Medium). Required when the type is Trade License, for all customers. Add server validation.
-- [ ] **5. Customer passport country** (Medium). Required when the ID type is Passport. Add server validation.
-- [ ] **6. Customer registration type** (Medium). Required when a registration ID is entered. Add a report of existing customers with no type. No data is changed.
+- [x] **4. Customer licence authority** (Medium). Required when the type is Trade License, for all customers. The form already enforced it; the server check is new.
+- [x] **5. Customer passport country** (Medium). Required when the ID type is Passport, on the form and on the server.
+- [x] **6. Customer registration type** (Medium). Required when a registration ID is entered, on the form and on the server. The report of existing customers with no type is still to do (see the data-quality report note).
 - [ ] **7. Address emirate** (Medium). Required when the country is United Arab Emirates. Add a report of existing addresses with no emirate.
 - [ ] **8. Sales Invoice customer address** (Medium). The address is required on every invoice. No fallback to the primary address.
 

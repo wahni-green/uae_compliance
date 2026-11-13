@@ -23,3 +23,29 @@ class TestTRNOnMasters(FrappeTestCase):
 		company = frappe.get_doc("Company", get_uae_test_company())
 		company.uae_trn = "999"
 		self.assertRaises(frappe.ValidationError, company.save)
+
+
+class TestLegalRegistrationOnParties(FrappeTestCase):
+	def customer(self, **kwargs):
+		return frappe.get_doc({"doctype": "Customer", "customer_name": "_Test UAE Registration", **kwargs})
+
+	def test_an_id_without_a_type_is_refused(self):
+		customer = self.customer(uae_legal_registration_id="112345679000001")
+		self.assertRaises(frappe.ValidationError, customer.insert)
+
+	def test_a_trade_license_needs_its_authority(self):
+		customer = self.customer(uae_legal_registration_type="Trade License")
+		self.assertRaises(frappe.ValidationError, customer.insert)
+
+		customer.uae_licence_authority = "Dubai Economy"
+		customer.insert()
+
+	def test_a_passport_needs_its_country(self):
+		customer = self.customer(uae_legal_registration_type="Passport")
+		self.assertRaises(frappe.ValidationError, customer.insert)
+
+		customer.uae_passport_country = "India"
+		customer.insert()
+
+	def test_a_customer_without_a_registration_is_accepted(self):
+		self.customer().insert()

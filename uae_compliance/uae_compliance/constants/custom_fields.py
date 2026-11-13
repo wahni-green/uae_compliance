@@ -278,6 +278,7 @@ def _legal_registration_fields(insert_after, columns=False):
 			"Select",
 			insert_after,
 			options=LEGAL_REGISTRATION_SELECT_OPTIONS,
+			mandatory_depends_on="eval:doc.uae_legal_registration_id",
 		),
 		_field("uae_legal_registration_id", "Legal Registration ID", "Data", "uae_legal_registration_type"),
 		*cb,
@@ -296,6 +297,7 @@ def _legal_registration_fields(insert_after, columns=False):
 			"uae_licence_authority",
 			options="Country",
 			depends_on="eval:doc.uae_legal_registration_type=='Passport'",
+			mandatory_depends_on="eval:doc.uae_legal_registration_type=='Passport'",
 		),
 	]
 
