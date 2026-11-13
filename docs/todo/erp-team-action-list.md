@@ -31,7 +31,7 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 - [x] **17. Item Tax Template overriding Zero and Exempt templates** (High). The old check missed it because the line took its category from the item's own 5% template. New check: a Sales Taxes and Charges Template that charges 0% VAT cannot be overridden by an item's Item Tax Template; the invoice cannot be saved.
 - [x] **18. Customer disabling script** (High). Not in this app. Ignored.
 - [ ] **19. Header discount and extra charge rows** (Medium). Send them as a document-level allowance and charge.
-- [ ] **20. Cancellation after the e-invoice was attempted** (Medium). Add a setting that blocks cancellation for any status except not sent.
+- [x] **20. Cancellation after the e-invoice was attempted** (Medium). Added `block_cancellation_after_attempt` to UAE E-Invoice Settings (off by default). It blocks cancelling any invoice whose sending was attempted. The workflow button "Request for cancelation" is on the site, not in this app: finance adds the condition `not doc.uae_einvoice_status` to its transition (written in the user guide).
 - [ ] **21. Rounding method** (Medium). Warn when the site uses Banker's rounding. No change to the setting.
 - [ ] **22. Address country data** (Low). Report addresses whose country is not United Arab Emirates, such as "UAE". No change.
 

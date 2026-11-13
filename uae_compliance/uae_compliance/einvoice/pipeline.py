@@ -109,6 +109,17 @@ def guard_cancellation(doc, method=None):
 			title=_("E-Invoice Already Sent"),
 		)
 
+	if log.last_attempt_on and frappe.db.get_single_value(
+		"UAE E-Invoice Settings", "block_cancellation_after_attempt"
+	):
+		frappe.throw(
+			_(
+				"Sending this invoice as an e-invoice was attempted ({0}), and UAE E-Invoice Settings block"
+				" the cancellation of such an invoice. Issue a credit note instead."
+			).format(_(log.status)),
+			title=_("E-Invoice Was Attempted"),
+		)
+
 	if log.last_attempt_on and log.status in (STATUS_GENERATED, STATUS_FAILED):
 		frappe.throw(
 			_(

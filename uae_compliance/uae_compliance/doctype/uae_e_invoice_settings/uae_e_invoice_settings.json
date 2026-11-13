@@ -5,7 +5,7 @@
  "engine": "InnoDB",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-13 12:00:00.000000",
+ "modified": "2026-11-13 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "UAE Compliance",
  "owner": "Administrator",
@@ -33,6 +33,7 @@
   "companies",
   "options_section",
   "retry_limit",
+  "block_cancellation_after_attempt",
   "validation_section",
   "require_hsn_sac_code",
   "scope_section",
@@ -61,6 +62,12 @@
    "fieldname": "retry_limit",
    "fieldtype": "Int",
    "label": "Attempts Before Failing"
+  },
+  {
+   "default": "0",
+   "fieldname": "block_cancellation_after_attempt",
+   "fieldtype": "Check",
+   "label": "Block Cancellation After an E-Invoice Was Sent"
   },
   {
    "fieldname": "validation_section",

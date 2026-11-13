@@ -262,7 +262,10 @@ class TestSubmission(PipelineTestCase):
 		self.assertEqual(doc.items[0].uae_exemption_reason_code, "DL8.46.2")
 
 	def test_an_exempt_line_without_a_reason_is_not_issued(self):
-		make_einvoice_item("_Test EInv Exempt No Reason", "Exempt")
+		item = make_einvoice_item("_Test EInv Exempt No Reason", "Exempt")
+		template = item.taxes[0].item_tax_template
+		self.addCleanup(self.set_template_reason, template, "DL8.46.1")
+		self.set_template_reason(template, "")
 		with patch("frappe.enqueue"):
 			with self.assertRaises(frappe.ValidationError) as ctx:
 				self.invoice([{"item_code": "_Test EInv Exempt No Reason", "rate": 100}], submit=True)
@@ -292,6 +295,10 @@ class TestSubmission(PipelineTestCase):
 		xml, _bytes, _summary = self.build(doc)
 
 		self.assertEqual(xml.xpath("//@unitCode")[0], "XPA")
+
+	def set_template_reason(self, template, reason):
+		frappe.db.set_value("Item Tax Template", template, "uae_exemption_reason_code", reason)
+		frappe.clear_document_cache("Item Tax Template", template)
 
 	def test_a_company_without_a_registration_type_is_not_issued(self):
 		frappe.db.set_value("Company", self.company, "uae_legal_registration_type", "")
@@ -514,6 +521,35 @@ class TestSendingAndPolling(PipelineTestCase):
 		self.assertEqual(new_log.status, "Submitted")
 		log.reload()
 		self.assertEqual(log.status, "Invalid")
+
+	def test_the_setting_blocks_cancelling_a_rejected_invoice(self):
+		self.addCleanup(self.set_block_cancellation, 0)
+		doc, _enqueue = self.submit()
+		log = self.log_of(doc)
+		with patch(
+			"uae_compliance.uae_compliance.einvoice.asp_clients.mock.MockASP.submit",
+			side_effect=ProviderRejectedError("Buyer unknown"),
+		):
+			pipeline.submit_log(log.name)
+
+		doc.reload()
+		self.set_block_cancellation(1)
+		with self.assertRaises(frappe.ValidationError) as ctx:
+			doc.cancel()
+
+		self.assertIn("credit note", str(ctx.exception))
+
+	def test_the_setting_leaves_an_invoice_that_was_never_sent_cancellable(self):
+		self.addCleanup(self.set_block_cancellation, 0)
+		doc, _enqueue = self.submit()
+		self.set_block_cancellation(1)
+
+		doc.cancel()
+
+		self.assertEqual(doc.docstatus, 2)
+
+	def set_block_cancellation(self, value):
+		frappe.db.set_single_value("UAE E-Invoice Settings", "block_cancellation_after_attempt", value)
 
 	def test_a_timeout_is_retried_with_backoff_and_then_fails(self):
 		enable_einvoicing(self.company, behavior="timeout")
