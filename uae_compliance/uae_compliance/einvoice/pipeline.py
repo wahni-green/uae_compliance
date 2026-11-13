@@ -35,36 +35,12 @@ from uae_compliance.uae_compliance.einvoice.exceptions import (
 )
 from uae_compliance.uae_compliance.einvoice.pint_ae_builder import build_document, build_xml
 from uae_compliance.uae_compliance.einvoice.registry import get_client, get_company_setting
+from uae_compliance.uae_compliance.einvoice.scope import get_setting_if_required, set_applicability
 from uae_compliance.uae_compliance.einvoice.unit_codes import validate_unit_codes
 from uae_compliance.uae_compliance.einvoice.validators import validate_xml
-from uae_compliance.uae_compliance.utils.company import is_uae_company
 
 DOCTYPE = "Sales Invoice"
 LOG = "UAE E-Invoice Log"
-
-
-def get_setting_if_required(doc):
-	"""The company's e-invoicing setting when this invoice has to be sent, else None. B2C sales, to
-	an individual, are out of scope, as are invoices dated before the company's start date and
-	invoices marked with an E-Invoice Exclusion (exempt financial services, airline e-tickets and
-	sovereign activity)."""
-	if not is_uae_company(doc.get("company")):
-		return None
-
-	row = get_company_setting(doc.company)
-	if not row:
-		return None
-
-	if row.mandatory_from and getdate(doc.posting_date) < getdate(row.mandatory_from):
-		return None
-
-	if doc.get("uae_einvoice_exclusion"):
-		return None
-
-	if frappe.db.get_value("Customer", doc.customer, "customer_type") == "Individual":
-		return None
-
-	return row
 
 
 # ---------------------------------------------------------------- document hooks
@@ -74,6 +50,7 @@ def validate_before_submit(doc, method=None):
 	"""Stop an invoice that cannot be sent from being issued, so its problems are fixed while it is
 	still a draft. An invoice that uses something the builder does not support yet is let through and
 	logged as Invalid on submission instead, to be sent by other means."""
+	set_applicability(doc)
 	if not get_setting_if_required(doc):
 		return
 

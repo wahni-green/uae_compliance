@@ -21,6 +21,10 @@ STATUSES = [
 ]
 STATUS_SELECT_OPTIONS = "\n".join(STATUSES)
 
+# Buyer categories. B2C is out of scope for e-invoicing.
+BUYER_CATEGORIES = ["B2B", "B2G", "B2C"]
+BUYER_CATEGORY_SELECT_OPTIONS = "\n" + "\n".join(BUYER_CATEGORIES)
+
 # Once an invoice has been sent it can no longer be cancelled: a credit note corrects it.
 SENT_STATUSES = (STATUS_SUBMITTED, STATUS_DELIVERED, STATUS_CLEARED)
 # Statuses the scheduler still has work to do on.

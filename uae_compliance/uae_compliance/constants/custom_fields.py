@@ -5,7 +5,10 @@ from uae_compliance.uae_compliance.constants import (
 	SALES_REVERSE_CHARGE_TYPE_SELECT_OPTIONS,
 	VAT_CATEGORY_SELECT_OPTIONS,
 )
-from uae_compliance.uae_compliance.constants.einvoice import EXCLUSION_SELECT_OPTIONS
+from uae_compliance.uae_compliance.constants.einvoice import (
+	BUYER_CATEGORY_SELECT_OPTIONS,
+	EXCLUSION_SELECT_OPTIONS,
+)
 from uae_compliance.uae_compliance.constants.emirates import EMIRATE_SELECT_OPTIONS
 from uae_compliance.uae_compliance.constants.pint_ae import (
 	BILLING_FREQUENCY_SELECT_OPTIONS,
@@ -121,6 +124,23 @@ def _sales_invoice_fields():
 			"uae_cb_einvoice_2",
 			read_only=1,
 			no_copy=1,
+		),
+		_field(
+			"uae_einvoice_applicable",
+			"E-Invoice Applicable",
+			"Check",
+			"uae_einvoice_log",
+			read_only=1,
+			no_copy=1,
+		),
+		_field(
+			"uae_einvoice_exclusion_reason",
+			"Why Not Applicable",
+			"Data",
+			"uae_einvoice_applicable",
+			read_only=1,
+			no_copy=1,
+			depends_on="eval:!doc.uae_einvoice_applicable",
 		),
 		# Transaction types: an invoice can be several at once, so these stay checkboxes
 		_field("uae_type_section", "Transaction Type", "Section Break", "uae_einvoice_log"),
@@ -332,7 +352,14 @@ CUSTOM_FIELDS = {
 		_field("uae_vat_section", "UAE Compliance", "Section Break", "tax_withholding_category"),
 		_field("uae_trn", "TRN", "Data", "uae_vat_section"),
 		_field("uae_tin", "TIN (Peppol)", "Data", "uae_trn"),
-		_field("uae_cb_vat", "", "Column Break", "uae_tin"),
+		_field(
+			"uae_buyer_category",
+			"Buyer Category",
+			"Select",
+			"uae_tin",
+			options=BUYER_CATEGORY_SELECT_OPTIONS,
+		),
+		_field("uae_cb_vat", "", "Column Break", "uae_buyer_category"),
 		*_legal_registration_fields("uae_cb_vat", columns=True),
 	],
 	"Supplier": [

@@ -20,10 +20,10 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 - [ ] **9. VAT category for Exempt and Out-of-scope** (High). No new field. The category comes from the Item Tax Template, so this is a finance setup issue. Check the existing consistency check catches a wrong template.
 - [x] **10. Exemption reason code master** (High). New DocType UAE Exemption Reason, seeded with the four FTA codes and maintained by finance. It is a Link on the Item Tax Template, the Item and the line items. The line takes the template value, else the item's.
 - [x] **11. UOM UN/ECE code** (High). Added `UOM.uae_uncefact_code`. A patch fills blanks from the old dictionary, with Pkt as XPA. Submit is blocked when a UOM on the invoice has no code, with no H87 fallback. Ctn, Bag, Tin, Bottle and Pcs are not in the old dictionary, so finance must enter their codes.
-- [ ] **12. Customer buyer category** (Medium). Add `uae_buyer_category` (B2B, B2G, B2C). Existing customers stay blank.
-- [ ] **13. Intra-group exclusion** (Medium). Add `exclude_intra_vat_group` and `intra_group_grace_end` (fixed date) to UAE E-Invoice Settings. The customer's UAE Tax Group identifies intra-group sales.
-- [ ] **14. E-invoice applicability on the invoice** (Medium). Add `uae_einvoice_applicable` and `uae_einvoice_exclusion_reason`. Read-only, calculated at submit.
-- [ ] **15. Buyer endpoint** (Medium). No new field. `uae_tin` feeds IBT-049. The work is loading TIN data.
+- [x] **12. Customer buyer category** (Medium). Added `uae_buyer_category` (B2B, B2G, B2C). B2C is out of scope. Existing customers stay blank.
+- [x] **13. Intra-group exclusion** (Medium). Added `exclude_intra_vat_group` and `intra_group_grace_end` to UAE E-Invoice Settings. A UAE Tax Group lists companies, so a sale is intra-group when the customer is an internal customer (Represents Company) of a company in the same group as the invoicing company. Set the end date to 31-Dec-2028 for 24 months from 1-Jan-2027.
+- [x] **14. E-invoice applicability on the invoice** (Medium). Added `uae_einvoice_applicable` and `uae_einvoice_exclusion_reason`, read-only and set at submit for companies that send e-invoices.
+- [x] **15. Buyer endpoint** (Medium). No new field. `uae_tin` feeds IBT-049. The work is loading TIN data, which is not a code change.
 - [ ] **16. PDF sent flag and setting** (Low). Deferred.
 
 ## Fix

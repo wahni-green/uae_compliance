@@ -2,16 +2,17 @@ import json
 from unittest.mock import patch
 
 import frappe
-from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_to_date, add_years, getdate, now_datetime
 
 from uae_compliance.tests import (
+	delete_tax_groups,
 	enable_einvoicing,
 	make_customer,
 	make_einvoice_item,
 	make_sales_invoice,
+	make_uae_company,
 )
-from uae_compliance.uae_compliance.einvoice import pipeline
+from uae_compliance.uae_compliance.einvoice import pipeline, scope
 from uae_compliance.uae_compliance.einvoice.asp_client import SubmitResult
 from uae_compliance.uae_compliance.einvoice.exceptions import EInvoiceError, ProviderRejectedError
 from uae_compliance.uae_compliance.einvoice.test_pint_ae import EInvoiceTestCase
@@ -59,6 +60,55 @@ class TestScope(PipelineTestCase):
 
 		self.assertIsNone(self.log_of(doc))
 		enqueue.assert_not_called()
+
+	def test_a_b2c_buyer_is_out_of_scope_and_the_invoice_says_why(self):
+		# Tests share one database until the class ends, so the category is put back after this one.
+		self.addCleanup(frappe.db.set_value, "Customer", "_Test UAE Customer", "uae_buyer_category", "")
+		frappe.db.set_value("Customer", "_Test UAE Customer", "uae_buyer_category", "B2C")
+		doc, enqueue = self.submit()
+
+		self.assertIsNone(self.log_of(doc))
+		enqueue.assert_not_called()
+		self.assertEqual(doc.uae_einvoice_applicable, 0)
+		self.assertIn("B2C", doc.uae_einvoice_exclusion_reason)
+
+	def test_an_invoice_that_is_sent_is_marked_applicable(self):
+		doc, _enqueue = self.submit()
+
+		self.assertEqual(doc.uae_einvoice_applicable, 1)
+		self.assertFalse(doc.uae_einvoice_exclusion_reason)
+
+	def test_sales_within_the_vat_group_are_left_out_until_the_end_date(self):
+		member = make_uae_company("_Test UAE Group Member B", "TGB")
+		self.addCleanup(delete_tax_groups)
+		frappe.get_doc(
+			{
+				"doctype": "UAE Tax Group",
+				"group_name": "_Test Scope Group",
+				"representative_member": self.company,
+				"members": [{"company": self.company}, {"company": member}],
+			}
+		).insert()
+		self.addCleanup(self.set_intra_group_exclusion, 0, None)
+		self.set_intra_group_exclusion(1, add_to_date(self.date, days=10))
+		doc = frappe._dict(company=self.company, posting_date=self.date)
+
+		self.assertTrue(scope.is_intra_group_sale(doc, member))
+		self.assertFalse(scope.is_intra_group_sale(doc, None))
+		self.assertFalse(scope.is_intra_group_sale(doc, "_Test UAE Company"))
+
+		doc.posting_date = add_to_date(self.date, days=11)
+		self.assertFalse(scope.is_intra_group_sale(doc, member))
+
+		self.set_intra_group_exclusion(0, None)
+		doc.posting_date = self.date
+		self.assertFalse(scope.is_intra_group_sale(doc, member))
+
+	def set_intra_group_exclusion(self, switch, end):
+		frappe.db.set_single_value(
+			"UAE E-Invoice Settings", {"exclude_intra_vat_group": switch, "intra_group_grace_end": end}
+		)
+		frappe.clear_document_cache("UAE E-Invoice Settings", "UAE E-Invoice Settings")
 
 	def test_an_item_with_an_exclusion_keeps_its_invoices_out(self):
 		item = make_einvoice_item("_Test EInv Ticket")
