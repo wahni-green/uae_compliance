@@ -7,6 +7,7 @@ from uae_compliance.uae_compliance.constants.custom_fields import CUSTOM_FIELDS
 from uae_compliance.uae_compliance.constants.designated_zones import DESIGNATED_ZONES
 from uae_compliance.uae_compliance.constants.erpnext_uae_fields import ERPNEXT_UAE_FIELDS
 from uae_compliance.uae_compliance.constants.excise_rates import EFFECTIVE_FROM, EXCISE_RATES
+from uae_compliance.uae_compliance.constants.pint_ae import EXEMPTION_REASONS
 
 
 def create_custom_fields() -> None:
@@ -21,6 +22,22 @@ def create_designated_zones() -> None:
 			continue
 
 		frappe.get_doc({"doctype": "UAE Designated Zone", **zone}).insert(ignore_permissions=True)
+
+
+def create_exemption_reasons() -> None:
+	# Insert-only: finance maintains this list, so a reason it edited is never overwritten.
+	for code, description in EXEMPTION_REASONS.items():
+		if frappe.db.exists("UAE Exemption Reason", code):
+			continue
+
+		frappe.get_doc(
+			{
+				"doctype": "UAE Exemption Reason",
+				"reason_code": code,
+				"description": description,
+				"is_active": 1,
+			}
+		).insert(ignore_permissions=True)
 
 
 def create_excise_rates() -> None:

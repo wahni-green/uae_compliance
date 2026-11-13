@@ -62,7 +62,30 @@ def set_vat_category_defaults(doc, method=None):
 		elif row.get("uae_vat_category") in ("", None, DEFAULT_VAT_CATEGORY, "Zero Rated"):
 			row.uae_vat_category = default
 
+		set_exemption_reason(row)
+
 	warn_designated_zone(doc)
+
+
+def set_exemption_reason(row) -> None:
+	"""An Exempt row takes the reason of its Item Tax Template, else of its Item, unless one was
+	chosen on the row. Any other row has none."""
+	if row.get("uae_vat_category") != "Exempt":
+		row.uae_exemption_reason_code = None
+		return
+
+	if not row.get("uae_exemption_reason_code"):
+		row.uae_exemption_reason_code = get_default_exemption_reason(
+			row.get("item_tax_template"), row.get("item_code")
+		)
+
+
+def get_default_exemption_reason(item_tax_template, item_code) -> str | None:
+	template_reason = item_tax_template and frappe.get_cached_value(
+		"Item Tax Template", item_tax_template, "uae_exemption_reason_code"
+	)
+	item_reason = item_code and frappe.get_cached_value("Item", item_code, "uae_exemption_reason_code")
+	return template_reason or item_reason or None
 
 
 def warn_designated_zone(doc) -> None:

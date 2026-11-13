@@ -5,6 +5,7 @@ from uae_compliance.uae_compliance.setup import (
 	create_custom_fields,
 	create_designated_zones,
 	create_excise_rates,
+	create_exemption_reasons,
 	hide_erpnext_uae_fields,
 	set_default_settings,
 )
@@ -20,6 +21,7 @@ def after_install() -> None:
 	create_custom_fields()
 	create_designated_zones()
 	create_excise_rates()
+	create_exemption_reasons()
 	set_default_settings()
 	hide_erpnext_uae_fields()
 

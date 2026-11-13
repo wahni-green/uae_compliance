@@ -71,14 +71,14 @@ LEGAL_REGISTRATION_TYPES = {
 }
 LEGAL_REGISTRATION_SELECT_OPTIONS = "\n" + "\n".join(LEGAL_REGISTRATION_TYPES)
 
-# VAT exemption reason codes (IBT-186).
+# VAT exemption reason codes (IBT-186): the starting list of the UAE Exemption Reason master, which
+# finance maintains from there.
 EXEMPTION_REASONS = {
 	"DL8.46.1": "Financial services",
 	"DL8.46.2": "Residential units",
 	"DL8.46.3": "Bare land",
 	"DL8.46.4": "Local passenger transport",
 }
-EXEMPTION_REASON_SELECT_OPTIONS = "\n" + "\n".join(EXEMPTION_REASONS)
 
 # Credit note reason codes (BTAE-03).
 CREDIT_REASONS = {

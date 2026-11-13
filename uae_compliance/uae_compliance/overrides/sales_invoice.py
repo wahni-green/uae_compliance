@@ -216,6 +216,7 @@ def before_submit(doc, method=None):
 		return
 
 	validate_customer_address(doc)
+	validate_exemption_reasons(doc)
 	validate_emirate(doc)
 	validate_credit_note_reason(doc)
 	store_value_before_credit_note(doc)
@@ -245,6 +246,20 @@ def validate_customer_address(doc) -> None:
 			_("Select the Customer Address: it is required on a UAE invoice."),
 			title=_("Customer Address Missing"),
 		)
+
+
+def validate_exemption_reasons(doc) -> None:
+	"""An exempt line goes out with its reason (IBT-186, rule ibr-167-ae); the network rejects it without."""
+	rows = [str(row.idx) for row in doc.items if is_exempt_without_reason(row)]
+	if rows:
+		frappe.throw(
+			_("Set the VAT Exemption Reason on the exempt items in row {0}.").format(", ".join(rows)),
+			title=_("VAT Exemption Reason Missing"),
+		)
+
+
+def is_exempt_without_reason(row) -> bool:
+	return row.get("uae_vat_category") == "Exempt" and not row.get("uae_exemption_reason_code")
 
 
 def validate_emirate(doc) -> None:

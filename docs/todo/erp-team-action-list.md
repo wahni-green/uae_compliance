@@ -8,7 +8,7 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 
 - [x] **1. Company registration type** (High). Block at Company save and at Sales Invoice submit, for companies enabled in UAE E-Invoice Settings.
 - [x] **2. Company licence authority** (High). Checked: the field is already required for Trade License (commit 598a277). Now also blocked at Company save and at invoice submit, together with point 1.
-- [ ] **3. Exemption reason code on Exempt lines** (High). Block submit when an Exempt line has no code. The code list is a finance-defined master (see point 10).
+- [x] **3. Exemption reason code on Exempt lines** (High). Submit is blocked when an Exempt line has no code.
 - [x] **4. Customer licence authority** (Medium). Required when the type is Trade License, for all customers. The form already enforced it; the server check is new.
 - [x] **5. Customer passport country** (Medium). Required when the ID type is Passport, on the form and on the server.
 - [x] **6. Customer registration type** (Medium). Required when a registration ID is entered, on the form and on the server. The report of existing customers with no type is still to do (see the data-quality report note).
@@ -18,7 +18,7 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 ## Create field
 
 - [ ] **9. VAT category for Exempt and Out-of-scope** (High). No new field. The category comes from the Item Tax Template, so this is a finance setup issue. Check the existing consistency check catches a wrong template.
-- [ ] **10. Exemption reason code master** (High). A finance-defined list (new DocType), used on the Item Tax Template, the item and the Sales Invoice Item. The template value is copied to the line.
+- [x] **10. Exemption reason code master** (High). New DocType UAE Exemption Reason, seeded with the four FTA codes and maintained by finance. It is a Link on the Item Tax Template, the Item and the line items. The line takes the template value, else the item's.
 - [ ] **11. UOM UN/ECE code** (High). Add `UOM.uae_uncefact_code`, fill it from the current dictionary with a patch, block submit when a used UOM has no code.
 - [ ] **12. Customer buyer category** (Medium). Add `uae_buyer_category` (B2B, B2G, B2C). Existing customers stay blank.
 - [ ] **13. Intra-group exclusion** (Medium). Add `exclude_intra_vat_group` and `intra_group_grace_end` (fixed date) to UAE E-Invoice Settings. The customer's UAE Tax Group identifies intra-group sales.

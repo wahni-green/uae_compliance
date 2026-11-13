@@ -201,6 +201,24 @@ class TestSubmission(PipelineTestCase):
 
 		self.assertIn("Licence Issuing Authority", str(ctx.exception))
 
+	def test_an_exempt_line_takes_the_reason_of_its_item(self):
+		doc = self.invoice([{"item_code": "_Test EInv Exempt", "rate": 100}])
+		self.assertEqual(doc.items[0].uae_exemption_reason_code, "DL8.46.1")
+
+	def test_a_reason_chosen_on_the_line_is_kept(self):
+		doc = self.invoice([{"item_code": "_Test EInv Exempt", "rate": 100}])
+		doc.items[0].uae_exemption_reason_code = "DL8.46.2"
+		doc.save()
+		self.assertEqual(doc.items[0].uae_exemption_reason_code, "DL8.46.2")
+
+	def test_an_exempt_line_without_a_reason_is_not_issued(self):
+		make_einvoice_item("_Test EInv Exempt No Reason", "Exempt")
+		with patch("frappe.enqueue"):
+			with self.assertRaises(frappe.ValidationError) as ctx:
+				self.invoice([{"item_code": "_Test EInv Exempt No Reason", "rate": 100}], submit=True)
+
+		self.assertIn("VAT Exemption Reason", str(ctx.exception))
+
 	def test_a_company_without_a_registration_type_is_not_issued(self):
 		frappe.db.set_value("Company", self.company, "uae_legal_registration_type", "")
 		with patch("frappe.enqueue"):

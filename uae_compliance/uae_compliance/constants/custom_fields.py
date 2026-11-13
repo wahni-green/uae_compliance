@@ -10,7 +10,6 @@ from uae_compliance.uae_compliance.constants.emirates import EMIRATE_SELECT_OPTI
 from uae_compliance.uae_compliance.constants.pint_ae import (
 	BILLING_FREQUENCY_SELECT_OPTIONS,
 	CREDIT_REASON_SELECT_OPTIONS,
-	EXEMPTION_REASON_SELECT_OPTIONS,
 	ITEM_TYPE_SELECT_OPTIONS,
 	LEGAL_REGISTRATION_SELECT_OPTIONS,
 )
@@ -368,9 +367,9 @@ CUSTOM_FIELDS = {
 		_field(
 			"uae_exemption_reason_code",
 			"VAT Exemption Reason",
-			"Select",
+			"Link",
 			"uae_vat_section",
-			options=EXEMPTION_REASON_SELECT_OPTIONS,
+			options="UAE Exemption Reason",
 		),
 		_field("uae_is_real_estate", "Real Estate", "Check", "uae_exemption_reason_code"),
 		_field("uae_cb_item_3", "", "Column Break", "uae_is_real_estate"),
@@ -417,6 +416,16 @@ CUSTOM_FIELDS = {
 			read_only=1,
 			in_list_view=1,
 		),
+		# Copied from the Item Tax Template (else the Item) when the row is Exempt (see
+		# overrides/transaction.py), and editable until then.
+		_field(
+			"uae_exemption_reason_code",
+			"VAT Exemption Reason",
+			"Link",
+			"uae_vat_category",
+			options="UAE Exemption Reason",
+			depends_on="eval:doc.uae_vat_category=='Exempt'",
+		),
 	],
 	"Item Tax Template": [
 		_field(
@@ -429,9 +438,9 @@ CUSTOM_FIELDS = {
 		_field(
 			"uae_exemption_reason_code",
 			"VAT Exemption Reason",
-			"Select",
+			"Link",
 			"uae_vat_category",
-			options=EXEMPTION_REASON_SELECT_OPTIONS,
+			options="UAE Exemption Reason",
 		),
 		_field("uae_fetch_vat_accounts", "Fetch VAT Accounts", "Button", "section_break_5"),
 	],

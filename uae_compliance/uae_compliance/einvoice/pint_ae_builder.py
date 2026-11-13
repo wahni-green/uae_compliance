@@ -50,6 +50,7 @@ from uae_compliance.uae_compliance.constants.pint_ae import (
 	UTC_OFFSET,
 )
 from uae_compliance.uae_compliance.einvoice.exceptions import EInvoiceNotSupportedError
+from uae_compliance.uae_compliance.overrides.transaction import get_default_exemption_reason
 from uae_compliance.uae_compliance.utils.print_data import get_output_vat_amount
 from uae_compliance.uae_compliance.utils.tax_account import (
 	get_item_wise_vat_rates,
@@ -280,9 +281,9 @@ class PintAEBuilder:
 			entry["tax"] = flt(entry["taxable"] * entry["rate"] / 100, 2) if entry["code"] == "S" else 0.0
 
 	def _exemption_reason(self, row) -> str | None:
-		template = row.get("item_tax_template")
-		code = template and frappe.db.get_value("Item Tax Template", template, "uae_exemption_reason_code")
-		return code or frappe.db.get_value("Item", row.item_code, "uae_exemption_reason_code") or None
+		return row.get("uae_exemption_reason_code") or get_default_exemption_reason(
+			row.get("item_tax_template"), row.item_code
+		)
 
 	def _compute_totals(self):
 		self.line_total = flt(sum(line["net"] for line in self.lines), 2)
