@@ -1,0 +1,22 @@
+{
+ "color": "#449CF0",
+ "creation": "2026-11-13 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "document_type": "UAE E-Invoice Log",
+ "dynamic_filters_json": "[]",
+ "filters_json": "[[\"UAE E-Invoice Log\", \"direction\", \"=\", \"Inbound\", false], [\"UAE E-Invoice Log\", \"creation\", \"Timespan\", \"this month\", false]]",
+ "function": "Count",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 1,
+ "label": "Received E-Invoices This Month",
+ "modified": "2026-11-13 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "UAE Compliance",
+ "name": "Received E-Invoices This Month",
+ "owner": "Administrator",
+ "show_percentage_stats": 1,
+ "stats_time_interval": "Daily",
+ "type": "Document Type"
+}

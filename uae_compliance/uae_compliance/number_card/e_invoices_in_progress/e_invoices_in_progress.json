@@ -1,0 +1,22 @@
+{
+ "color": "#EC864B",
+ "creation": "2026-11-13 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "document_type": "UAE E-Invoice Log",
+ "dynamic_filters_json": "[]",
+ "filters_json": "[[\"UAE E-Invoice Log\", \"direction\", \"=\", \"Outbound\", false], [\"UAE E-Invoice Log\", \"status\", \"in\", [\"Pending\", \"Generated\", \"Submitted\", \"Delivered\"], false]]",
+ "function": "Count",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 1,
+ "label": "E-Invoices In Progress",
+ "modified": "2026-11-13 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "UAE Compliance",
+ "name": "E-Invoices In Progress",
+ "owner": "Administrator",
+ "show_percentage_stats": 1,
+ "stats_time_interval": "Daily",
+ "type": "Document Type"
+}

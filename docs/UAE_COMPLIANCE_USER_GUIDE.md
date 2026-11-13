@@ -84,6 +84,10 @@ Open the report **UAE Purchase Reconciliation**, choose the company and period a
 - **Only Received** rows are e-invoices with no Purchase Invoice; **Only in Books** rows are Purchase Invoices with no received e-invoice (check the supplier sent one before claiming the input VAT). To link two such rows by hand, select one of each and choose **Link**.
 - **Unlink** frees a pair so that it is matched again; **Ignore** leaves a row out (**Restore Ignored** brings it back). Reverse charge, GCC and import purchases are not expected to have an e-invoice and are not listed. When you generate a VAT return, or file it, you are warned if Purchase Invoices of the period carry input VAT and have no matching received e-invoice (only for companies that receive e-invoices; ignored invoices are not counted). It is a warning only.
 
+### Workspace and status report
+
+The **UAE Compliance** workspace (top level) shows number cards and charts for sent e-invoices (in progress, needing action, cleared this month) and received e-invoices (unmatched, received this month), with shortcuts to the settings, the log, the VAT return and the reports. The **UAE E-Invoice Status** report lists the invoices that must be e-invoiced with their status, attempts and first error. Choose **Not Sent** to find invoices that have no log.
+
 ## 7. When something looks wrong
 
 | You see | Likely cause |

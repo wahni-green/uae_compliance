@@ -1,0 +1,262 @@
+{
+ "app": "uae_compliance",
+ "charts": [
+  {
+   "chart_name": "E-Invoices by Status",
+   "label": "E-Invoices by Status"
+  },
+  {
+   "chart_name": "E-Invoices per Month",
+   "label": "E-Invoices per Month"
+  },
+  {
+   "chart_name": "Received E-Invoices per Month",
+   "label": "Received E-Invoices per Month"
+  }
+ ],
+ "content": "[{\"id\": \"h_out\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Sent E-Invoices</b></span>\", \"col\": 12}}, {\"id\": \"c1\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"E-Invoices In Progress\", \"col\": 4}}, {\"id\": \"c2\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"E-Invoices Needing Action\", \"col\": 4}}, {\"id\": \"c3\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"E-Invoices Cleared This Month\", \"col\": 4}}, {\"id\": \"h_in\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Received E-Invoices</b></span>\", \"col\": 12}}, {\"id\": \"c4\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Received E-Invoices Unmatched\", \"col\": 6}}, {\"id\": \"c5\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Received E-Invoices This Month\", \"col\": 6}}, {\"id\": \"ch1\", \"type\": \"chart\", \"data\": {\"chart_name\": \"E-Invoices by Status\", \"col\": 6}}, {\"id\": \"ch2\", \"type\": \"chart\", \"data\": {\"chart_name\": \"E-Invoices per Month\", \"col\": 6}}, {\"id\": \"ch3\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Received E-Invoices per Month\", \"col\": 12}}, {\"id\": \"h_sc\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Shortcuts</b></span>\", \"col\": 12}}, {\"id\": \"s0\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"UAE Compliance Settings\", \"col\": 4}}, {\"id\": \"s1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"E-Invoice Log\", \"col\": 4}}, {\"id\": \"s2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"UAE VAT Return\", \"col\": 4}}, {\"id\": \"s3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"E-Invoice Status\", \"col\": 4}}, {\"id\": \"s4\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Purchase Reconciliation\", \"col\": 4}}, {\"id\": \"s5\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Master Data Issues\", \"col\": 4}}, {\"id\": \"sp\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"h_rp\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Reports and Masters</b></span>\", \"col\": 12}}, {\"id\": \"k0\", \"type\": \"card\", \"data\": {\"card_name\": \"Reports\", \"col\": 4}}, {\"id\": \"k1\", \"type\": \"card\", \"data\": {\"card_name\": \"Masters\", \"col\": 4}}]",
+ "creation": "2026-11-13 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "accounting",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "UAE Compliance",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reports",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "UAE E-Invoice Status",
+   "link_count": 0,
+   "link_to": "UAE E-Invoice Status",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Sales Invoice",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "UAE VAT Sales Register",
+   "link_count": 0,
+   "link_to": "UAE VAT Sales Register",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Sales Invoice",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "UAE VAT Purchase Register",
+   "link_count": 0,
+   "link_to": "UAE VAT Purchase Register",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Purchase Invoice",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "UAE Purchase Reconciliation",
+   "link_count": 0,
+   "link_to": "UAE Purchase Reconciliation",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Purchase Invoice",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "UAE Master Data Issues",
+   "link_count": 0,
+   "link_to": "UAE Master Data Issues",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Customer",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Masters",
+   "link_count": 7,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "UAE TRN",
+   "link_count": 0,
+   "link_to": "UAE TRN",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "UAE Tax Group",
+   "link_count": 0,
+   "link_to": "UAE Tax Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "UAE Designated Zone",
+   "link_count": 0,
+   "link_to": "UAE Designated Zone",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "UAE Excise Rate",
+   "link_count": 0,
+   "link_to": "UAE Excise Rate",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "UAE Exemption Reason",
+   "link_count": 0,
+   "link_to": "UAE Exemption Reason",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "UAE Capital Asset",
+   "link_count": 0,
+   "link_to": "UAE Capital Asset",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "UAE VAT Adjustment",
+   "link_count": 0,
+   "link_to": "UAE VAT Adjustment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-11-13 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "UAE Compliance",
+ "name": "UAE Compliance",
+ "number_cards": [
+  {
+   "label": "E-Invoices In Progress",
+   "number_card_name": "E-Invoices In Progress"
+  },
+  {
+   "label": "E-Invoices Needing Action",
+   "number_card_name": "E-Invoices Needing Action"
+  },
+  {
+   "label": "E-Invoices Cleared This Month",
+   "number_card_name": "E-Invoices Cleared This Month"
+  },
+  {
+   "label": "Received E-Invoices Unmatched",
+   "number_card_name": "Received E-Invoices Unmatched"
+  },
+  {
+   "label": "Received E-Invoices This Month",
+   "number_card_name": "Received E-Invoices This Month"
+  }
+ ],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "restrict_to_domain": "",
+ "roles": [
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Accounts User"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 30.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "",
+   "label": "UAE Compliance Settings",
+   "link_to": "UAE Compliance Settings",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "E-Invoice Log",
+   "link_to": "UAE E-Invoice Log",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "UAE VAT Return",
+   "link_to": "UAE VAT Return",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "",
+   "label": "E-Invoice Status",
+   "link_to": "UAE E-Invoice Status",
+   "report_ref_doctype": "Sales Invoice",
+   "type": "Report"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "",
+   "label": "Purchase Reconciliation",
+   "link_to": "UAE Purchase Reconciliation",
+   "type": "Report"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "",
+   "label": "Master Data Issues",
+   "link_to": "UAE Master Data Issues",
+   "type": "Report"
+  }
+ ],
+ "title": "UAE Compliance"
+}
