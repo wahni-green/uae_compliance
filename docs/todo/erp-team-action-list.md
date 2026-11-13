@@ -35,6 +35,10 @@ Branch: `feat/erp-team-action-list`. Pull request goes to `develop`.
 - [ ] **21. Rounding method** (Medium). Warn when the site uses Banker's rounding. No change to the setting.
 - [ ] **22. Address country data** (Low). Report addresses whose country is not United Arab Emirates, such as "UAE". No change.
 
+## Other
+
+- [x] **OCR review workflow.** `.github/workflows/ocr-review.yml`, copied from wahni-green/wahni_it. A review runs only when someone with write access opens the PR, marks it ready, adds the `ocr-review` label or comments `/ocr`.
+
 ## Notes
 
 - Points 6, 7 and 22 are reports. They are grouped into one data-quality report.

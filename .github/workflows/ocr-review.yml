@@ -1,0 +1,176 @@
+# Open Code Review (OCR): AI review of pull requests, run on the org self-hosted runner.
+# Based on wahni-green/wahni_it, with one addition: a review runs only when the person who opened
+# the PR, marked it ready, added the label or commented has write access to this repository.
+#
+# Triggers:
+#   - PR opened / ready for review                       -> automatic review (not on every push)
+#   - label `ocr-review` added                           -> re-review (label is removed afterwards)
+#   - PR comment `/ocr` or `/ocr full`                   -> re-review (`full` = repost all comments)
+#
+# Config lives on the runner VM, not in GitHub (the org plan has no org secrets
+# for private repos):
+#   ~/ocr/env                  OCR_LLM_TOKEN=... (required), OCR_LLM_MODEL=... (optional)
+#   ~/ocr/frappe-rules.json    review rules (optional)
+name: OCR review
+
+on:
+  pull_request:
+    # Automatic only when a PR is opened or marked ready. Later pushes are NOT
+    # reviewed automatically (that is what made reviews loop); re-review with
+    # the `ocr-review` label or a `/ocr` comment.
+    types: [opened, ready_for_review, labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write # remove the trigger label, react to comments
+
+jobs:
+  review:
+    # Cheap gate (uses no runner): automatic PR events, the `ocr-review` label,
+    # or a `/ocr` comment from an org owner/member/collaborator on a PR. The write
+    # access check is made in the first step.
+    if: >-
+      (github.event_name == 'pull_request' &&
+        (github.event.action != 'labeled' || github.event.label.name == 'ocr-review'))
+      ||
+      (github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        github.event.comment.user.type != 'Bot' &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+        (github.event.comment.body == '/ocr' || startsWith(github.event.comment.body, '/ocr ')))
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 30
+    concurrency:
+      group: ocr-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number }}
+      # Don't kill a review that is mid-way (partial comments, skipped label
+      # cleanup). A newer trigger waits and replaces any older queued run.
+      cancel-in-progress: false
+    steps:
+      - name: Resolve PR and decide whether to run
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const isComment = context.eventName === 'issue_comment';
+            const number = isComment ? context.issue.number : context.payload.pull_request.number;
+            const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: number });
+            const manual = isComment || context.payload.action === 'labeled';
+            const sameRepo = pr.head.repo && pr.head.repo.full_name === `${context.repo.owner}/${context.repo.repo}`;
+
+            // Who triggered this: the commenter, the author for a new PR, else whoever
+            // marked it ready or added the label.
+            const actor = isComment
+              ? context.payload.comment.user.login
+              : context.payload.action === 'opened'
+                ? pr.user.login
+                : context.payload.sender.login;
+            const hasWriteAccess = async (username) => {
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({ ...context.repo, username });
+                return ['admin', 'maintain', 'write'].includes(data.role_name);
+              } catch (e) {
+                // 404 for a user who is not a collaborator (including most bots).
+                core.info(`No permission level for ${username}: ${e.message}`);
+                return false;
+              }
+            };
+
+            let run = true, reason = '';
+            if (!sameRepo)                              { run = false; reason = 'fork PR (never run on the self-hosted runner)'; }
+            else if (pr.state !== 'open')               { run = false; reason = 'PR is not open'; }
+            else if (!manual && pr.draft)               { run = false; reason = 'draft PR (add the ocr-review label or comment /ocr to force)'; }
+            else if (!manual && pr.user.type === 'Bot') { run = false; reason = 'bot-authored PR'; }
+            else if (!(await hasWriteAccess(actor)))    { run = false; reason = `${actor} does not have write access to this repository`; }
+            const body = isComment ? context.payload.comment.body : '';
+            core.setOutput('run', String(run));
+            core.setOutput('number', String(number));
+            core.setOutput('base_ref', pr.base.ref);
+            core.setOutput('head_sha', pr.head.sha);
+            core.setOutput('full', String(/^\/ocr\s+full\b/i.test(body)));
+            // PR title goes into the LLM prompt as background. It is untrusted text:
+            // strip control characters and cap the length to limit prompt injection.
+            core.setOutput('title', pr.title.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, 120));
+            core.notice(run ? `Reviewing PR #${number}` : `Skipping PR #${number}: ${reason}`);
+            if (isComment && run) {
+              await github.rest.reactions.createForIssueComment({ ...context.repo, comment_id: context.payload.comment.id, content: 'eyes' }).catch(e => core.warning(`Could not react to the comment: ${e.message}`));
+            }
+
+      # Fails fast (before any secret is read) on a runner that has no ~/ocr/env.
+      # The token goes to a masked step OUTPUT consumed only by the OCR step, not
+      # to GITHUB_ENV, so no other step sees it. Only non-secret values use GITHUB_ENV.
+      - name: Load OCR config from the runner
+        id: cfg
+        if: steps.pr.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          CFG="$HOME/ocr"
+          if [ ! -r "$CFG/env" ]; then
+            echo "::error::Missing $CFG/env on the runner (needs OCR_LLM_TOKEN=...). Is this the OCR runner?"; exit 1
+          fi
+          set -a; . "$CFG/env"; set +a
+          : "${OCR_LLM_TOKEN:?OCR_LLM_TOKEN is empty in $CFG/env}"
+          # Anthropic keys are [A-Za-z0-9_-] only; reject anything else (newlines
+          # would otherwise let a malformed file inject extra outputs/variables).
+          case "$OCR_LLM_TOKEN" in
+            *[!A-Za-z0-9_-]*) echo "::error::OCR_LLM_TOKEN in $CFG/env has unexpected characters"; exit 1 ;;
+          esac
+          # Same for the model name, which is also written to GITHUB_ENV below.
+          case "${OCR_LLM_MODEL:-claude-sonnet-5-5}" in
+            *[!A-Za-z0-9._:-]*) echo "::error::OCR_LLM_MODEL in $CFG/env has unexpected characters"; exit 1 ;;
+          esac
+          echo "::add-mask::$OCR_LLM_TOKEN"
+          echo "token=$OCR_LLM_TOKEN" >> "$GITHUB_OUTPUT"
+          {
+            echo "OCR_LLM_MODEL=${OCR_LLM_MODEL:-claude-sonnet-5-5}"
+            if [ -r "$CFG/frappe-rules.json" ]; then echo "OCR_RULE_FILE=$CFG/frappe-rules.json"; fi
+          } >> "$GITHUB_ENV"
+
+      # Pinned to the v1.13.6 commit. Review upgrades before bumping.
+      - name: Run OCR
+        if: steps.pr.outputs.run == 'true'
+        uses: alibaba/open-code-review@891df1b63f380845d882a289a67a6e36c331120c
+        with:
+          llm_url: https://api.anthropic.com
+          llm_auth_token: ${{ steps.cfg.outputs.token }}
+          llm_model: ${{ env.OCR_LLM_MODEL }}
+          llm_use_anthropic: "true"
+          # The action's default ({"thinking":{"type":"disabled"}}) is rejected by
+          # claude-sonnet-5-5 with a 400; this model wants "between_tools".
+          llm_extra_body: '{"thinking":{"type":"between_tools"}}'
+          ocr_version: "1.13.6"
+          rule: ${{ env.OCR_RULE_FILE }}
+          pr_number: ${{ steps.pr.outputs.number }}
+          base_ref: ${{ steps.pr.outputs.base_ref }}
+          head_sha: ${{ steps.pr.outputs.head_sha }}
+          background: ${{ steps.pr.outputs.title }}
+          effort: medium
+          language: English
+          sticky_summary: "true"
+          incremental: ${{ steps.pr.outputs.full == 'true' && 'false' || 'true' }}
+          # Low-severity and style/docs findings go into the single summary comment
+          # instead of inline threads (never dropped).
+          route_severity_below: low
+          route_categories: style,documentation
+          # Cost cap per review run. Over budget: remaining files are skipped and
+          # reported, partial results are still posted, the job does not fail.
+          max_tokens_budget: "1000000"
+          # Log which of the bot's own threads GitHub marks outdated; change to
+          # "true" (and grant `contents: write` above) to actually resolve them.
+          resolve_outdated: report
+
+  # Make the label behave like a button: remove it as soon as it is seen so it
+  # can be added again. Separate job (no concurrency group, hosted runner) so it
+  # still runs when the review job is queued behind another review or replaced.
+  unlabel:
+    if: github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'ocr-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.removeLabel({ ...context.repo, issue_number: context.payload.pull_request.number, name: 'ocr-review' })
+              .catch(e => core.warning(`Could not remove the ocr-review label (remove it by hand to re-trigger): ${e.message}`));
