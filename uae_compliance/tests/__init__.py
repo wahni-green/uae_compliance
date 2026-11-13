@@ -7,6 +7,7 @@ from frappe.utils import getdate
 from uae_compliance.uae_compliance.utils.tax_account import get_output_vat_account
 
 TEST_COMPANY = "_Test UAE VAT Company"
+EXEMPTION_TEST_REASON = "DL8.46.1"
 
 
 def before_tests() -> None:
@@ -122,6 +123,8 @@ def get_category_template(category: str, company: str | None = None) -> str:
 	title = f"_Test UAE {category}"
 	abbr = frappe.get_cached_value("Company", company, "abbr")
 	name = f"{title} - {abbr}"
+	# An exempt line cannot be submitted without a reason.
+	reason = EXEMPTION_TEST_REASON if category == "Exempt" else None
 	if not frappe.db.exists("Item Tax Template", name):
 		account = get_output_vat_account(company) or frappe.db.get_value(
 			"Account", {"company": company, "is_group": 0, "root_type": "Liability"}, "name"
@@ -132,9 +135,13 @@ def get_category_template(category: str, company: str | None = None) -> str:
 				"title": title,
 				"company": company,
 				"uae_vat_category": category,
+				"uae_exemption_reason_code": reason,
 				"taxes": [{"tax_type": account, "tax_rate": 0}],
 			}
 		).insert()
+	elif reason:
+		frappe.db.set_value("Item Tax Template", name, "uae_exemption_reason_code", reason)
+		frappe.clear_document_cache("Item Tax Template", name)
 
 	return name
 
