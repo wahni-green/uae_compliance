@@ -62,11 +62,12 @@ The app does not calculate penalties.
 
 Only companies enabled in **UAE E-Invoice Settings** send e-invoices (see the configuration guide). From then on:
 
-1. Submitting a Sales Invoice builds its PINT AE document and checks it. An invoice whose lines are all exempt or out of scope is sent as an out of scope invoice (type 480; a credit note is type 81), because the specification does not allow them on an ordinary tax invoice. An invoice that would be invalid is **not issued**: fix what the message says (a missing TRN, TIN, address, VAT Emirate, and so on) and submit again.
-2. The invoice is sent in the background. Its **E-Invoice Status** shows the progress: Generated, Submitted (accepted by the provider), Delivered (to the buyer) and Cleared (reported to the FTA). Rejected means the provider or the FTA refused it; the reasons are in the **E-Invoice Log**. A rejected invoice's number is never sent again, so there is no Retry: fix what the reasons name (for example the customer's address or TIN), **cancel** the invoice and **amend** it, which gives it a new number and sends it as a new document. Once an invoice has been Delivered or Cleared it cannot be cancelled; issue a credit note instead.
-3. A failed send is retried automatically with increasing waits. After the retry limit the log shows Failed. Fix the cause and use **Retry** on the log.
-4. **A sent invoice cannot be cancelled.** Issue a credit note. To stop the cancellation of every invoice whose sending was attempted, including a rejected one, tick **Block Cancellation After an E-Invoice Was Sent** in UAE E-Invoice Settings. A workflow action such as "Request for cancelation" is not covered: add the condition `not doc.uae_einvoice_status` to its transition so that it is hidden once an e-invoice exists. An invoice whose last send attempt has no known outcome (for example, a timeout) also cannot be cancelled: use **Retry** until the status is settled.
-5. Logs are kept for five years, seven for an invoice with an item ticked **Real Estate**, and cannot be deleted before.
+1. Sales to a customer whose **Buyer Category** is B2C or an individual, and sales within your VAT group while the grace period in the settings lasts, are not sent. The invoice shows **E-Invoice Applicable** and, when it is not, **Why Not Applicable**.
+2. Submitting a Sales Invoice builds its PINT AE document and checks it. An invoice whose lines are all exempt or out of scope is sent as an out of scope invoice (type 480; a credit note is type 81), because the specification does not allow them on an ordinary tax invoice. An invoice that would be invalid is **not issued**: fix what the message says (a missing TRN, TIN, address, VAT Emirate, and so on) and submit again.
+3. The invoice is sent in the background. Its **E-Invoice Status** shows the progress: Generated, Submitted (accepted by the provider), Delivered (to the buyer) and Cleared (reported to the FTA). Rejected means the provider or the FTA refused it; the reasons are in the **E-Invoice Log**. A rejected invoice's number is never sent again, so there is no Retry: fix what the reasons name (for example the customer's address or TIN), **cancel** the invoice and **amend** it, which gives it a new number and sends it as a new document. Once an invoice has been Delivered or Cleared it cannot be cancelled; issue a credit note instead.
+4. A failed send is retried automatically with increasing waits. After the retry limit the log shows Failed. Fix the cause and use **Retry** on the log.
+5. **A sent invoice cannot be cancelled.** Issue a credit note. To stop the cancellation of every invoice whose sending was attempted, including a rejected one, tick **Block Cancellation After an E-Invoice Was Sent** in UAE E-Invoice Settings. A workflow action such as "Request for cancelation" is not covered: add the condition `not doc.uae_einvoice_status` to its transition so that it is hidden once an e-invoice exists. An invoice whose last send attempt has no known outcome (for example, a timeout) also cannot be cancelled: use **Retry** until the status is settled.
+6. Logs are kept for five years, seven for an invoice with an item ticked **Real Estate**, and cannot be deleted before.
 
 Received invoices appear as **inbound** logs, matched to your suppliers by TIN or TRN. One that cannot be read or is addressed to someone else is marked Invalid with the reason. Entering them as Purchase Invoices is still done by hand.
 
@@ -91,6 +92,13 @@ Open the report **UAE Purchase Reconciliation**, choose the company and period a
 | TRN or TIN rejected | It does not match the pattern in UAE Compliance Settings (15 digits starting 1 ending 03; 10 digits starting 1). |
 | Box 1 is zero for a standard rated sale | The invoice has no VAT Emirate, or its VAT is not on the Output VAT account. |
 | A purchase is missing from Box 9 | It is blocked input VAT, attributed to exempt supplies, or not Standard Rated. |
+| "Company Registration Incomplete" | The company has no Legal Registration Type, or a Trade License with no issuing authority. Set them on the company's UAE Compliance tab. |
+| "VAT Exemption Reason Missing" | An exempt row has no reason. Set it on the Item Tax Template or the Item, or on the row. |
+| "Unit Code Missing" | The unit of measure has no **UN/ECE Code**. Enter it on the UOM. |
+| "Charge in the Taxes Table" | The taxes table holds a charge that is not VAT, such as freight. Enter it as an item row. |
+| "VAT Charged Under a Zero Rate Template" | An item's Item Tax Template raised a 0% tax template. Use a tax template that charges VAT, or remove the Item Tax Template from the item. |
+| "Customer Address Missing" | Select the customer address on the invoice. |
+| "E-Invoice Was Attempted" | **Block Cancellation After an E-Invoice Was Sent** is on in UAE E-Invoice Settings. Issue a credit note. |
 | E-invoice stays Generated | The provider was unreachable; it retries on its own. Check **Status Detail** on the log. |
 | Log says provider settings changed | The log was created under another provider or environment. Restore the settings, then use **Retry**. |
 | "Return Out of Date" when filing | Documents of the period changed after the return was generated. Generate it again. |
